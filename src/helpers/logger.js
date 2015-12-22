@@ -12,7 +12,7 @@ const LoadConfig = rfr('lib/helpers/config.js');
 const Config = new LoadConfig();
 
 const Log = Bunyan.createLogger({
-    name: 'core',
+    name: 'pterodactyl.daemon',
     streams: [
         {
             level: 'debug',

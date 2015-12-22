@@ -6,9 +6,14 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 const rfr = require('rfr');
-const InitializeServers = rfr('lib/helpers/initialize.js');
-const ServerInitializer = new InitializeServers();
+const Log = rfr('lib/helpers/logger.js');
+const Initializer = rfr('lib/helpers/initialize.js').Initialize;
+const Initialize = new Initializer();
 
-ServerInitializer.init(function () {
+Initialize.init(function () {
     rfr('lib/http/restify.js');
+});
+
+process.on('uncaughtException', function (err) {
+    Log.fatal(err, 'A fatal error occured during an operation.');
 });

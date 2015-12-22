@@ -49,9 +49,11 @@ class Initialize {
                         // Initalize the Server
                         self.setup(json, callback);
                     });
+                } else {
+                    return callback();
                 }
-            }, function () {
-                return next(Servers);
+            }, function (errAsync) {
+                return next(errAsync);
             });
         });
     }
@@ -69,4 +71,5 @@ class Initialize {
     }
 }
 
-module.exports = Initialize;
+exports.Initialize = Initialize;
+exports.Servers = Servers;

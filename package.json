@@ -7,7 +7,7 @@
     "test": "tests"
   },
   "scripts": {
-    "start": "node lib/index.js | node_modules/bunyan/bin/bunyan",
+    "start": "node lib/index.js | node_modules/bunyan/bin/bunyan -o short",
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "babel src -d lib"
   },
@@ -40,6 +40,7 @@
     "bunyan": "^1.5.1",
     "dockerode": "^2.2.7",
     "fs-extra": "^0.26.3",
+    "is-json": "^1.2.5",
     "path": "^0.12.7",
     "restify": "^4.0.3",
     "rfr": "^1.2.3"
