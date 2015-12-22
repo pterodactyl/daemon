@@ -1,0 +1,47 @@
+{
+  "name": "pterodactyl-daemon",
+  "version": "0.0.1",
+  "description": "Server management wrapper built for Pterodactyl Panel.",
+  "main": "index.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "start": "node lib/index.js | node_modules/bunyan/bin/bunyan",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "babel src -d lib"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Pterodactyl/Daemon.git"
+  },
+  "keywords": [
+    "pterodactyl",
+    "daemon",
+    "wings"
+  ],
+  "author": "Dane Everitt",
+  "license": "GPL-3.0",
+  "bugs": {
+    "url": "https://github.com/Pterodactyl/Daemon/issues"
+  },
+  "homepage": "https://github.com/Pterodactyl/Daemon#readme",
+  "devDependencies": {
+    "babel": "^6.3.13",
+    "babel-cli": "^6.3.17",
+    "babel-eslint": "^4.1.6",
+    "babel-preset-es2015-node4": "^2.0.2",
+    "eslint": "^1.10.3",
+    "eslint-config-airbnb": "^2.1.1",
+    "eslint-plugin-react": "^3.12.0"
+  },
+  "dependencies": {
+    "async": "^1.5.0",
+    "bunyan": "^1.5.1",
+    "dockerode": "^2.2.7",
+    "fs-extra": "^0.26.3",
+    "path": "^0.12.7",
+    "restify": "^4.0.3",
+    "rfr": "^1.2.3"
+  }
+}
