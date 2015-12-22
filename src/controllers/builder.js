@@ -15,7 +15,7 @@ const ServerInitializer = new InitializeServers();
 class Builder {
 
     constructor(json) {
-        if (!json || typeof json !== 'object' || json === null) {
+        if (!json || typeof json !== 'object' || json === null || !Object.keys(json).length) {
             throw new Error('Invalid JSON was passed to Builder.');
         }
         this._json = json;
