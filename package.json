@@ -33,7 +33,8 @@
     "babel-preset-es2015-node4": "^2.0.2",
     "eslint": "^1.10.3",
     "eslint-config-airbnb": "^2.1.1",
-    "eslint-plugin-react": "^3.12.0"
+    "eslint-plugin-react": "^3.12.0",
+    "nexe": "^0.4.2"
   },
   "dependencies": {
     "async": "^1.5.0",
