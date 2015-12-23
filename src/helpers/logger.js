@@ -21,13 +21,16 @@ const Log = Bunyan.createLogger({
         {
             level: 'debug',
             type: 'rotating-file',
-            path: Path.join(Config.get('logPath', '/var/log/pterodactyl-daemon'), 'daily.log'),
-            period: '1d',
-            count: 3,
+            path: Path.join(Config.get('logPath', '/var/log/pterodactyl-daemon'), 'info.log'),
+            period: '4h',
+            count: 12,
         },
         {
             level: 'error',
-            path: Path.join(Config.get('logPath', '/var/log/pterodactyl-daemon'), 'core-error.log'),
+            type: 'rotating-file',
+            path: Path.join(Config.get('logPath', '/var/log/pterodactyl-daemon'), 'error.log'),
+            period: '1d',
+            count: 3,
         },
     ],
 });

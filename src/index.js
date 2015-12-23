@@ -19,3 +19,7 @@ Initialize.init(function () {
 process.on('uncaughtException', function (err) {
     Log.fatal(err, 'A fatal error occured during an operation.');
 });
+
+process.on('SIGUSR2', function () {
+    Log.reopenFileStreams();
+});
