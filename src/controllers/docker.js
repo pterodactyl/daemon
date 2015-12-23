@@ -12,10 +12,10 @@ const Dockerode = require('dockerode');
 
 const Config = new LoadConfig();
 const DockerController = new Dockerode({
-    protocol: Config.get('docker.protocol', 'http'),
-    host: Config.get('docker.host', '0.0.0.0'),
-    port: Config.get('docker.port', 2375),
-    // socketPath: Config.get('docker.socket', '/var/run/docker.sock'),
+    // protocol: Config.get('docker.protocol', 'http'),
+    // host: Config.get('docker.host', '0.0.0.0'),
+    // port: Config.get('docker.port', 2375),
+    socketPath: Config.get('docker.socket', '/var/run/docker.sock'),
 });
 
 class Docker {
@@ -57,6 +57,9 @@ class Docker {
                         // Send data to the Server.output() function.
                         self._server.output(data);
                     });
+                    stream.on('end', function dockerExecStreamEnd() {
+                        self._server.streamClosed();
+                    });
                 }
                 return next(execErr);
             });
@@ -83,6 +86,25 @@ class Docker {
         this._container.kill(function (err) {
             return next(err);
         });
+    }
+
+    attach(next) {
+        const self = this;
+        this._container.attach({ stream: true, stdout: true, stderr: true }, function dockerAttach(err, stream) {
+            if (err) return next(err);
+            stream.setEncoding('utf8');
+            stream.on('data', function dockerAttachStreamData(data) {
+                self._server.output(data);
+            });
+            stream.on('end', function dockerAttachStreamEnd() {
+                self._server.streamClosed();
+            });
+            return next();
+        });
+    }
+
+    detach() {
+        // ?
     }
 
     rebuild() {

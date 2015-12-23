@@ -9,6 +9,7 @@ const rfr = require('rfr');
 const Log = rfr('lib/helpers/logger.js');
 const Async = require('async');
 const Docker = rfr('lib/controllers/docker.js');
+const moment = require('moment');
 const Status = {
     OFF: 0,
     ON: 1,
@@ -26,6 +27,7 @@ class Server {
         this.uuid = this._json.uuid;
 
         this.log = Log.child({ server: this.uuid });
+        this.lastCrash = undefined;
 
         this.docker = new Docker(this);
     }
@@ -69,11 +71,11 @@ class Server {
                 });
             },
             function (callback) {
-                self.docker.exec(['whoami'], callback);
+                self.docker.attach(callback);
             },
         ], function (err, reboot) {
             if (err) {
-                Log.error(err);
+                self.log.error(err);
                 return next(err);
             }
 
@@ -81,7 +83,7 @@ class Server {
                 // Handle the need for a reboot here.
             }
 
-            Log.debug('Completed start()...');
+            self.log.debug('Completed start()...');
             return next();
         });
     }
@@ -117,7 +119,38 @@ class Server {
      */
     output(output) {
         // For now, log to console, and strip control characters from output.
-        Log.child({ server: this.uuid }).debug(output.replace(/[\x00-\x1F\x7F-\x9F]/g, ''));
+        this.log.debug(output.replace(/[\x00-\x1F\x7F-\x9F]/g, ''));
+    }
+
+    /**
+     * Determines if the container stream should have ended yet, if not, mark server crashed.
+     */
+    streamClosed() {
+        const self = this;
+        if (this.status === Status.OFF || this.status === Status.STOPPING) {
+            return;
+        }
+
+        this.status = Status.OFF;
+        if (moment.isMoment(this.lastCrash)) {
+            if (moment(this.lastCrash).add(60, 'seconds').isAfter(moment())) {
+                this.setCrashTime();
+                this.log.debug('Server detected as crashed but has crashed within the last 60 seconds.');
+                return;
+            }
+        }
+
+        this.log.debug('Server detected as crashed... attempting reboot.');
+        this.setCrashTime();
+
+        this.start(function (err) {
+            if (err) self.log.fatal(err);
+            self.log.debug('Server started after crash...');
+        });
+    }
+
+    setCrashTime() {
+        this.lastCrash = moment();
     }
 
 }
