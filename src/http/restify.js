@@ -6,22 +6,22 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 const rfr = require('rfr');
-
-const LoadConfig = rfr('lib/helpers/config.js');
-const Log = rfr('lib/helpers/logger.js');
-const AuthorizationMiddleware = rfr('lib/middleware/authorizable.js');
 const Restify = require('restify');
+
+const Log = rfr('lib/helpers/logger.js');
+const LoadConfig = rfr('lib/helpers/config.js');
+const AuthorizationMiddleware = rfr('lib/middleware/authorizable.js');
 const BuilderController = rfr('lib/controllers/builder.js');
 
 const Config = new LoadConfig();
 let Auth;
 
-const Server = Restify.createServer({
+const RestServer = Restify.createServer({
     name: 'Pterodactyl Daemon',
 });
 
-Server.use(Restify.bodyParser());
-Server.use(function (req, res, next) {
+RestServer.use(Restify.bodyParser());
+RestServer.use(function (req, res, next) {
     // Fix Headers
     if ('x-access-server' in req.headers && !('X-Access-Server' in req.headers)) {
         req.headers['X-Access-Server'] = req.headers['x-access-server'];
@@ -41,20 +41,28 @@ Server.use(function (req, res, next) {
     });
 });
 
-Server.on('uncaughtException', function (req, res, route, err) {
+RestServer.on('uncaughtException', function (req, res, route, err) {
     Log.fatal({ path: route.spec.path, method: route.spec.method }, err.stack);
     return res.send(500);
 });
 
-Server.get('/', function (req, res) {
-    if (!Auth.allowed('g:default')) return;
-    res.send('Hello World.');
+RestServer.opts(/.*/, function (req, res, next) {
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', req.header('Access-Control-Request-Method'));
+    res.header('Access-Control-Allow-Headers', req.header('Access-Control-Request-Headers'));
+    res.send(200);
+
+    return next();
+});
+
+RestServer.get('/', function getIndex(req, res) {
+    res.send('Pterodactyl Management Daemon.');
 });
 
 /**
  * Save New Configuration for Daemon; also updates the config across the program for immediate changes.
  */
-Server.put('/config', function (req, res) {
+RestServer.put('/config', function putConfig(req, res) {
     if (!Auth.allowed('g:put-config')) return;
     Config.save(req.params, function (err) {
         if (err) return res.send(500, { 'error': err.message });
@@ -62,7 +70,31 @@ Server.put('/config', function (req, res) {
     });
 });
 
-Server.post('/server/new', function (req, res) {
+RestServer.get('/server/power/:action', function getServerPower(req, res) {
+    if (!Auth.allowed('s:power')) return;
+    if (req.params.action === 'start') {
+        Auth.server().start(function (err) {
+            if (err) {
+                return res.send(500, { 'error': err.message });
+            }
+            return res.send(204);
+        });
+    } else if (req.params.action === 'stop') {
+        Auth.server().stop(function (err) {
+            if (err) {
+                return res.send(500, { 'error': err.message });
+            }
+            return res.send(204);
+        });
+    } else {
+        res.send(404, { 'error': 'Unknown power action recieved.' });
+    }
+});
+
+/**
+ * Write new server file to disk.
+ */
+RestServer.post('/server/new', function postServerNew(req, res) {
     const Builder = new BuilderController(req.params);
     Builder.init(function (err) {
         if (err) {
@@ -73,6 +105,6 @@ Server.post('/server/new', function (req, res) {
     });
 });
 
-Server.listen(Config.get('web.listen', 8080), function listen() {
+RestServer.listen(Config.get('web.listen', 8080), function listen() {
     Log.info('Webserver listening on 0.0.0.0:8080');
 });

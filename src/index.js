@@ -10,6 +10,8 @@ const Log = rfr('lib/helpers/logger.js');
 const Initializer = rfr('lib/helpers/initialize.js').Initialize;
 const Initialize = new Initializer();
 
+Log.info('Starting Pterodactyl Daemon...');
+
 Initialize.init(function () {
     rfr('lib/http/restify.js');
 });

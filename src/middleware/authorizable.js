@@ -34,6 +34,10 @@ class AuthorizationMiddleware {
         }
 
         if (perm.indexOf('s:') === 0) {
+            if (typeof Config.get('keys') === 'object' && Config.get('keys').indexOf(this._token) > -1) {
+                return true;
+            }
+
             if (typeof Servers[this._server] !== 'undefined') {
                 if (Servers[this._server].hasPermission(perm, this._token)) {
                     return true;
@@ -43,6 +47,18 @@ class AuthorizationMiddleware {
 
         this._res.send(403, { 'error': 'You do not have permission to perform that action on the system.' });
         return false;
+    }
+
+    server() {
+        return Servers[this._server];
+    }
+
+    serverUuid() {
+        return this._server;
+    }
+
+    requestToken() {
+        return this._token;
     }
 
 }
