@@ -26,9 +26,12 @@ build/Release
 # https://www.npmjs.org/doc/misc/npm-faq.html#should-i-check-my-node_modules-folder-into-git
 node_modules
 
-config/**/*.json
+config/**/*.*
 lib/*
-!lib/.githold
 
 tmp/*
 daemon
+
+!config/.githold
+!config/servers/.githold
+!lib/.githold
