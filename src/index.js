@@ -7,13 +7,31 @@
  */
 const rfr = require('rfr');
 const Log = rfr('lib/helpers/logger.js');
+const Async = require('async');
 const Initializer = rfr('lib/helpers/initialize.js').Initialize;
+const SFTPController = rfr('lib/controllers/sftp.js');
 const Initialize = new Initializer();
+const SFTP = new SFTPController();
 
 Log.info('Starting Pterodactyl Daemon...');
 
-Initialize.init(function () {
+Async.series([
+    function (callback) {
+        Log.info('Attempting to start SFTP service container...');
+        SFTP.startService(callback);
+        Log.info('SFTP service container booted!');
+    },
+    function (callback) {
+        Log.info('Attempting to load servers and initialize daemon...');
+        Initialize.init(callback);
+    },
+], function (err) {
+    if (err) {
+        Log.fatal(err);
+        process.exit(1);
+    }
     rfr('lib/http/restify.js');
+    Log.info('Initialization Successful!');
 });
 
 process.on('uncaughtException', function (err) {
