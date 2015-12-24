@@ -9,6 +9,7 @@ const rfr = require('rfr');
 const Log = rfr('lib/helpers/logger.js');
 const Async = require('async');
 const Docker = rfr('lib/controllers/docker.js');
+const Util = require('util');
 const moment = require('moment');
 const Status = {
     OFF: 0,
@@ -20,8 +21,9 @@ const Status = {
 
 class Server {
 
-    constructor(json) {
+    constructor(json, next) {
         // Setup Initial Values
+        const self = this;
         this.status = Status.OFF;
         this._json = json;
         this.uuid = this._json.uuid;
@@ -29,7 +31,12 @@ class Server {
         this.log = Log.child({ server: this.uuid });
         this.lastCrash = undefined;
 
-        this.docker = new Docker(this);
+        this.docker = new Docker(this, function constructorServer(err, status) {
+            if (status === true) {
+                self.log.info('Daemon detected that the server container is currently running, re-attaching to it now...');
+            }
+            return next(err);
+        });
     }
 
     hasPermission(perm, token) {
@@ -118,6 +125,9 @@ class Server {
      * Send output from server container to websocket.
      */
     output(output) {
+        if (output.replace(/[\x00-\x1F\x7F-\x9F]/g, '') === null || output.replace(/[\x00-\x1F\x7F-\x9F]/g, '') === '' || output.replace(/[\x00-\x1F\x7F-\x9F]/g, '') === ' ') {
+            return;
+        }
         // For now, log to console, and strip control characters from output.
         this.log.debug(output.replace(/[\x00-\x1F\x7F-\x9F]/g, ''));
     }

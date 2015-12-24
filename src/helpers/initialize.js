@@ -27,16 +27,15 @@ class Initialize {
      */
     init(next) {
         const self = this;
-        Fs.readdir('./config/servers/', function (err, files) {
-            if (err) {
-                Log.fatal('Unable to load server configration files into memory.');
-            }
-
-            Async.each(files, function (file, callback) {
+        this._folders = [];
+        Fs.walk('./config/servers/').on('data', function (data) {
+            self._folders.push(data.path);
+        }).on('end', function () {
+            Async.each(self._folders, function (file, callback) {
                 if (Path.extname(file) === '.json') {
-                    Fs.readJson(Util.format('./config/servers/%s', file), function (errJson, json) {
+                    Fs.readJson(file, function (errJson, json) {
                         if (errJson) {
-                            Log.warn(err, Util.format('Unable to parse JSON in %s due to an error, skipping...', file));
+                            Log.warn(errJson, Util.format('Unable to parse JSON in %s due to an error, skipping...', file));
                             return;
                         }
 
@@ -65,9 +64,10 @@ class Initialize {
      * @return {[type]}        [description]
      */
     setup(json, next) {
-        Servers[json.uuid] = new Server(json);
-        Log.info(Util.format('Loaded server configuration and initalized server for UUID:%s', json.uuid));
-        return next();
+        Servers[json.uuid] = new Server(json, function setupCallback(err) {
+            Log.info(Util.format('Loaded server configuration and initalized server for UUID:%s', json.uuid));
+            return next(err);
+        });
     }
 }
 

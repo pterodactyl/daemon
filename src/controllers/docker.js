@@ -12,17 +12,41 @@ const Dockerode = require('dockerode');
 
 const Config = new LoadConfig();
 const DockerController = new Dockerode({
-    // protocol: Config.get('docker.protocol', 'http'),
-    // host: Config.get('docker.host', '0.0.0.0'),
-    // port: Config.get('docker.port', 2375),
-    socketPath: Config.get('docker.socket', '/var/run/docker.sock'),
+    protocol: Config.get('docker.protocol', 'http'),
+    host: Config.get('docker.host', '0.0.0.0'),
+    port: Config.get('docker.port', 2375),
+    // socketPath: Config.get('docker.socket', '/var/run/docker.sock'),
 });
 
 class Docker {
-    constructor(server) {
+    constructor(server, next) {
         this._server = server;
         this._containerID = this._server._json.container.id;
         this._container = DockerController.getContainer(this._containerID);
+
+        // Check status and attach if server is running currently.
+        this.inspect(function constructorDocker(err, status) {
+            return next(err, status);
+        });
+    }
+
+    inspect(next) {
+        const self = this;
+        this._container.inspect(function dockerInspect(err, data) {
+            if (err) {
+                return next(err);
+            }
+            // We kind of have to assume that if the server is running it is on
+            // and not in the process of booting or stopping.
+            if (data.State.Running !== false) {
+                self._server.status = 1;
+                self.attach(function (attachErr) {
+                    return next(attachErr, (!attachErr));
+                });
+            } else {
+                return next();
+            }
+        });
     }
 
     /**
@@ -36,6 +60,28 @@ class Docker {
             if (err && err.message.indexOf('HTTP code is 304 which indicates error: container already started') > -1) {
                 return next();
             }
+            return next(err);
+        });
+    }
+
+    /**
+     * Stops a given container and returns a callback when finished.
+     * @param  {Function} next [description]
+     * @return {[type]}        [description]
+     */
+    stop(next) {
+        this._container.stop(function dockerStop(err) {
+            return next(err);
+        });
+    }
+
+    /**
+     * Kills a given container and returns a callback when finished.
+     * @param  {Function} next [description]
+     * @return {[type]}        [description]
+     */
+    kill(next) {
+        this._container.kill(function (err) {
             return next(err);
         });
     }
@@ -63,28 +109,6 @@ class Docker {
                 }
                 return next(execErr);
             });
-        });
-    }
-
-    /**
-     * Stops a given container and returns a callback when finished.
-     * @param  {Function} next [description]
-     * @return {[type]}        [description]
-     */
-    stop(next) {
-        this._container.stop(function dockerStop(err) {
-            return next(err);
-        });
-    }
-
-    /**
-     * Kills a given container and returns a callback when finished.
-     * @param  {Function} next [description]
-     * @return {[type]}        [description]
-     */
-    kill(next) {
-        this._container.kill(function (err) {
-            return next(err);
         });
     }
 
