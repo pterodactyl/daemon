@@ -12,10 +12,7 @@ const Dockerode = require('dockerode');
 
 const Config = new LoadConfig();
 const DockerController = new Dockerode({
-    protocol: Config.get('docker.protocol', 'http'),
-    host: Config.get('docker.host', '0.0.0.0'),
-    port: Config.get('docker.port', 2375),
-    // socketPath: Config.get('docker.socket', '/var/run/docker.sock'),
+    socketPath: Config.get('docker.socket', '/var/run/docker.sock'),
 });
 
 class Docker {
