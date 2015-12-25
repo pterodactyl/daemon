@@ -87,6 +87,10 @@ RestServer.get('/server/power/:action', function getServerPower(req, res) {
         Auth.server().restart(function (err) {
             return Responses.generic204(err);
         });
+    } else if (req.params.action === 'kill') {
+        Auth.server().kill(function (err) {
+            return Responses.generic204(err);
+        });
     } else {
         res.send(404, { 'error': 'Unknown power action recieved.' });
     }

@@ -92,8 +92,10 @@ class Server {
         }
 
         this.status = Status.STOPPING;
+        this.log.info('Stopping server.');
         this.docker.stop(function (err) {
             self.status = Status.OFF;
+            self.log.info('Server has been powered off.');
             return next(err);
         });
     }
@@ -107,6 +109,7 @@ class Server {
         self.status = Status.STOPPING;
         this.docker.kill(function (err) {
             self.status = Status.OFF;
+            self.log.info('Process SIGINT request for server. Server has been forcible stopped.');
             return next(err);
         });
     }
