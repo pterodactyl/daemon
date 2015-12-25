@@ -47,7 +47,13 @@ A basic configuration will need to be created in order to run a developmental bu
         "port": 2022,
         "container": "10ada0566a18"
     },
-    "logPath": "logs/",
+    "logger": {
+        "path": "logs/",
+        "src": false,
+        "level": "info",
+        "period": "1d",
+        "count": 3
+    },
     "keys": [
       "9b6c1fa5-fa5f-49f4-970e-bf2bb28272b0"
     ]
