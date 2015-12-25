@@ -3,3 +3,5 @@ lib/*.js
 
 # Ignore JSON Files
 **/*.json
+
+node_modules
