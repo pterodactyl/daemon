@@ -103,8 +103,9 @@ class Docker {
                     stream.on('end', function dockerExecStreamEnd() {
                         self._server.streamClosed();
                     });
+                } else {
+                    return next(execErr);
                 }
-                return next(execErr);
             });
         });
     }
