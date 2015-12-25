@@ -11,12 +11,7 @@ const Async = require('async');
 const Docker = rfr('lib/controllers/docker.js');
 const Plugin = rfr('lib/services/minecraft/index.js');
 const moment = require('moment');
-const Status = {
-    OFF: 0,
-    ON: 1,
-    STARTING: 2,
-    STOPPING: 3,
-};
+const Status = rfr('lib/helpers/status.js');
 
 class Server {
 

@@ -14,6 +14,7 @@ const _ = require('underscore');
 const ConfigHelper = rfr('lib/helpers/config.js');
 const Configuration = rfr('src/services/minecraft/main.json');
 const ExtendedMixin = rfr('lib/helpers/deepextend.js');
+const Status = rfr('lib/helpers/status.js');
 
 const Config = new ConfigHelper();
 
@@ -61,15 +62,15 @@ class Plugin {
         // Started
         if (data.indexOf(this.object.startup.done) > -1) {
             self._server.log.info('Server detected as fully started.');
-            self._server.status = 1;
+            self._server.status = Status.ON;
         }
 
         // Stopped; Don't trigger crash
-        if (this._server.status !== 1 && typeof this.object.startup.userInteraction !== 'undefined') {
+        if (this._server.status !== Status.ON && typeof this.object.startup.userInteraction !== 'undefined') {
             Async.each(this.object.startup.userInteraction, function onConsoleAsyncEach(string) {
                 if (data.indexOf(string) > -1) {
                     self._server.log.info('Server detected as requiring user interaction, stopping now.');
-                    self._server.status = 3;
+                    self._server.status = Status.STOPPING;
                 }
             });
         }
