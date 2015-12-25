@@ -27,6 +27,8 @@ Async.series([
     },
 ], function (err) {
     if (err) {
+        // Log a fatal error and exit.
+        // We need this to initialize successfully without any errors.
         Log.fatal(err);
         process.exit(1);
     }

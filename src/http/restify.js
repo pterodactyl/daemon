@@ -12,9 +12,11 @@ const Log = rfr('lib/helpers/logger.js');
 const LoadConfig = rfr('lib/helpers/config.js');
 const AuthorizationMiddleware = rfr('lib/middleware/authorizable.js');
 const BuilderController = rfr('lib/controllers/builder.js');
+const ResponseHelper = rfr('lib/helpers/responses.js');
 
 const Config = new LoadConfig();
 let Auth;
+let Responses;
 
 const RestServer = Restify.createServer({
     name: 'Pterodactyl Daemon',
@@ -35,15 +37,16 @@ RestServer.use(function (req, res, next) {
     Auth = new AuthorizationMiddleware(req.headers['X-Access-Token'], req.headers['X-Access-Server'], res);
     Auth.init(function (err) {
         if (!err) {
+            Responses = new ResponseHelper(req, res);
             return next();
         }
         return res.send(403, { 'error': err.message });
     });
 });
 
-RestServer.on('uncaughtException', function (req, res, route, err) {
-    Log.fatal({ path: route.spec.path, method: route.spec.method }, err.stack);
-    return res.send(500);
+RestServer.on('uncaughtException', function restifyUncaughtExceptionHandler(req, res, route, err) {
+    Log.fatal({ path: route.spec.path, method: route.spec.method }, err);
+    return Responses.generic500(err, req, res);
 });
 
 RestServer.opts(/.*/, function (req, res, next) {
@@ -74,17 +77,15 @@ RestServer.get('/server/power/:action', function getServerPower(req, res) {
     if (!Auth.allowed('s:power')) return;
     if (req.params.action === 'start') {
         Auth.server().start(function (err) {
-            if (err) {
-                return res.send(500, { 'error': err.message });
-            }
-            return res.send(204);
+            return Responses.generic204(err);
         });
     } else if (req.params.action === 'stop') {
         Auth.server().stop(function (err) {
-            if (err) {
-                return res.send(500, { 'error': err.message });
-            }
-            return res.send(204);
+            return Responses.generic204(err);
+        });
+    } else if (req.params.action === 'restart') {
+        Auth.server().restart(function (err) {
+            return Responses.generic204(err);
         });
     } else {
         res.send(404, { 'error': 'Unknown power action recieved.' });
