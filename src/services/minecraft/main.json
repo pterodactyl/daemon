@@ -1,0 +1,49 @@
+{
+    "latest": {
+        "id": "latest",
+        "regex": "^(latest)$",
+        "symlink": "vanilla"
+    },
+    "vanilla": {
+        "regex": "^(vanilla-[\\w\\d._-]+)$",
+        "startup": {
+            "done": ")! For help, type ",
+            "userInteraction": [
+                "Go to eula.txt for more info."
+            ]
+        },
+        "stop": "stop",
+        "configs": [
+            "server.properties"
+        ],
+        "remap": {
+            "server-ip": "+server.ip",
+            "enable-query": true,
+            "server-port": "+server.port",
+            "query.port": "+server.port"
+        },
+        "log": {
+            "custom": false,
+            "location": "logs/latest.log"
+        },
+        "query": "minecraftping"
+    },
+    "spigot": {
+        "regex": "^(spigot)$",
+        "symlink": "vanilla"
+    },
+    "bungeecord": {
+        "regex": "^(bungeecord)$",
+        "symlink": "vanilla",
+        "startup": {
+            "done": "[INFO] Listening on "
+        },
+        "stop": "end",
+        "configs": [
+            "config.yml"
+        ],
+        "log": {
+            "location": "proxy.log.0"
+        }
+    }
+}

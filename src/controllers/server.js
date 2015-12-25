@@ -9,14 +9,13 @@ const rfr = require('rfr');
 const Log = rfr('lib/helpers/logger.js');
 const Async = require('async');
 const Docker = rfr('lib/controllers/docker.js');
-const Util = require('util');
+const Plugin = rfr('lib/services/minecraft/index.js');
 const moment = require('moment');
 const Status = {
     OFF: 0,
     ON: 1,
     STARTING: 2,
     STOPPING: 3,
-    CRASHED: 4,
 };
 
 class Server {
@@ -33,10 +32,12 @@ class Server {
 
         this.docker = new Docker(this, function constructorServer(err, status) {
             if (status === true) {
-                self.log.info('Daemon detected that the server container is currently running, re-attaching to it now...');
+                self.log.info('Daemon detected that the server container is currently running, re-attaching to it now!');
             }
             return next(err);
         });
+
+        this.plugin = new Plugin(this);
     }
 
     hasPermission(perm, token) {
@@ -67,15 +68,11 @@ class Server {
 
         Async.series([
             function (callback) {
-                Log.debug('Initializing Server for boot...');
+                self.log.debug('Initializing for boot sequence, running preflight checks.');
                 self.preflight(callback);
             },
             function (callback) {
-                self.docker.start(function (err) {
-                    if (err) return callback(err);
-                    self.status = Status.ON;
-                    callback();
-                });
+                self.docker.start(callback);
             },
             function (callback) {
                 self.docker.attach(callback);
@@ -86,19 +83,17 @@ class Server {
                 return next(err);
             }
 
-            if (reboot) {
-                // Handle the need for a reboot here.
+            if (typeof reboot !== 'undefined') {
+                // @TODO: Handle the need for a reboot here.
             }
-
-            self.log.debug('Completed start()...');
             return next();
         });
     }
 
     stop(next) {
         const self = this;
-        if (this.status === Status.OFF || this.status === Status.STOPPING) {
-            return next(new Error('Server is already stopped or is currently stopping.'));
+        if (this.status === Status.OFF) {
+            return next(new Error('Server is already stopped.'));
         }
 
         this.status = Status.STOPPING;
@@ -121,6 +116,25 @@ class Server {
         });
     }
 
+    restart(next) {
+        const self = this;
+        Async.series([
+            function (callback) {
+                if (self.status !== Status.OFF) {
+                    self.stop(callback);
+                } else {
+                    // Already off, lets move on.
+                    return callback();
+                }
+            },
+            function (callback) {
+                self.start(callback);
+            },
+        ], function (err) {
+            return next(err);
+        });
+    }
+
     /**
      * Send output from server container to websocket.
      */
@@ -129,7 +143,8 @@ class Server {
             return;
         }
         // For now, log to console, and strip control characters from output.
-        this.log.debug(output.replace(/[\x00-\x1F\x7F-\x9F]/g, ''));
+        this.plugin.onConsole(output);
+        // console.log(output.replace(/[\x00-\x1F\x7F-\x9F]/g, ''));
     }
 
     /**

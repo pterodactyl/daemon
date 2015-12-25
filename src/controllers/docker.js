@@ -52,6 +52,7 @@ class Docker {
      * @return {[type]}        [description]
      */
     start(next) {
+        this._server.status = 2;
         this._container.start(function dockerStart(err) {
             // Container is already running, we can just continue on and pretend we started it just now.
             if (err && err.message.indexOf('HTTP code is 304 which indicates error: container already started') > -1) {
