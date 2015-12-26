@@ -7,9 +7,11 @@
  */
 const rfr = require('rfr');
 
-const LoadConfig = rfr('lib/helpers/config.js');
 const Dockerode = require('dockerode');
+const isStream = require('isstream');
+
 const Status = rfr('lib/helpers/status.js');
+const LoadConfig = rfr('lib/helpers/config.js');
 
 const Config = new LoadConfig();
 const DockerController = new Dockerode({
@@ -21,6 +23,7 @@ class Docker {
         this._server = server;
         this._containerID = this._server._json.container.id;
         this._container = DockerController.getContainer(this._containerID);
+        this.stream = undefined;
 
         // Check status and attach if server is running currently.
         this.reattach(function constructorDocker(err, status) {
@@ -97,6 +100,13 @@ class Docker {
      */
     exec(command, next) {
         const self = this;
+        // Check if we are already attached. If we don't do this then we encounter issues
+        // where the daemon thinks the container is crashed even if it is not. This
+        // is due to the exec() function calling steamClosed()
+        if (isStream(this.stream)) {
+            return next(new Error('An active stream is already in use for this container.'));
+        }
+
         this._container.exec({ Cmd: command, AttachStdin: true, AttachStdout: true, Tty: true }, function dockerExec(err, exec) {
             if (err) return next(err);
             exec.start(function dockerExecStartStart(execErr, stream) {
@@ -116,28 +126,49 @@ class Docker {
         });
     }
 
+    /**
+     * Writes input to the containers stdin.
+     * @param  string   command
+     * @param  {Function} next
+     * @return {Callback}
+     */
+    write(command, next) {
+        if (isStream.isWritable(this.stream)) {
+            this.stream.write(command + '\n');
+            return next();
+        }
+        return next(new Error('No writable stream was detected.'));
+    }
+
+    /**
+     * Attaches to a container's stdin and stdout/stderr.
+     * @param  {Function} next
+     * @return {Callback}
+     */
     attach(next) {
         const self = this;
-        this._container.attach({ stream: true, stdout: true, stderr: true }, function dockerAttach(err, stream) {
+        // Check if we are currently running exec(). If we don't do this then we encounter issues
+        // where the daemon thinks the container is crashed even if it is not. Mostly an issue
+        // with exec(), but still worth checking out here.
+        if (typeof this.stream !== 'undefined' || isStream(this.stream)) {
+            return next(new Error('An active stream is already in use for this container.'));
+        }
+
+        this._container.attach({ stream: true, stdin: true, stdout: true, stderr: true }, function dockerAttach(err, stream) {
             if (err) return next(err);
-            stream.setEncoding('utf8');
-            stream.on('data', function dockerAttachStreamData(data) {
+            self.stream = stream;
+            self.stream.setEncoding('utf8');
+            self.stream.on('data', function dockerAttachStreamData(data) {
                 self._server.output(data);
             });
-            stream.on('end', function dockerAttachStreamEnd() {
+            self.stream.on('end', function dockerAttachStreamEnd() {
+                self.stream = undefined;
                 self._server.streamClosed();
             });
             return next();
         });
     }
 
-    detach() {
-        // ?
-    }
-
-    rebuild() {
-        //
-    }
 }
 
 module.exports = Docker;

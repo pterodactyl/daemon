@@ -96,6 +96,17 @@ RestServer.get('/server/power/:action', function getServerPower(req, res) {
     }
 });
 
+RestServer.post('/server/command', function postServerCommand(req, res) {
+    if (!Auth.allowed('s:command')) return;
+    if (typeof req.params.command !== 'undefined') {
+        Auth.server().command(req.params.command, function (err) {
+            return Responses.generic204(err);
+        });
+    } else {
+        res.send(500, { 'error': 'Missing command in request.' });
+    }
+});
+
 /**
  * Write new server file to disk.
  */

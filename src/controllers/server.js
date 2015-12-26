@@ -141,8 +141,14 @@ class Server {
             return;
         }
         // For now, log to console, and strip control characters from output.
-        this.plugin.onConsole(output);
-        // console.log(output.replace(/[\x00-\x1F\x7F-\x9F]/g, ''));
+        this.service.onConsole(output);
+    }
+
+    /**
+     * Send command to server.
+     */
+    command(command, next) {
+        this.docker.write(command, next);
     }
 
     /**
