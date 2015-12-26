@@ -22,7 +22,7 @@ const RestServer = Restify.createServer({
     name: 'Pterodactyl Daemon',
 });
 
-RestServer.use(Restify.bodyParser());
+RestServer.use(Restify.jsonBodyParser());
 RestServer.use(function (req, res, next) {
     // Fix Headers
     if ('x-access-server' in req.headers && !('X-Access-Server' in req.headers)) {

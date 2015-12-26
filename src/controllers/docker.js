@@ -23,20 +23,18 @@ class Docker {
         this._container = DockerController.getContainer(this._containerID);
 
         // Check status and attach if server is running currently.
-        this.inspect(function constructorDocker(err, status) {
+        this.reattach(function constructorDocker(err, status) {
             return next(err, status);
         });
     }
 
-    inspect(next) {
+    reattach(next) {
         const self = this;
-        this._container.inspect(function dockerInspect(err, data) {
-            if (err) {
-                return next(err);
-            }
+        this.inspect(function dockerReattach(err, data) {
+            if (err) return next(err);
             // We kind of have to assume that if the server is running it is on
             // and not in the process of booting or stopping.
-            if (data.State.Running !== false) {
+            if (typeof data.State.Running !== 'undefined' && data.State.Running !== false) {
                 self._server.status = Status.ON;
                 self.attach(function (attachErr) {
                     return next(attachErr, (!attachErr));
@@ -44,6 +42,12 @@ class Docker {
             } else {
                 return next();
             }
+        });
+    }
+
+    inspect(next) {
+        this._container.inspect(function dockerInspect(err, data) {
+            return next(err, data);
         });
     }
 
