@@ -151,6 +151,7 @@ class Server {
     streamClosed() {
         const self = this;
         if (this.status === Status.OFF || this.status === Status.STOPPING) {
+            this.status = Status.OFF;
             return;
         }
 
