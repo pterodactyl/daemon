@@ -46,7 +46,7 @@ RestServer.use(function (req, res, next) {
 
 RestServer.on('uncaughtException', function restifyUncaughtExceptionHandler(req, res, route, err) {
     Log.fatal({ path: route.spec.path, method: route.spec.method }, err);
-    return Responses.generic500(err, req, res);
+    return res.send(500, { 'error': 'An unhandled exception occured while attempting to process this request.' });
 });
 
 RestServer.opts(/.*/, function (req, res, next) {
