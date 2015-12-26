@@ -9,7 +9,7 @@ const rfr = require('rfr');
 const Log = rfr('lib/helpers/logger.js');
 const Async = require('async');
 const Docker = rfr('lib/controllers/docker.js');
-const Plugin = rfr('lib/services/minecraft/index.js');
+const Service = rfr('lib/services/minecraft/index.js');
 const moment = require('moment');
 const Status = rfr('lib/helpers/status.js');
 
@@ -32,7 +32,7 @@ class Server {
             return next(err);
         });
 
-        this.plugin = new Plugin(this);
+        this.service = new Service(this);
     }
 
     hasPermission(perm, token) {
@@ -62,17 +62,17 @@ class Server {
         }
 
         Async.series([
-            function (callback) {
+            function startAsyncPreflight(callback) {
                 self.log.debug('Initializing for boot sequence, running preflight checks.');
                 self.preflight(callback);
             },
-            function (callback) {
+            function startAsyncStart(callback) {
                 self.docker.start(callback);
             },
-            function (callback) {
+            function startAsyncAttach(callback) {
                 self.docker.attach(callback);
             },
-        ], function (err, reboot) {
+        ], function startAsyncDone(err, reboot) {
             if (err) {
                 self.log.error(err);
                 return next(err);
@@ -93,7 +93,17 @@ class Server {
 
         this.status = Status.STOPPING;
         this.log.info('Stopping server.');
-        this.docker.stop(function (err) {
+
+        // So, technically docker sends a SIGTERM to the process when this is run.
+        // This works out fine normally, however, there are times when a container might take
+        // more than 10 seconds to gracefully stop, at which point docker resorts to sending
+        // a SIGKILL, which, as you can imagine, isn't ideal for stopping a server.
+        //
+        // So, what we will do is send a stop command, and then sit there and wait
+        // until the container stops because the process stopped, at which point the crash
+        // detection will not fire since we set the status to STOPPING.
+
+        this.docker.stop(function stopDockerStop(err) {
             self.status = Status.OFF;
             self.log.info('Server has been powered off.');
             return next(err);
@@ -107,7 +117,7 @@ class Server {
         }
 
         self.status = Status.STOPPING;
-        this.docker.kill(function (err) {
+        this.docker.kill(function killDockerKill(err) {
             self.status = Status.OFF;
             self.log.info('Process SIGINT request for server. Server has been forcible stopped.');
             return next(err);
@@ -117,7 +127,7 @@ class Server {
     restart(next) {
         const self = this;
         Async.series([
-            function (callback) {
+            function restartAsyncStop(callback) {
                 if (self.status !== Status.OFF) {
                     self.stop(callback);
                 } else {
@@ -125,10 +135,10 @@ class Server {
                     return callback();
                 }
             },
-            function (callback) {
+            function restartAsyncStart(callback) {
                 self.start(callback);
             },
-        ], function (err) {
+        ], function restartAsycDone(err) {
             return next(err);
         });
     }
@@ -165,7 +175,7 @@ class Server {
         if (moment.isMoment(this.lastCrash)) {
             if (moment(this.lastCrash).add(60, 'seconds').isAfter(moment())) {
                 this.setCrashTime();
-                this.log.debug('Server detected as crashed but has crashed within the last 60 seconds.');
+                this.log.debug('Server detected as crashed but has crashed within the last 60 seconds, aborting reboot.');
                 return;
             }
         }
@@ -173,9 +183,8 @@ class Server {
         this.log.debug('Server detected as crashed... attempting reboot.');
         this.setCrashTime();
 
-        this.start(function (err) {
+        this.start(function streamClosedStart(err) {
             if (err) self.log.fatal(err);
-            self.log.debug('Server started after crash...');
         });
     }
 
