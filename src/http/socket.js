@@ -51,14 +51,11 @@ class WebSocket {
         });
 
         // Send server output to Websocket.
-        this.server.on('console', function websocketConsole(event) {
-            let data = event.data.toString();
+        this.server.on('console', function websocketConsole(output) {
+            console.log(output);
+            const data = output.toString();
             // Is this data even worth dealing with?
             if ((data.replace(/\s+/g, '')).length > 1) {
-                // Pass off to service parser if it exists.
-                if (typeof self.server.service.sanitizeSocketData === 'function') {
-                    data = self.server.service.sanitizeSocketData(data);
-                }
                 self.websocket.emit('console', {
                     'line': data,
                 });
@@ -66,31 +63,35 @@ class WebSocket {
         });
 
         // Sends query response to Websocket when it is called by the daemon function.
-        this.server.on('query', function websocketQuery() {
+        this.server.on('query', function websocketQuery(query) {
             self.websocket.emit({
-                'data': self.server.processData.query,
+                query,
             });
         });
 
         // Sends current server information to Websocket.
-        this.server.on('stats', function websocketStats() {
+        this.server.on('proc', function websocketStats(data) {
             self.websocket.emit({
-                'data': self.server.processData.stats,
+                data,
             });
         });
 
         // Sends change of server status to Websocket.
-        this.server.on('status', function websocketStatus(event) {
+        this.server.on('status', function websocketStatus(data) {
             self.websocket.emit({
-                'status': event.data,
+                'status': data,
             });
         });
 
         // Sends Installer Data to Admin Websocket.
-        this.server.on('installer', function adminWebsocketInstaller(event) {
-            self.installerSocket.emit({
-                'line': event.data.toString(),
-            });
+        this.server.on('installer', function adminWebsocketInstaller(output) {
+            const data = output.toString();
+            // Is this data even worth dealing with?
+            if ((data.replace(/\s+/g, '')).length > 1) {
+                self.installerSocket.emit('console', {
+                    'line': data,
+                });
+            }
         });
     }
 }

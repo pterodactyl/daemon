@@ -36,7 +36,6 @@
     "binaryjs": "^0.2.1",
     "bunyan": "^1.5.1",
     "dockerode": "^2.2.7",
-    "emmett": "^3.1.1",
     "fs-extra": "^0.26.3",
     "is-json": "^1.2.5",
     "isstream": "^0.1.2",

@@ -18,23 +18,23 @@ class Service extends Core {
     }
 
     onPreflight(next) {
-        super.onPreflight(next);
+        return super.onPreflight(next);
     }
 
     onStart(next) {
-        super.onStart(next);
+        return super.onStart(next);
     }
 
     onConsole(data) {
-        super.onConsole(data);
+        return super.onConsole(data);
     }
 
     onStop(next) {
-        super.onStop(next);
+        return super.onStop(next);
     }
 
     sanitizeSocketData(data) {
-        super.sanitizeSocketData(data);
+        return super.sanitizeSocketData(data);
     }
 
 }

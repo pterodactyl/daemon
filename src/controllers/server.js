@@ -10,8 +10,8 @@
 const rfr = require('rfr');
 const Async = require('async');
 const moment = require('moment');
-const Emitter = require('emmett');
 const _ = require('underscore');
+const EventEmitter = require('events').EventEmitter;
 
 const Log = rfr('src/helpers/logger.js');
 const Docker = rfr('src/controllers/docker.js');
@@ -21,7 +21,7 @@ const Status = rfr('src/helpers/status.js');
 const Websocket = rfr('src/http/socket.js');
 const UploadServer = rfr('src/http/upload.js');
 
-class Server extends Emitter {
+class Server extends EventEmitter {
 
     constructor(json, next) {
         super();
@@ -79,12 +79,18 @@ class Server extends Emitter {
             return;
         }
 
-        if (status !== Status.OFF && typeof this.intervals.process === 'undefined') {
-            this.log.debug('Starting an interval for process...');
-            this.intervals.process = setInterval(this.process, 2000, this);
+        // Handle Internal Tracking
+        if (status !== Status.OFF) {
+            // If an interval has not been started, start one now.
+            if (typeof this.intervals.process === 'undefined') {
+                this.intervals.process = setInterval(this.process, 2000, this);
+            }
         } else {
-            this.log.debug('Clearing the interval for process...');
+            // Server has been stopped, lets clear the interval as well as any stored
+            // information about the process or query. Lets also detach the stats stream.
             clearInterval(this.intervals.process);
+            this.processData.process = undefined;
+            this.processData.query = undefined;
         }
 
         this.log.info('Server status has been changed to ' + inverted[status]);
@@ -159,7 +165,7 @@ class Server extends Emitter {
         this.setStatus(Status.STOPPING);
         this.docker.kill(function killDockerKill(err) {
             self.log.info('Process SIGINT request for server. Server will be forciably stopped.');
-            this.setStatus(Status.OFF);
+            self.setStatus(Status.OFF);
             return next(err);
         });
     }
@@ -206,6 +212,7 @@ class Server extends Emitter {
      */
     streamClosed() {
         const self = this;
+
         if (this.status === Status.OFF || this.status === Status.STOPPING) {
             this.setStatus(Status.OFF);
             return;
@@ -241,7 +248,7 @@ class Server extends Emitter {
         if (typeof self.docker.procData === 'undefined') return;
 
         // We need previous cycle information as well.
-        if (typeof self.docker.procData.precpu_stats === 'undefined') return;
+        if (typeof self.docker.procData.precpu_stats.cpu_usage === 'undefined') return;
 
         const perCoreUsage = [];
         const priorCycle = self.docker.procData.precpu_stats;
@@ -252,9 +259,11 @@ class Server extends Emitter {
         const totalUsage = (deltaTotal / deltaSystem) * cycle.cpu_usage.percpu_usage.length * 100;
 
         Async.forEachOf(cycle.cpu_usage.percpu_usage, function (cpu, index, callback) {
-            const priorCycleCpu = priorCycle.cpu_usage.percpu_usage[index];
-            const deltaCore = cpu - priorCycleCpu;
-            perCoreUsage.push(parseFloat(((deltaCore / deltaSystem) * 100).toFixed(6).toString()));
+            if (index in priorCycle.cpu_usage.percpu_usage) {
+                const priorCycleCpu = priorCycle.cpu_usage.percpu_usage[index];
+                const deltaCore = cpu - priorCycleCpu;
+                perCoreUsage.push(parseFloat(((deltaCore / deltaSystem) * 100).toFixed(6).toString()));
+            }
             callback();
         }, function () {
             self.processData.process = {
@@ -267,6 +276,7 @@ class Server extends Emitter {
                     total: parseFloat(totalUsage.toFixed(6).toString()),
                 },
             };
+            self.emit('proc', self.processData.process);
         });
     }
 

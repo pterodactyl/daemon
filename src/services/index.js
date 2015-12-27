@@ -74,6 +74,8 @@ class Core {
                 }
             });
         }
+
+        this.server.emit('console', this.sanitizeSocketData(data));
     }
 
     onStop(next) {
