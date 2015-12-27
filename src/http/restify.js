@@ -31,13 +31,11 @@ const RestLogger = Bunyan.createLogger({
 
 const RestServer = Restify.createServer({
     name: 'Pterodactyl Daemon',
-    log: RestLogger,
 });
 
-RestServer.pre(function (request, response, next) {
-    request.log.info({ req: request, res: response });
-    return next();
-});
+RestServer.on('after', Restify.auditLogger({
+    log: RestLogger,
+}));
 
 // Export this for Socket.io to make use of.
 module.exports = RestServer;
