@@ -8,7 +8,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 const rfr = require('rfr');
-
 const Dockerode = require('dockerode');
 const isStream = require('isstream');
 
@@ -26,6 +25,8 @@ class Docker {
         this.containerID = this.server.json.container.id;
         this.container = DockerController.getContainer(this.containerID);
         this.stream = undefined;
+        this.procStream = undefined;
+        this.procData = undefined;
 
         // Check status and attach if server is running currently.
         this.reattach(function constructorDocker(err, status) {
@@ -166,6 +167,30 @@ class Docker {
             self.stream.on('end', function dockerAttachStreamEnd() {
                 self.stream = undefined;
                 self.server.streamClosed();
+            });
+
+            // Go ahead and setup the stats stream so we can pull data as needed.
+            self.stats(next);
+        });
+    }
+
+    /**
+     * Returns a stream of process usage data for the container.
+     * @param  {Function} next
+     * @return {Callback}
+     */
+    stats(next) {
+        const self = this;
+        this.container.stats({ stream: true }, function dockerTop(err, stream) {
+            if (err) return next(err);
+            self.procStream = stream;
+            self.procStream.setEncoding('utf8');
+            self.procStream.on('data', function dockerTopStreamData(data) {
+                self.procData = JSON.parse(data);
+            });
+            self.procStream.on('end', function dockerTopSteamEnd() {
+                self.procStream = undefined;
+                self.procData = undefined;
             });
             return next();
         });

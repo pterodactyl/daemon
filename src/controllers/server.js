@@ -29,7 +29,15 @@ class Server extends Emitter {
         this.status = Status.OFF;
         this.json = json;
         this.uuid = this.json.uuid;
-        this.processData = {};
+        this.processData = {
+            query: {},
+            process: {},
+        };
+
+        this.intervals = {
+            process: undefined,
+            query: undefined,
+        };
 
         this.log = Log.child({ server: this.uuid });
         this.lastCrash = undefined;
@@ -69,6 +77,14 @@ class Server extends Emitter {
         if (this.status === Status.STOPPING && (status === Status.ON || status === Status.STARTING)) {
             this.log.debug('Recieved request to mark server as ' + inverted[status] + ' but the server is currently marked as STOPPING.');
             return;
+        }
+
+        if (status !== Status.OFF && typeof this.intervals.process === 'undefined') {
+            this.log.debug('Starting an interval for process...');
+            this.intervals.process = setInterval(this.process, 2000, this);
+        } else {
+            this.log.debug('Clearing the interval for process...');
+            clearInterval(this.intervals.process);
         }
 
         this.log.info('Server status has been changed to ' + inverted[status]);
@@ -214,6 +230,44 @@ class Server extends Emitter {
 
     setCrashTime() {
         this.lastCrash = moment();
+    }
+
+    process(self) {
+        if (self.status === Status.OFF) return;
+
+        // When the server is started a stream of process data is begun
+        // which is stored in Docker.procData. We wilol now access that
+        // and process it.
+        if (typeof self.docker.procData === 'undefined') return;
+
+        // We need previous cycle information as well.
+        if (typeof self.docker.procData.precpu_stats === 'undefined') return;
+
+        const perCoreUsage = [];
+        const priorCycle = self.docker.procData.precpu_stats;
+        const cycle = self.docker.procData.cpu_stats;
+
+        const deltaTotal = cycle.cpu_usage.total_usage - priorCycle.cpu_usage.total_usage;
+        const deltaSystem = cycle.system_cpu_usage - priorCycle.system_cpu_usage;
+        const totalUsage = (deltaTotal / deltaSystem) * cycle.cpu_usage.percpu_usage.length * 100;
+
+        Async.forEachOf(cycle.cpu_usage.percpu_usage, function (cpu, index, callback) {
+            const priorCycleCpu = priorCycle.cpu_usage.percpu_usage[index];
+            const deltaCore = cpu - priorCycleCpu;
+            perCoreUsage.push(parseFloat(((deltaCore / deltaSystem) * 100).toFixed(6).toString()));
+            callback();
+        }, function () {
+            self.processData.process = {
+                memory: {
+                    total: self.docker.procData.memory_stats.usage,
+                    max: self.docker.procData.memory_stats.max_usage,
+                },
+                cpu: {
+                    cores: perCoreUsage,
+                    total: parseFloat(totalUsage.toFixed(6).toString()),
+                },
+            };
+        });
     }
 
 }
