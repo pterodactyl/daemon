@@ -20,7 +20,7 @@ class Builder {
         if (!json || typeof json !== 'object' || json === null || !Object.keys(json).length) {
             throw new Error('Invalid JSON was passed to Builder.');
         }
-        this._json = json;
+        this.json = json;
     }
 
     init(next) {
@@ -30,10 +30,10 @@ class Builder {
                 self.writeConfigToDisk(callback);
             },
             function initAsyncInitialize(callback) {
-                ServerInitializer.setup(self._json, callback);
+                ServerInitializer.setup(self.json, callback);
             },
             function initAsyncBuildContainer(callback) {
-                self.buildContainer(self._json.uuid, callback);
+                self.buildContainer(self.json.uuid, callback);
             },
         ], function initAsyncCallback(err) {
             return next(err);
@@ -45,7 +45,7 @@ class Builder {
         // Attempt to write to disk, return error if failed, otherwise return nothing.
         // Theoretically every time this is called we should consider rebuilding the container
         // and re initalize the server. Buider.init() handles this though.
-        Fs.writeJson(Path.join('./config/servers', self._json.uuid + '.json'), self._json, function writeConfigWrite(err) {
+        Fs.writeJson(Path.join('./config/servers', self.json.uuid + '.json'), self.json, function writeConfigWrite(err) {
             return next(err);
         });
     }

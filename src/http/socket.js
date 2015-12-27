@@ -14,8 +14,8 @@ const Socket = require('socket.io').listen(RestServer);
 class WebSocket {
     constructor(server) {
         this.server = server;
-        this.websocket = Socket.of('/ws/' + this.server._json.uuid);
-        this.installerSocket = Socket.of('/ws-install/' + this.server._json.uuid);
+        this.websocket = Socket.of('/ws/' + this.server.json.uuid);
+        this.installerSocket = Socket.of('/ws-install/' + this.server.json.uuid);
 
         // Standard Websocket Permissions
         this.websocket.use(function (params, next) {
@@ -68,14 +68,14 @@ class WebSocket {
         // Sends query response to Websocket when it is called by the daemon function.
         this.server.on('query', function websocketQuery() {
             self.websocket.emit({
-                'data': self.server._data.query,
+                'data': self.server.processData.query,
             });
         });
 
         // Sends current server information to Websocket.
         this.server.on('stats', function websocketStats() {
             self.websocket.emit({
-                'data': self.server._data.stats,
+                'data': self.server.processData.stats,
             });
         });
 

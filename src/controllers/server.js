@@ -27,9 +27,9 @@ class Server extends Emitter {
         super();
         const self = this;
         this.status = Status.OFF;
-        this._json = json;
-        this.uuid = this._json.uuid;
-        this._data = {};
+        this.json = json;
+        this.uuid = this.json.uuid;
+        this.processData = {};
 
         this.log = Log.child({ server: this.uuid });
         this.lastCrash = undefined;
@@ -43,14 +43,14 @@ class Server extends Emitter {
 
         this.service = new Service(this);
 
-        this._socketio = new Websocket(this).init();
-        this._upload = new UploadServer(this).init();
+        this.socketIO = new Websocket(this).init();
+        this.uploadSocket = new UploadServer(this).init();
     }
 
     hasPermission(perm, token) {
         if (typeof perm !== 'undefined' && typeof token !== 'undefined') {
-            if (typeof this._json.keys !== 'undefined' && token in this._json.keys) {
-                if (this._json.keys[token].indexOf(perm) > -1) {
+            if (typeof this.json.keys !== 'undefined' && token in this.json.keys) {
+                if (this.json.keys[token].indexOf(perm) > -1) {
                     return true;
                 }
             }

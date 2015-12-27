@@ -16,13 +16,13 @@ const Config = new LoadConfig();
 
 class AuthorizationMiddleware {
     constructor(token, server, res) {
-        this._token = token;
-        this._server = server;
-        this._res = res;
+        this.token = token;
+        this.server = server;
+        this.res = res;
     }
 
     init(next) {
-        if (!this._token || !this._server) {
+        if (!this.token || !this.server) {
             return next(new Error('Missing required X-Access-Token or X-Access-Server headers in request.'));
         }
         return next();
@@ -30,37 +30,37 @@ class AuthorizationMiddleware {
 
     allowed(perm) {
         if (perm.indexOf('g:') === 0) {
-            if (typeof Config.get('keys') === 'object' && Config.get('keys').indexOf(this._token) > -1) {
+            if (typeof Config.get('keys') === 'object' && Config.get('keys').indexOf(this.token) > -1) {
                 return true;
             }
         }
 
         if (perm.indexOf('s:') === 0) {
-            if (typeof Config.get('keys') === 'object' && Config.get('keys').indexOf(this._token) > -1) {
+            if (typeof Config.get('keys') === 'object' && Config.get('keys').indexOf(this.token) > -1) {
                 return true;
             }
 
-            if (typeof Servers[this._server] !== 'undefined') {
-                if (Servers[this._server].hasPermission(perm, this._token)) {
+            if (typeof Servers[this.server] !== 'undefined') {
+                if (Servers[this.server].hasPermission(perm, this.token)) {
                     return true;
                 }
             }
         }
 
-        this._res.send(403, { 'error': 'You do not have permission to perform that action on the system.' });
+        this.res.send(403, { 'error': 'You do not have permission to perform that action on the system.' });
         return false;
     }
 
     server() {
-        return Servers[this._server];
+        return Servers[this.server];
     }
 
     serverUuid() {
-        return this._server;
+        return this.server;
     }
 
     requestToken() {
-        return this._token;
+        return this.token;
     }
 
 }

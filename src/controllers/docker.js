@@ -22,9 +22,9 @@ const DockerController = new Dockerode({
 
 class Docker {
     constructor(server, next) {
-        this._server = server;
-        this._containerID = this._server._json.container.id;
-        this._container = DockerController.getContainer(this._containerID);
+        this.server = server;
+        this.containerID = this.server.json.container.id;
+        this.container = DockerController.getContainer(this.containerID);
         this.stream = undefined;
 
         // Check status and attach if server is running currently.
@@ -40,7 +40,7 @@ class Docker {
             // We kind of have to assume that if the server is running it is on
             // and not in the process of booting or stopping.
             if (typeof data.State.Running !== 'undefined' && data.State.Running !== false) {
-                self._server.setStatus(Status.ON);
+                self.server.setStatus(Status.ON);
                 self.attach(function (attachErr) {
                     return next(attachErr, (!attachErr));
                 });
@@ -51,7 +51,7 @@ class Docker {
     }
 
     inspect(next) {
-        this._container.inspect(function dockerInspect(err, data) {
+        this.container.inspect(function dockerInspect(err, data) {
             return next(err, data);
         });
     }
@@ -62,8 +62,8 @@ class Docker {
      * @return {[type]}        [description]
      */
     start(next) {
-        this._server.setStatus(Status.STARTING);
-        this._container.start(function dockerStart(err) {
+        this.server.setStatus(Status.STARTING);
+        this.container.start(function dockerStart(err) {
             // Container is already running, we can just continue on and pretend we started it just now.
             if (err && err.message.indexOf('HTTP code is 304 which indicates error: container already started') > -1) {
                 return next();
@@ -78,7 +78,7 @@ class Docker {
      * @return {[type]}        [description]
      */
     stop(next) {
-        this._container.stop(function dockerStop(err) {
+        this.container.stop(function dockerStop(err) {
             return next(err);
         });
     }
@@ -89,7 +89,7 @@ class Docker {
      * @return {[type]}        [description]
      */
     kill(next) {
-        this._container.kill(function (err) {
+        this.container.kill(function (err) {
             return next(err);
         });
     }
@@ -109,17 +109,17 @@ class Docker {
             return next(new Error('An active stream is already in use for this container.'));
         }
 
-        this._container.exec({ Cmd: command, AttachStdin: true, AttachStdout: true, Tty: true }, function dockerExec(err, exec) {
+        this.container.exec({ Cmd: command, AttachStdin: true, AttachStdout: true, Tty: true }, function dockerExec(err, exec) {
             if (err) return next(err);
             exec.start(function dockerExecStartStart(execErr, stream) {
                 if (!execErr && stream) {
                     stream.setEncoding('utf8');
                     stream.on('data', function dockerExecStreamData(data) {
                         // Send data to the Server.output() function.
-                        self._server.output(data);
+                        self.server.output(data);
                     });
                     stream.on('end', function dockerExecStreamEnd() {
-                        self._server.streamClosed();
+                        self.server.streamClosed();
                     });
                 } else {
                     return next(execErr);
@@ -156,16 +156,16 @@ class Docker {
             return next(new Error('An active stream is already in use for this container.'));
         }
 
-        this._container.attach({ stream: true, stdin: true, stdout: true, stderr: true }, function dockerAttach(err, stream) {
+        this.container.attach({ stream: true, stdin: true, stdout: true, stderr: true }, function dockerAttach(err, stream) {
             if (err) return next(err);
             self.stream = stream;
             self.stream.setEncoding('utf8');
             self.stream.on('data', function dockerAttachStreamData(data) {
-                self._server.output(data);
+                self.server.output(data);
             });
             self.stream.on('end', function dockerAttachStreamEnd() {
                 self.stream = undefined;
-                self._server.streamClosed();
+                self.server.streamClosed();
             });
             return next();
         });

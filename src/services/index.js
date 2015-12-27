@@ -24,9 +24,9 @@ _.mixin({ 'deepExtend': ExtendedMixin });
 class Core {
     constructor(server, config) {
         const self = this;
-        this._server = server;
-        this._json = server._json;
-        this.option = this._json.service.option;
+        this.server = server;
+        this.json = server.json;
+        this.option = this.json.service.option;
         this.object = undefined;
 
         // Find our data on initialization.
@@ -46,7 +46,7 @@ class Core {
         // Check each configuration file and set variables as needed.
         Async.each(this.object.configs, function coreOnPreflightFileLoop(fileName, callback) {
             // let doUpdate = false;
-            Fs.readFile(Path.join(Config.get('sftp.path', '/srv/data'), self._server.user, '/data', fileName), function coreOnPreflightReadFile(err) {
+            Fs.readFile(Path.join(Config.get('sftp.path', '/srv/data'), self.server.user, '/data', fileName), function coreOnPreflightReadFile(err) {
                 if (err) return callback(err);
             });
         }, function (err) {
@@ -62,15 +62,15 @@ class Core {
         const self = this;
         // Started
         if (data.indexOf(this.object.startup.done) > -1) {
-            self._server.setStatus(Status.ON);
+            self.server.setStatus(Status.ON);
         }
 
         // Stopped; Don't trigger crash
-        if (this._server.status !== Status.ON && typeof this.object.startup.userInteraction !== 'undefined') {
+        if (this.server.status !== Status.ON && typeof this.object.startup.userInteraction !== 'undefined') {
             Async.each(this.object.startup.userInteraction, function coreOnConsoleAsyncEach(string) {
                 if (data.indexOf(string) > -1) {
-                    self._server.log.info('Server detected as requiring user interaction, stopping now.');
-                    self._server.setStatus(Status.STOPPING);
+                    self.server.log.info('Server detected as requiring user interaction, stopping now.');
+                    self.server.setStatus(Status.STOPPING);
                 }
             });
         }
