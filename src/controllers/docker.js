@@ -38,7 +38,7 @@ class Docker {
             // We kind of have to assume that if the server is running it is on
             // and not in the process of booting or stopping.
             if (typeof data.State.Running !== 'undefined' && data.State.Running !== false) {
-                self._server.status = Status.ON;
+                self._server.setStatus(Status.ON);
                 self.attach(function (attachErr) {
                     return next(attachErr, (!attachErr));
                 });
@@ -60,7 +60,7 @@ class Docker {
      * @return {[type]}        [description]
      */
     start(next) {
-        this._server.status = Status.STARTING;
+        this._server.setStatus(Status.STARTING);
         this._container.start(function dockerStart(err) {
             // Container is already running, we can just continue on and pretend we started it just now.
             if (err && err.message.indexOf('HTTP code is 304 which indicates error: container already started') > -1) {

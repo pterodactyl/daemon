@@ -6,21 +6,28 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 const rfr = require('rfr');
-const Log = rfr('lib/helpers/logger.js');
 const Async = require('async');
+const moment = require('moment');
+const Emitter = require('emmett');
+const _ = require('underscore');
+
+const Log = rfr('lib/helpers/logger.js');
 const Docker = rfr('lib/controllers/docker.js');
 const Service = rfr('lib/services/minecraft/index.js');
-const moment = require('moment');
 const Status = rfr('lib/helpers/status.js');
 
-class Server {
+const Websocket = rfr('lib/http/socket.js');
+const UploadServer = rfr('lib/http/upload.js');
+
+class Server extends Emitter {
 
     constructor(json, next) {
-        // Setup Initial Values
+        super();
         const self = this;
         this.status = Status.OFF;
         this._json = json;
         this.uuid = this._json.uuid;
+        this._data = {};
 
         this.log = Log.child({ server: this.uuid });
         this.lastCrash = undefined;
@@ -33,6 +40,9 @@ class Server {
         });
 
         this.service = new Service(this);
+
+        this._socketio = new Websocket(this).init();
+        this._upload = new UploadServer(this).init();
     }
 
     hasPermission(perm, token) {
@@ -44,6 +54,14 @@ class Server {
             }
         }
         return false;
+    }
+
+    setStatus(status) {
+        if (status === this.status) return;
+        const inverted = _.invert(Status);
+        this.log.info('Server status has been changed to ' + inverted[status]);
+        this.status = status;
+        this.emit('status', status);
     }
 
     preflight(next) {
@@ -91,8 +109,7 @@ class Server {
             return next(new Error('Server is already stopped.'));
         }
 
-        this.status = Status.STOPPING;
-        this.log.info('Stopping server.');
+        this.setStatus(Status.STOPPING);
 
         // So, technically docker sends a SIGTERM to the process when this is run.
         // This works out fine normally, however, there are times when a container might take
@@ -104,8 +121,7 @@ class Server {
         // detection will not fire since we set the status to STOPPING.
 
         this.docker.stop(function stopDockerStop(err) {
-            self.status = Status.OFF;
-            self.log.info('Server has been powered off.');
+            self.setStatus(Status.OFF);
             return next(err);
         });
     }
@@ -116,10 +132,10 @@ class Server {
             return next(new Error('Server is already stopped.'));
         }
 
-        self.status = Status.STOPPING;
+        this.setStatus(Status.STOPPING);
         this.docker.kill(function killDockerKill(err) {
-            self.status = Status.OFF;
-            self.log.info('Process SIGINT request for server. Server has been forcible stopped.');
+            self.log.info('Process SIGINT request for server. Server will be forciably stopped.');
+            this.setStatus(Status.OFF);
             return next(err);
         });
     }
@@ -167,11 +183,11 @@ class Server {
     streamClosed() {
         const self = this;
         if (this.status === Status.OFF || this.status === Status.STOPPING) {
-            this.status = Status.OFF;
+            this.setStatus(Status.OFF);
             return;
         }
 
-        this.status = Status.OFF;
+        this.setStatus(Status.OFF);
         if (moment.isMoment(this.lastCrash)) {
             if (moment(this.lastCrash).add(60, 'seconds').isAfter(moment())) {
                 this.setCrashTime();

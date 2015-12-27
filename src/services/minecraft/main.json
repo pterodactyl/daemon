@@ -1,11 +1,11 @@
 {
     "latest": {
         "id": "latest",
-        "regex": "^(latest)$",
+        "tag": "^(latest)$",
         "symlink": "vanilla"
     },
     "vanilla": {
-        "regex": "^(vanilla-[\\w\\d._-]+)$",
+        "tag": "^(vanilla-[\\w\\d._-]+)$",
         "startup": {
             "done": ")! For help, type ",
             "userInteraction": [
@@ -13,14 +13,18 @@
             ]
         },
         "stop": "stop",
-        "configs": [
-            "server.properties"
-        ],
-        "remap": {
-            "server-ip": "+server.ip",
-            "enable-query": true,
-            "server-port": "+server.port",
-            "query.port": "+server.port"
+        "configs": {
+            "server.properties": {
+                "server-ip=": "server-ip={{ ip }}",
+                "enable-query=": "enable-query=true",
+                "server-port=": "server-port={{ port }}",
+                "query.port=": "server-port={{ port }}"
+            }
+        },
+        "output": {
+            "find": "\r\n",
+            "flags": "gi",
+            "replace": ""
         },
         "log": {
             "custom": false,
@@ -29,19 +33,21 @@
         "query": "minecraftping"
     },
     "spigot": {
-        "regex": "^(spigot)$",
+        "tag": "^(spigot)$",
         "symlink": "vanilla"
     },
     "bungeecord": {
-        "regex": "^(bungeecord)$",
+        "tag": "^(bungeecord)$",
         "symlink": "vanilla",
         "startup": {
             "done": "[INFO] Listening on "
         },
         "stop": "end",
-        "configs": [
-            "config.yml"
-        ],
+        "configs": {
+            "config.yml": {
+
+            }
+        },
         "log": {
             "location": "proxy.log.0"
         }

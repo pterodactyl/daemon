@@ -16,30 +16,30 @@ const SFTP = new SFTPController();
 Log.info('Starting Pterodactyl Daemon...');
 
 Async.series([
-    function (callback) {
+    function indexAsyncStartSFTP(callback) {
         Log.info('Attempting to start SFTP service container...');
         SFTP.startService(callback);
         Log.info('SFTP service container booted!');
     },
-    function (callback) {
+    function indexAsyncInitialize(callback) {
         Log.info('Attempting to load servers and initialize daemon...');
         Initialize.init(callback);
     },
-], function (err) {
+], function indexAsyncCallback(err) {
     if (err) {
         // Log a fatal error and exit.
         // We need this to initialize successfully without any errors.
         Log.fatal(err);
         process.exit(1);
     }
-    rfr('lib/http/restify.js');
+    rfr('lib/http/routes.js');
     Log.info('Initialization Successful!');
 });
 
-process.on('uncaughtException', function (err) {
+process.on('uncaughtException', function processUncaughtException(err) {
     Log.fatal(err, 'A fatal error occured during an operation.');
 });
 
-process.on('SIGUSR2', function () {
+process.on('SIGUSR2', function processSIGUSR2() {
     Log.reopenFileStreams();
 });

@@ -30,7 +30,7 @@ class Plugin {
 
         // Find our data on initialization.
         _.each(Configuration, function onConstructorLoop(element) {
-            if (self.option.match(element.regex)) {
+            if (self.option.match(element.tag)) {
                 // Handle "symlink" in the configuration for plugins...
                 self.object = element;
                 if (typeof element.symlink !== 'undefined' && typeof Configuration[element.symlink] !== 'undefined') {
@@ -62,7 +62,7 @@ class Plugin {
         // Started
         if (data.indexOf(this.object.startup.done) > -1) {
             self._server.log.info('Server detected as fully started.');
-            self._server.status = Status.ON;
+            self._server.setStatus(Status.ON);
         }
 
         // Stopped; Don't trigger crash
@@ -70,7 +70,7 @@ class Plugin {
             Async.each(this.object.startup.userInteraction, function onConsoleAsyncEach(string) {
                 if (data.indexOf(string) > -1) {
                     self._server.log.info('Server detected as requiring user interaction, stopping now.');
-                    self._server.status = Status.STOPPING;
+                    self._server.setStatus(Status.STOPPING);
                 }
             });
         }
@@ -79,6 +79,11 @@ class Plugin {
     onStop(next) {
         return next();
     }
+
+    sanitizeSocketData(data) {
+        return data.replace(new RegExp(this.object.output.find || '\r\n', this.object.output.flags || 'g'), this.object.output.replace || '');
+    }
+
 }
 
 module.exports = Plugin;

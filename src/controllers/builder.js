@@ -9,8 +9,8 @@ const rfr = require('rfr');
 const Async = require('async');
 const Fs = require('fs-extra');
 const Path = require('path');
-const InitializeServers = rfr('lib/helpers/initialize.js').Initialize;
-const ServerInitializer = new InitializeServers();
+const InitializeHelper = rfr('lib/helpers/initialize.js').Initialize;
+const ServerInitializer = new InitializeHelper();
 
 class Builder {
 
@@ -24,16 +24,16 @@ class Builder {
     init(next) {
         const self = this;
         Async.series([
-            function (callback) {
+            function initAsyncWriteConfig(callback) {
                 self.writeConfigToDisk(callback);
             },
-            function (callback) {
+            function initAsyncInitialize(callback) {
                 ServerInitializer.setup(self._json, callback);
             },
-            function (callback) {
+            function initAsyncBuildContainer(callback) {
                 self.buildContainer(self._json.uuid, callback);
             },
-        ], function (err) {
+        ], function initAsyncCallback(err) {
             return next(err);
         });
     }
@@ -43,7 +43,7 @@ class Builder {
         // Attempt to write to disk, return error if failed, otherwise return nothing.
         // Theoretically every time this is called we should consider rebuilding the container
         // and re initalize the server. Buider.init() handles this though.
-        Fs.writeJson(Path.join('./config/servers', self._json.uuid + '.json'), self._json, function (err) {
+        Fs.writeJson(Path.join('./config/servers', self._json.uuid + '.json'), self._json, function writeConfigWrite(err) {
             return next(err);
         });
     }
