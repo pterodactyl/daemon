@@ -33,6 +33,18 @@ const RestServer = Restify.createServer({
     name: 'Pterodactyl Daemon',
 });
 
+RestServer.pre(function (req, res, next) {
+    // Fix Headers
+    if ('x-access-server' in req.headers && !('X-Access-Server' in req.headers)) {
+        req.headers['X-Access-Server'] = req.headers['x-access-server'];
+    }
+
+    if ('x-access-token' in req.headers && !('X-Access-Token' in req.headers)) {
+        req.headers['X-Access-Token'] = req.headers['x-access-token'];
+    }
+    return next();
+});
+
 RestServer.on('after', Restify.auditLogger({
     log: RestLogger,
 }));

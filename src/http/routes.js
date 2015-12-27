@@ -26,15 +26,6 @@ RestServer.use(Restify.jsonBodyParser());
 RestServer.use(Restify.CORS()); // eslint-disable-line
 
 RestServer.use(function (req, res, next) {
-    // Fix Headers
-    if ('x-access-server' in req.headers && !('X-Access-Server' in req.headers)) {
-        req.headers['X-Access-Server'] = req.headers['x-access-server'];
-    }
-
-    if ('x-access-token' in req.headers && !('X-Access-Token' in req.headers)) {
-        req.headers['X-Access-Token'] = req.headers['x-access-token'];
-    }
-
     // Do Authentication
     Auth = new AuthorizationMiddleware(req.headers['X-Access-Token'], req.headers['X-Access-Server'], res);
     Auth.init(function authInit(err) {
