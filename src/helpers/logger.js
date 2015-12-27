@@ -16,6 +16,7 @@ const Config = new LoadConfig();
 const Log = Bunyan.createLogger({
     name: 'pterodactyl.daemon',
     src: Config.get('logger.src', false),
+    serializers: Bunyan.stdSerializers,
     streams: [
         {
             level: Config.get('logger.level', 'info'),
