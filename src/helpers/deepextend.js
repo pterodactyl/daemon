@@ -25,7 +25,7 @@ module.exports = function deepExtend(obj) {
                 if (!_.isArray(obj[prop]) || !_.isArray(source[prop])) {
                     throw new Error('Trying to combine an array with a non-array (' + prop + ')');
                 } else {
-                    obj[prop] = _.reject(_.deepExtend(_.clone(obj[prop]), source[prop]), function (item) {
+                    obj[prop] = _.reject(_.deepExtend(_.clone(obj[prop]), source[prop]), function (item) { // eslint-disable-line
                         return _.isNull(item);
                     });
                 }

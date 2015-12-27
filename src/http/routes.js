@@ -24,6 +24,8 @@ let Auth;
 let Responses;
 
 RestServer.use(Restify.jsonBodyParser());
+RestServer.use(Restify.CORS()); // eslint-disable-line
+
 RestServer.use(function (req, res, next) {
     // Fix Headers
     if ('x-access-server' in req.headers && !('X-Access-Server' in req.headers)) {
@@ -47,16 +49,7 @@ RestServer.use(function (req, res, next) {
 
 RestServer.on('uncaughtException', function restifyUncaughtExceptionHandler(req, res, route, err) {
     Log.fatal({ path: route.spec.path, method: route.spec.method, msg: err.message }, err.stack);
-    return res.send(500, { 'error': 'An unhandled exception occured while attempting to process this request.' });
-});
-
-RestServer.opts(/.*/, function (req, res, next) {
-    res.header('Access-Control-Allow-Origin', '*');
-    res.header('Access-Control-Allow-Methods', req.header('Access-Control-Request-Method'));
-    res.header('Access-Control-Allow-Headers', req.header('Access-Control-Request-Headers'));
-    res.send(200);
-
-    return next();
+    return res.send(503, { 'error': 'An unhandled exception occured while attempting to process this request.' });
 });
 
 RestServer.get('/', function getIndex(req, res) {
