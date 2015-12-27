@@ -189,7 +189,6 @@ class Docker {
         this.container.stats({ stream: true }, function dockerTop(err, stream) {
             if (err) return next(err);
             self.procStream = stream;
-            console.log('Stream made.');
             self.procStream.setEncoding('utf8');
             self.procStream.on('data', function dockerTopStreamData(data) {
                 self.procData = JSON.parse(data);
