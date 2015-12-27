@@ -61,6 +61,16 @@ class Server extends Emitter {
     setStatus(status) {
         if (status === this.status) return;
         const inverted = _.invert(Status);
+
+        // If a user starts their server and then tries to stop it before the server is done
+        // it triggers a crash condition. This logic determines if the server status is set to
+        // stopping, and if so, we prevent changing the status to starting or on. This allows the
+        // server to not crash when we press stop before it is compeltely started.
+        if (this.status === Status.STOPPING && (status === Status.ON || status === Status.STARTING)) {
+            this.log.debug('Recieved request to mark server as ' + inverted[status] + ' but the server is currently marked as STOPPING.');
+            return;
+        }
+
         this.log.info('Server status has been changed to ' + inverted[status]);
         this.status = status;
         this.emit('status', status);
@@ -106,13 +116,11 @@ class Server extends Emitter {
     }
 
     stop(next) {
-        const self = this;
         if (this.status === Status.OFF) {
             return next(new Error('Server is already stopped.'));
         }
 
         this.setStatus(Status.STOPPING);
-
         // So, technically docker sends a SIGTERM to the process when this is run.
         // This works out fine normally, however, there are times when a container might take
         // more than 10 seconds to gracefully stop, at which point docker resorts to sending
@@ -121,9 +129,7 @@ class Server extends Emitter {
         // So, what we will do is send a stop command, and then sit there and wait
         // until the container stops because the process stopped, at which point the crash
         // detection will not fire since we set the status to STOPPING.
-
-        this.docker.stop(function stopDockerStop(err) {
-            self.setStatus(Status.OFF);
+        this.command(this.service.object.stop, function (err) {
             return next(err);
         });
     }
