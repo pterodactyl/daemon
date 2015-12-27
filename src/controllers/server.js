@@ -39,8 +39,8 @@ class Server extends EventEmitter {
         };
 
         this.intervals = {
-            process: undefined,
-            query: undefined,
+            process: null,
+            query: null,
         };
 
         this.log = Log.child({ server: this.uuid });
@@ -86,15 +86,16 @@ class Server extends EventEmitter {
         // Handle Internal Tracking
         if (status !== Status.OFF) {
             // If an interval has not been started, start one now.
-            if (typeof this.intervals.process === 'undefined') {
+            if (this.intervals.process === null) {
                 this.intervals.process = setInterval(this.process, 2000, this);
             }
         } else {
             // Server has been stopped, lets clear the interval as well as any stored
             // information about the process or query. Lets also detach the stats stream.
             clearInterval(this.intervals.process);
-            this.processData.process = undefined;
-            this.processData.query = undefined;
+            this.intervals.process = null;
+            this.processData.process = {};
+            this.processData.query = {};
         }
 
         this.log.info('Server status has been changed to ' + inverted[status]);

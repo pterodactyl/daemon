@@ -63,13 +63,18 @@ class Docker {
      * @return {[type]}        [description]
      */
     start(next) {
-        this.server.setStatus(Status.STARTING);
+        const self = this;
         this.container.start(function dockerStart(err) {
             // Container is already running, we can just continue on and pretend we started it just now.
             if (err && err.message.indexOf('HTTP code is 304 which indicates error: container already started') > -1) {
+                self.server.setStatus(Status.ON);
+                return next();
+            } else if (err) {
+                next(err);
+            } else {
+                self.server.setStatus(Status.STARTING);
                 return next();
             }
-            return next(err);
         });
     }
 
@@ -184,6 +189,7 @@ class Docker {
         this.container.stats({ stream: true }, function dockerTop(err, stream) {
             if (err) return next(err);
             self.procStream = stream;
+            console.log('Stream made.');
             self.procStream.setEncoding('utf8');
             self.procStream.on('data', function dockerTopStreamData(data) {
                 self.procData = JSON.parse(data);
