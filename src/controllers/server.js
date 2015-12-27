@@ -12,14 +12,18 @@ const Async = require('async');
 const moment = require('moment');
 const _ = require('underscore');
 const EventEmitter = require('events').EventEmitter;
+const Querystring = require('querystring');
+const Path = require('path');
 
 const Log = rfr('src/helpers/logger.js');
 const Docker = rfr('src/controllers/docker.js');
 const Service = rfr('src/services/minecraft/index.js');
 const Status = rfr('src/helpers/status.js');
-
+const ConfigHelper = rfr('src/helpers/config.js');
 const Websocket = rfr('src/http/socket.js');
 const UploadServer = rfr('src/http/upload.js');
+
+const Config = new ConfigHelper();
 
 class Server extends EventEmitter {
 
@@ -237,6 +241,24 @@ class Server extends EventEmitter {
 
     setCrashTime() {
         this.lastCrash = moment();
+    }
+
+    path(location) {
+        const dataPath = Path.join(Config.get('sftp.path', '/srv/data'), this.json.user, '/data');
+        const cleanLocation = location.replace(/\s+/g, '');
+        let returnPath;
+
+        if (typeof location !== 'undefined' && cleanLocation.length > 0) {
+            returnPath = Path.join(dataPath, Path.normalize(Querystring.unescape(cleanLocation)));
+        }
+
+        // Path is good, return it.
+        if (returnPath.indexOf(dataPath) === 0) {
+            return returnPath;
+        }
+
+        this.log.debug({ attemted_path: returnPath }, 'Attempted to access file outside of SFTP path, defaulted to SFTP data directory.');
+        return dataPath;
     }
 
     process(self) {
