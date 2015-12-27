@@ -1,3 +1,5 @@
+'use strict';
+
 /**
  * Pterodactyl Daemon
  * Copyright (c) 2015 Dane Everitt <dane@daneeveritt.com>
@@ -10,9 +12,9 @@ const Async = require('async');
 const Path = require('path');
 const Util = require('util');
 const Fs = require('fs-extra');
-const Log = rfr('lib/helpers/logger.js');
+const Log = rfr('src/helpers/logger.js');
 
-const Server = rfr('lib/controllers/server.js');
+const Server = rfr('src/controllers/server.js');
 const Servers = {};
 
 class Initialize {

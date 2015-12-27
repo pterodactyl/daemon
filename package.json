@@ -7,9 +7,8 @@
     "test": "tests"
   },
   "scripts": {
-    "start": "node lib/index.js | node_modules/bunyan/bin/bunyan -o short",
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "babel src -d lib"
+    "start": "node src/index.js | node_modules/bunyan/bin/bunyan -o short",
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
     "type": "git",
@@ -27,10 +26,6 @@
   },
   "homepage": "https://github.com/Pterodactyl/Daemon#readme",
   "devDependencies": {
-    "babel": "^6.3.13",
-    "babel-cli": "^6.3.17",
-    "babel-eslint": "^4.1.6",
-    "babel-preset-es2015-node4": "^2.0.2",
     "eslint": "^1.10.3",
     "eslint-config-airbnb": "^2.1.1",
     "eslint-plugin-react": "^3.12.0",

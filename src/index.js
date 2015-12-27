@@ -1,3 +1,5 @@
+'use strict';
+
 /**
  * Pterodactyl Daemon
  * Copyright (c) 2015 Dane Everitt <dane@daneeveritt.com>
@@ -6,10 +8,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 const rfr = require('rfr');
-const Log = rfr('lib/helpers/logger.js');
+const Log = rfr('src/helpers/logger.js');
 const Async = require('async');
-const Initializer = rfr('lib/helpers/initialize.js').Initialize;
-const SFTPController = rfr('lib/controllers/sftp.js');
+const Initializer = rfr('src/helpers/initialize.js').Initialize;
+const SFTPController = rfr('src/controllers/sftp.js');
 const Initialize = new Initializer();
 const SFTP = new SFTPController();
 
@@ -32,7 +34,7 @@ Async.series([
         Log.fatal(err);
         process.exit(1);
     }
-    rfr('lib/http/routes.js');
+    rfr('src/http/routes.js');
     Log.info('Initialization Successful!');
 });
 

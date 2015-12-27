@@ -1,3 +1,5 @@
+'use strict';
+
 /**
  * Pterodactyl Daemon
  * Copyright (c) 2015 Dane Everitt <dane@daneeveritt.com>
@@ -7,8 +9,8 @@
  */
 const rfr = require('rfr');
 
-const Servers = rfr('lib/helpers/initialize.js').Servers;
-const LoadConfig = rfr('lib/helpers/config.js');
+const Servers = rfr('src/helpers/initialize.js').Servers;
+const LoadConfig = rfr('src/helpers/config.js');
 
 const Config = new LoadConfig();
 

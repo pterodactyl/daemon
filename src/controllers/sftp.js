@@ -1,3 +1,5 @@
+'use strict';
+
 /**
  * Pterodactyl Daemon
  * Copyright (c) 2015 Dane Everitt <dane@daneeveritt.com>
@@ -7,7 +9,7 @@
  */
 const rfr = require('rfr');
 
-const LoadConfig = rfr('lib/helpers/config.js');
+const LoadConfig = rfr('src/helpers/config.js');
 const Dockerode = require('dockerode');
 
 const Config = new LoadConfig();

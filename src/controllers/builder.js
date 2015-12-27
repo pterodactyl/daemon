@@ -1,3 +1,5 @@
+'use strict';
+
 /**
  * Pterodactyl Daemon
  * Copyright (c) 2015 Dane Everitt <dane@daneeveritt.com>
@@ -9,7 +11,7 @@ const rfr = require('rfr');
 const Async = require('async');
 const Fs = require('fs-extra');
 const Path = require('path');
-const InitializeHelper = rfr('lib/helpers/initialize.js').Initialize;
+const InitializeHelper = rfr('src/helpers/initialize.js').Initialize;
 const ServerInitializer = new InitializeHelper();
 
 class Builder {

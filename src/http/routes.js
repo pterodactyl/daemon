@@ -1,3 +1,5 @@
+'use strict';
+
 /**
  * Pterodactyl Daemon
  * Copyright (c) 2015 Dane Everitt <dane@daneeveritt.com>
@@ -9,12 +11,12 @@ const rfr = require('rfr');
 const Restify = require('restify');
 const Util = require('util');
 
-const Log = rfr('lib/helpers/logger.js');
-const LoadConfig = rfr('lib/helpers/config.js');
-const AuthorizationMiddleware = rfr('lib/middleware/authorizable.js');
-const BuilderController = rfr('lib/controllers/builder.js');
-const ResponseHelper = rfr('lib/helpers/responses.js');
-const RestServer = rfr('lib/http/restify.js');
+const Log = rfr('src/helpers/logger.js');
+const LoadConfig = rfr('src/helpers/config.js');
+const AuthorizationMiddleware = rfr('src/middleware/authorizable.js');
+const BuilderController = rfr('src/controllers/builder.js');
+const ResponseHelper = rfr('src/helpers/responses.js');
+const RestServer = rfr('src/http/restify.js');
 
 const Config = new LoadConfig();
 

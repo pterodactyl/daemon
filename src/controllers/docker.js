@@ -1,3 +1,5 @@
+'use strict';
+
 /**
  * Pterodactyl Daemon
  * Copyright (c) 2015 Dane Everitt <dane@daneeveritt.com>
@@ -10,8 +12,8 @@ const rfr = require('rfr');
 const Dockerode = require('dockerode');
 const isStream = require('isstream');
 
-const Status = rfr('lib/helpers/status.js');
-const LoadConfig = rfr('lib/helpers/config.js');
+const Status = rfr('src/helpers/status.js');
+const LoadConfig = rfr('src/helpers/config.js');
 
 const Config = new LoadConfig();
 const DockerController = new Dockerode({

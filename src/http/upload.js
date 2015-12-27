@@ -1,3 +1,5 @@
+'use strict';
+
 /**
  * Pterodactyl Daemon
  * Copyright (c) 2015 Dane Everitt <dane@daneeveritt.com>
@@ -10,8 +12,8 @@ const binaryJS = require('binaryjs').BinaryServer;
 const Fs = require('fs-extra');
 const Path = require('path');
 
-const ConfigHelper = rfr('lib/helpers/config.js');
-const RestServer = rfr('lib/http/restify.js');
+const ConfigHelper = rfr('src/helpers/config.js');
+const RestServer = rfr('src/http/restify.js');
 
 const Config = new ConfigHelper();
 const BinaryServer = binaryJS({

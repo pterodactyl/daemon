@@ -1,3 +1,5 @@
+'use strict';
+
 /**
  * Pterodactyl Daemon
  * Copyright (c) 2015 Dane Everitt <dane@daneeveritt.com>
@@ -8,7 +10,7 @@
 const rfr = require('rfr');
 const Bunyan = require('bunyan');
 const Path = require('path');
-const LoadConfig = rfr('lib/helpers/config.js');
+const LoadConfig = rfr('src/helpers/config.js');
 const Config = new LoadConfig();
 
 const Log = Bunyan.createLogger({

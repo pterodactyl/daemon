@@ -1,3 +1,5 @@
+'use strict';
+
 /**
  * Pterodactyl Daemon
  * Copyright (c) 2015 Dane Everitt <dane@daneeveritt.com>
@@ -11,10 +13,10 @@ const Async = require('async');
 const Fs = require('fs-extra');
 const _ = require('underscore');
 
-const ConfigHelper = rfr('lib/helpers/config.js');
+const ConfigHelper = rfr('src/helpers/config.js');
 const Configuration = rfr('src/services/minecraft/main.json');
-const ExtendedMixin = rfr('lib/helpers/deepextend.js');
-const Status = rfr('lib/helpers/status.js');
+const ExtendedMixin = rfr('src/helpers/deepextend.js');
+const Status = rfr('src/helpers/status.js');
 
 const Config = new ConfigHelper();
 

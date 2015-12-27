@@ -1,3 +1,5 @@
+'use strict';
+
 /**
  * Pterodactyl Daemon
  * Copyright (c) 2015 Dane Everitt <dane@daneeveritt.com>
@@ -11,13 +13,13 @@ const moment = require('moment');
 const Emitter = require('emmett');
 const _ = require('underscore');
 
-const Log = rfr('lib/helpers/logger.js');
-const Docker = rfr('lib/controllers/docker.js');
-const Service = rfr('lib/services/minecraft/index.js');
-const Status = rfr('lib/helpers/status.js');
+const Log = rfr('src/helpers/logger.js');
+const Docker = rfr('src/controllers/docker.js');
+const Service = rfr('src/services/minecraft/index.js');
+const Status = rfr('src/helpers/status.js');
 
-const Websocket = rfr('lib/http/socket.js');
-const UploadServer = rfr('lib/http/upload.js');
+const Websocket = rfr('src/http/socket.js');
+const UploadServer = rfr('src/http/upload.js');
 
 class Server extends Emitter {
 
