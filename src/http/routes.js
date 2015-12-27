@@ -14,14 +14,13 @@ const Util = require('util');
 const Log = rfr('src/helpers/logger.js');
 const LoadConfig = rfr('src/helpers/config.js');
 const AuthorizationMiddleware = rfr('src/middleware/authorizable.js');
-const BuilderController = rfr('src/controllers/builder.js');
-const ResponseHelper = rfr('src/helpers/responses.js');
 const RestServer = rfr('src/http/restify.js');
+const RouteController = rfr('src/controllers/routes.js');
 
 const Config = new LoadConfig();
 
 let Auth;
-let Responses;
+let Routes;
 
 RestServer.use(Restify.jsonBodyParser());
 RestServer.use(Restify.CORS()); // eslint-disable-line
@@ -38,9 +37,9 @@ RestServer.use(function (req, res, next) {
 
     // Do Authentication
     Auth = new AuthorizationMiddleware(req.headers['X-Access-Token'], req.headers['X-Access-Server'], res);
-    Auth.init(function (err) {
+    Auth.init(function authInit(err) {
         if (!err) {
-            Responses = new ResponseHelper(req, res);
+            Routes = new RouteController(Auth, req, res);
             return next();
         }
         return res.send(403, { 'error': err.message });
@@ -52,67 +51,37 @@ RestServer.on('uncaughtException', function restifyUncaughtExceptionHandler(req,
     return res.send(503, { 'error': 'An unhandled exception occured while attempting to process this request.' });
 });
 
-RestServer.get('/', function getIndex(req, res) {
-    res.send('Pterodactyl Management Daemon.');
+RestServer.get('/', function routeGetIndex() {
+    Routes.getIndex();
 });
 
 /**
  * Save New Configuration for Daemon; also updates the config across the program for immediate changes.
  */
-RestServer.put('/config', function putConfig(req, res) {
-    if (!Auth.allowed('g:put-config')) return;
-    Config.save(req.params, function (err) {
-        if (err) return res.send(500, { 'error': err.message });
-        return res.send(204);
-    });
+RestServer.put('/config', function routePutConfig() {
+    Routes.putConfig();
 });
 
-RestServer.get('/server/power/:action', function getServerPower(req, res) {
-    if (!Auth.allowed('s:power')) return;
-    if (req.params.action === 'start') {
-        Auth.server().start(function (err) {
-            return Responses.generic204(err);
-        });
-    } else if (req.params.action === 'stop') {
-        Auth.server().stop(function (err) {
-            return Responses.generic204(err);
-        });
-    } else if (req.params.action === 'restart') {
-        Auth.server().restart(function (err) {
-            return Responses.generic204(err);
-        });
-    } else if (req.params.action === 'kill') {
-        Auth.server().kill(function (err) {
-            return Responses.generic204(err);
-        });
-    } else {
-        res.send(404, { 'error': 'Unknown power action recieved.' });
-    }
+/**
+ * Server Actions
+ */
+RestServer.get('/server', function routeGetServer() {
+    Routes.getServer();
 });
 
-RestServer.post('/server/command', function postServerCommand(req, res) {
-    if (!Auth.allowed('s:command')) return;
-    if (typeof req.params.command !== 'undefined') {
-        Auth.server().command(req.params.command, function (err) {
-            return Responses.generic204(err);
-        });
-    } else {
-        res.send(500, { 'error': 'Missing command in request.' });
-    }
+RestServer.get('/server/power/:action', function routeGetServerPower() {
+    Routes.getServerPower();
+});
+
+RestServer.post('/server/command', function routeGetServerCommand() {
+    Routes.postServerCommand();
 });
 
 /**
  * Write new server file to disk.
  */
-RestServer.post('/server/new', function postServerNew(req, res) {
-    const Builder = new BuilderController(req.params);
-    Builder.init(function (err) {
-        if (err) {
-            Log.error(err, 'An error occured while attempting to initalize a new server.');
-            return res.send(500);
-        }
-        return res.send(204);
-    });
+RestServer.post('/server/new', function routePostServerNew() {
+    Routes.postServerNew();
 });
 
 RestServer.listen(Config.get('web.listen', 8080), Config.get('web.host', '0.0.0.0'), function listen() {
