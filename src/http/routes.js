@@ -59,13 +59,6 @@ RestServer.opts(/.*/, function (req, res, next) {
     return next();
 });
 
-RestServer.listen(Config.get('web.listen', 8080), Config.get('web.host', '0.0.0.0'), function listen() {
-    Log.info(Util.format('The following services are now listening on %s:%d: REST, Websocket, Uploads',
-        Config.get('web.host', '0.0.0.0'),
-        Config.get('web.listen', 8080)
-    ));
-});
-
 RestServer.get('/', function getIndex(req, res) {
     res.send('Pterodactyl Management Daemon.');
 });
@@ -127,4 +120,11 @@ RestServer.post('/server/new', function postServerNew(req, res) {
         }
         return res.send(204);
     });
+});
+
+RestServer.listen(Config.get('web.listen', 8080), Config.get('web.host', '0.0.0.0'), function listen() {
+    Log.info(Util.format('The following services are now listening on %s:%d: REST, Websocket, Uploads',
+        Config.get('web.host', '0.0.0.0'),
+        Config.get('web.listen', 8080)
+    ));
 });
