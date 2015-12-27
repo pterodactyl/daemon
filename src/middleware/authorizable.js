@@ -15,14 +15,14 @@ const LoadConfig = rfr('src/helpers/config.js');
 const Config = new LoadConfig();
 
 class AuthorizationMiddleware {
-    constructor(token, server, res) {
+    constructor(token, uuid, res) {
         this.token = token;
-        this.server = server;
+        this.uuid = uuid;
         this.res = res;
     }
 
     init(next) {
-        if (!this.token || !this.server) {
+        if (!this.token || !this.uuid) {
             return next(new Error('Missing required X-Access-Token or X-Access-Server headers in request.'));
         }
         return next();
@@ -41,7 +41,7 @@ class AuthorizationMiddleware {
             }
 
             if (typeof Servers[this.server] !== 'undefined') {
-                if (Servers[this.server].hasPermission(perm, this.token)) {
+                if (Servers[this.uuid].hasPermission(perm, this.token)) {
                     return true;
                 }
             }
@@ -52,11 +52,11 @@ class AuthorizationMiddleware {
     }
 
     server() {
-        return Servers[this.server];
+        return Servers[this.uuid];
     }
 
     serverUuid() {
-        return this.server;
+        return this.uuid;
     }
 
     requestToken() {
