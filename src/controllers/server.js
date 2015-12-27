@@ -208,6 +208,15 @@ class Server extends EventEmitter {
      * Send command to server.
      */
     command(command, next) {
+        if (this.status === Status.OFF) {
+            return next(new Error('Server is currently stopped.'));
+        }
+
+        // Prevent a user sending a stop command manually from crashing the server.
+        if (command.startsWith(this.service.object.stop)) {
+            this.setStatus(Status.STOPPING);
+        }
+
         this.docker.write(command, next);
     }
 
