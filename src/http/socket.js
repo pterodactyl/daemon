@@ -52,7 +52,6 @@ class WebSocket {
 
         // Send server output to Websocket.
         this.server.on('console', function websocketConsole(output) {
-            console.log(output);
             const data = output.toString();
             // Is this data even worth dealing with?
             if ((data.replace(/\s+/g, '')).length > 1) {
