@@ -253,7 +253,7 @@ class Server extends EventEmitter {
         }
 
         // Path is good, return it.
-        if (returnPath.indexOf(dataPath) === 0) {
+        if (returnPath.startsWith(dataPath)) {
             return returnPath;
         }
 
