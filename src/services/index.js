@@ -41,13 +41,45 @@ class Core {
         });
     }
 
+    // Forgive me padrè for I have sinned. Badly.
+    //
+    // This is some incredibly messy code. As best I can describe, it
+    // loop through each listed config file, and then uses regex to search
+    // and replace values with values from the config file.
+    //
+    // This is all done with parallel functions, so every listed file
+    // is opened, and then all of the lines are run at the same time.
+    // Very quick function, surprisingly...
     onPreflight(next) {
         const self = this;
+        const parsedLines = [];
         // Check each configuration file and set variables as needed.
-        Async.each(this.object.configs, function coreOnPreflightFileLoop(fileName, callback) {
-            // let doUpdate = false;
-            Fs.readFile(Path.join(Config.get('sftp.path', '/srv/data'), self.server.user, '/data', fileName), function coreOnPreflightReadFile(err) {
+        Async.forEachOf(this.object.configs, function coreOnPreflightFileLoop(searches, file, callback) {
+            // Read the file that we have looped to.
+            Fs.readFile(self.server.path(file), function (err, data) {
                 if (err) return callback(err);
+                // Loop through each line and set the new value if necessary.
+                parsedLines[file] = data.toString().split('\n');
+                Async.forEachOf(parsedLines[file], function (line, index, eachCallback) {
+                    // Check line aganist each possible search/replace set in the config array.
+                    Async.forEachOf(searches, function (replaceString, find, searchCallback) {
+                        // Positive Match
+                        if (line.startsWith(find)) {
+                            // Set the new line value.
+                            const newLineValue = replaceString.replace(/{{ (\S+) }}/g, function ($0, $1) {
+                                return ($1).split('.').reduce((o, i) => o[i], self.json);
+                            });
+                            parsedLines[file][index] = newLineValue;
+                        }
+                        searchCallback();
+                    }, function () {
+                        eachCallback();
+                    });
+                }, function () {
+                    Fs.writeFile(self.server.path(file), parsedLines[file].join('\n'), function (writeErr) {
+                        return callback(writeErr);
+                    });
+                });
             });
         }, function (err) {
             return next(err);

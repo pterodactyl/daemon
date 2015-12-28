@@ -110,8 +110,7 @@ class Server extends EventEmitter {
         if (this.status !== Status.OFF) {
             return next(new Error('Server is already running.'));
         }
-        // @TODO: plugin specific preflights
-        return next();
+        return this.service.onPreflight(next);
     }
 
     start(next) {
