@@ -93,6 +93,11 @@ RestServer.post(/^\/server\/file\/(.+)/, function routePostServerFile(req, res, 
     return next();
 });
 
+RestServer.del(/^\/server\/file\/(.+)/, function routePostServerFile(req, res, next) {
+    Routes.deleteServerFile();
+    return next();
+});
+
 /**
  * Write new server file to disk.
  */

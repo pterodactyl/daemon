@@ -68,6 +68,10 @@ class FileSystem {
     }
 
     delete(path, next) {
+        // Safety - prevent deleting the main folder.
+        if (Path.resolve(this.server.path(path)) === this.server.path()) {
+            return next(new Error('You cannot delete your home folder.'));
+        }
         Fs.remove(this.server.path(path), function (err) {
             return next(err);
         });

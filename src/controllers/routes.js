@@ -143,6 +143,13 @@ class RouteController {
             return Responses.generic204(err);
         });
     }
+
+    deleteServerFile() {
+        if (!Auth.allowed('s:files:delete')) return;
+        Auth.server().fs.delete(this.req.params[0], function deleteServerFileDelete(err) {
+            return Responses.generic204(err);
+        });
+    }
 }
 
 module.exports = RouteController;
