@@ -257,19 +257,16 @@ class Server extends EventEmitter {
 
     path(location) {
         const dataPath = Path.join(Config.get('sftp.path', '/srv/data'), this.json.user, '/data');
-        const cleanLocation = location.replace(/\s+/g, '');
-        let returnPath;
+        let returnPath = dataPath;
 
-        if (typeof location !== 'undefined' && cleanLocation.length > 0) {
-            returnPath = Path.join(dataPath, Path.normalize(Querystring.unescape(cleanLocation)));
+        if (typeof location !== 'undefined' && location.replace(/\s+/g, '').length > 0) {
+            returnPath = Path.join(dataPath, Path.normalize(Querystring.unescape(location.replace(/\s+/g, ''))));
         }
 
         // Path is good, return it.
         if (returnPath.startsWith(dataPath)) {
             return returnPath;
         }
-
-        this.log.debug({ attemted_path: returnPath }, 'Attempted to access file outside of SFTP path, defaulted to SFTP data directory.');
         return dataPath;
     }
 
