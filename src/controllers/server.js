@@ -102,6 +102,7 @@ class Server extends EventEmitter {
 
         this.log.info('Server status has been changed to ' + inverted[status]);
         this.status = status;
+        this.emit('is:' + inverted[status]);
         this.emit('status', status);
     }
 
@@ -178,19 +179,15 @@ class Server extends EventEmitter {
 
     restart(next) {
         const self = this;
-        Async.series([
-            function restartAsyncStop(callback) {
-                if (self.status !== Status.OFF) {
-                    self.stop(callback);
-                } else {
-                    // Already off, lets move on.
-                    return callback();
-                }
-            },
-            function restartAsyncStart(callback) {
-                self.start(callback);
-            },
-        ], function restartAsycDone(err) {
+        this.stop(function (err) {
+            self.once('is:OFF', function () {
+                self.log.debug('Finished waiting for server stop, restarting now.');
+                self.start(function (startErr) {
+                    if (err) {
+                        self.log.error(startErr);
+                    }
+                });
+            });
             return next(err);
         });
     }
