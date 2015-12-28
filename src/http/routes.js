@@ -73,8 +73,18 @@ RestServer.post('/server/command', function routeGetServerCommand(req, res, next
     return next();
 });
 
+RestServer.get('/server/log', function routeGetServerLog(req, res, next) {
+    Routes.getServerLog();
+    return next();
+});
+
 RestServer.get(/^\/server\/directory\/?(.+)*/, function routeGetServerDirectory(req, res, next) {
     Routes.getServerDirectory();
+    return next();
+});
+
+RestServer.get(/^\/server\/file\/(.+)/, function routeGetServerDirectory(req, res, next) {
+    Routes.getServerFile();
     return next();
 });
 

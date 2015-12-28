@@ -108,7 +108,29 @@ class RouteController {
         if (!this.req.params[0]) this.req.params[0] = '.';
         Auth.server().fs.directory(this.req.params[0], function getServerDirectoryListDirectory(err, data) {
             if (err) {
-                Log.error(err);
+                return Responses.generic500(err);
+            }
+            return self.res.send(data);
+        });
+    }
+
+    // Return file contents
+    getServerFile() {
+        const self = this;
+        if (!Auth.allowed('s:files:read')) return;
+        Auth.server().fs.read(this.req.params[0], function getServerFileRead(err, data) {
+            if (err) {
+                return Responses.generic500(err);
+            }
+            return self.res.send({ content: data });
+        });
+    }
+
+    getServerLog() {
+        const self = this;
+        if (!Auth.allowed('s:console')) return;
+        Auth.server().fs.readEnd(Auth.server().service.object.log.location, function getServerLogReadEnd(err, data) {
+            if (err) {
                 return Responses.generic500(err);
             }
             return self.res.send(data);

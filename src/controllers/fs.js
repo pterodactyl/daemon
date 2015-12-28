@@ -23,8 +23,47 @@ class FileSystem {
     }
 
     read(file, next) {
-        Fs.readFile(this.server.path(file), 'utf8', function (err, data) {
-            return next(err, data);
+        const self = this;
+        Fs.stat(this.server.path(file), function (err, stat) {
+            if (err) return next(err);
+            if (!stat.isFile()) {
+                return next(new Error('The file requested does not appear to be a file.'));
+            }
+            if (stat.size > 10000000) {
+                return next(new Error('This file is too large to open.'));
+            }
+            Fs.readFile(self.server.path(file), 'utf8', function (readErr, data) {
+                return next(readErr, data);
+            });
+        });
+    }
+
+    readEnd(file, bytes, next) {
+        const self = this;
+        if (typeof bytes === 'function') {
+            next = bytes; // eslint-disable-line
+            bytes = 80000; // eslint-disable-line
+        }
+        Fs.stat(this.server.path(file), function (err, stat) {
+            if (err) return next(err);
+            if (!stat.isFile()) {
+                return next(new Error('The file requested does not appear to be a file.'));
+            }
+            let opts = {};
+            let lines = '';
+            if (stat.size > bytes) {
+                opts = {
+                    start: (stat.size - bytes),
+                    end: stat.size,
+                };
+            }
+            const stream = Fs.createReadStream(self.server.path(file), opts);
+            stream.on('data', function (data) {
+                lines = lines + data;
+            });
+            stream.on('end', function () {
+                return next(null, lines);
+            });
         });
     }
 
