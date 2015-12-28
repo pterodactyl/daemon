@@ -83,8 +83,13 @@ RestServer.get(/^\/server\/directory\/?(.+)*/, function routeGetServerDirectory(
     return next();
 });
 
-RestServer.get(/^\/server\/file\/(.+)/, function routeGetServerDirectory(req, res, next) {
+RestServer.get(/^\/server\/file\/(.+)/, function routeGetServerFile(req, res, next) {
     Routes.getServerFile();
+    return next();
+});
+
+RestServer.post(/^\/server\/file\/(.+)/, function routePostServerFile(req, res, next) {
+    Routes.postServerFile();
     return next();
 });
 

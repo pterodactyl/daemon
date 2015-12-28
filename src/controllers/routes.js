@@ -136,6 +136,13 @@ class RouteController {
             return self.res.send(data);
         });
     }
+
+    postServerFile() {
+        if (!Auth.allowed('s:files:post')) return;
+        Auth.server().fs.write(this.req.params[0], this.req.params.content, function postServerFileWrite(err) {
+            return Responses.generic204(err);
+        });
+    }
 }
 
 module.exports = RouteController;
