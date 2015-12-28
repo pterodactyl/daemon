@@ -22,6 +22,7 @@ const Status = rfr('src/helpers/status.js');
 const ConfigHelper = rfr('src/helpers/config.js');
 const Websocket = rfr('src/http/socket.js');
 const UploadServer = rfr('src/http/upload.js');
+const FileSystem = rfr('src/controllers/fs.js');
 
 const Config = new ConfigHelper();
 
@@ -57,6 +58,7 @@ class Server extends EventEmitter {
 
         this.socketIO = new Websocket(this).init();
         this.uploadSocket = new UploadServer(this).init();
+        this.fs = new FileSystem(this);
     }
 
     hasPermission(perm, token) {

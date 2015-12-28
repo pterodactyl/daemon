@@ -89,13 +89,29 @@ class RouteController {
 
     // Creates new server on the system.
     postServerNew() {
+        const self = this;
+        if (!Auth.allowed('g:server:new')) return;
         const Builder = new BuilderController(this.req.params);
         Builder.init(function (err) {
             if (err) {
                 Log.error(err, 'An error occured while attempting to initalize a new server.');
-                return this.res.send(500);
+                return Responses.generic500(err);
             }
-            return this.res.send(204);
+            return self.res.send(204);
+        });
+    }
+
+    // Returns listing of server files.
+    getServerDirectory() {
+        const self = this;
+        if (!Auth.allowed('s:files:get')) return;
+        if (!this.req.params[0]) this.req.params[0] = '.';
+        Auth.server().fs.directory(this.req.params[0], function getServerDirectoryListDirectory(err, data) {
+            if (err) {
+                Log.error(err);
+                return Responses.generic500(err);
+            }
+            return self.res.send(data);
         });
     }
 }

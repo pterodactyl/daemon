@@ -73,6 +73,11 @@ RestServer.post('/server/command', function routeGetServerCommand(req, res, next
     return next();
 });
 
+RestServer.get(/^\/server\/directory\/?(.+)*/, function routeGetServerDirectory(req, res, next) {
+    Routes.getServerDirectory();
+    return next();
+});
+
 /**
  * Write new server file to disk.
  */
