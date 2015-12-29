@@ -41,7 +41,7 @@ class RouteController {
     }
 
     // Handles server power
-    getServerPower() {
+    putServerPower() {
         if (!Auth.allowed('s:power')) return;
         if (this.req.params.action === 'start') {
             Auth.server().start(function (err) {
@@ -150,6 +150,8 @@ class RouteController {
             return Responses.generic204(err);
         });
     }
+
+
 }
 
 module.exports = RouteController;

@@ -63,8 +63,8 @@ RestServer.get('/server', function routeGetServer(req, res, next) {
     return next();
 });
 
-RestServer.get('/server/power/:action', function routeGetServerPower(req, res, next) {
-    Routes.getServerPower();
+RestServer.put('/server/power', function routePutServerPower(req, res, next) {
+    Routes.putServerPower();
     return next();
 });
 
