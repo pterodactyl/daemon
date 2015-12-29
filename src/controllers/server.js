@@ -14,6 +14,7 @@ const _ = require('underscore');
 const EventEmitter = require('events').EventEmitter;
 const Querystring = require('querystring');
 const Path = require('path');
+const Fs = require('fs-extra');
 
 const Log = rfr('src/helpers/logger.js');
 const Docker = rfr('src/controllers/docker.js');
@@ -23,8 +24,11 @@ const ConfigHelper = rfr('src/helpers/config.js');
 const Websocket = rfr('src/http/socket.js');
 const UploadServer = rfr('src/http/upload.js');
 const FileSystem = rfr('src/controllers/fs.js');
+const ExtendedMixin = rfr('src/helpers/deepextend.js');
 
 const Config = new ConfigHelper();
+
+_.mixin({ 'deepExtend': ExtendedMixin });
 
 class Server extends EventEmitter {
 
@@ -43,6 +47,9 @@ class Server extends EventEmitter {
             process: null,
             query: null,
         };
+
+        this.buildInProgress = false;
+        this.configLocation = Path.join(__dirname, '../../config/servers/', this.uuid, 'server.json');
 
         this.log = Log.child({ server: this.uuid });
         this.lastCrash = undefined;
@@ -118,6 +125,21 @@ class Server extends EventEmitter {
         const self = this;
         if (this.status !== Status.OFF) {
             return next(new Error('Server is already running.'));
+        }
+
+        if (this.json.rebuild === true) {
+            if (this.buildInProgress !== true) {
+                this.buildInProgress = true;
+                this.emit('console', '[Daemon] Your server is currently queued for a container rebuild. This should only take a few seconds, but could take a few minutes. You do not need to do anything else while this occurs. Your server will automatically continue with startup once this process is completed.');
+                this.rebuild(function (err) {
+                    if (err) {
+                        Log.fatal(err);
+                    }
+                });
+            } else {
+                this.emit('console', '[Daemon] Please wait while your server is being rebuilt...');
+            }
+            return next(new Error('Server is currently queued for a container rebuild. Your request has been accepted and will be processed once the rebuild is complete.'));
         }
 
         Async.series([
@@ -307,6 +329,39 @@ class Server extends EventEmitter {
         });
     }
 
+    // If overwrite = true (PUT request) then the JSON is simply replaced with the new object keys
+    // while keeping any that are not listed. If overwrite = false (PATCH request) then only the
+    // specific data keys that exist are changed or added. (see _.extend documentation).
+    modifyConfig(object, overwrite, next) {
+        if (typeof overwrite === 'function') {
+            next = overwrite; // eslint-disable-line
+            overwrite = false; // eslint-disable-line
+        }
+        const self = this;
+        const newObject = (overwrite === true) ? _.extend(this.json, object) : _.deepExtend(this.json, object);
+        Fs.writeJson(this.configLocation, newObject, function (err) {
+            if (!err) self.json = newObject;
+            return next(err);
+        });
+    }
+
+    rebuild(next) {
+        const self = this;
+        if (this.buildInProgress === true) return next(new Error('A rebuild request is already being processed.'));
+        this.docker.rebuild(function (err, data) {
+            if (err) return next(err);
+            self.log.debug('New container created successfully, re-initializing server...');
+            self.modifyConfig({
+                rebuild: false,
+                container: {
+                    id: data.id.substr(0, 12),
+                    image: data.image,
+                },
+            }, function (modifyErr) {
+                return next(modifyErr);
+            });
+        });
+    }
 }
 
 module.exports = Server;

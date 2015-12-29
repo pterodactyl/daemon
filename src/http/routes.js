@@ -63,6 +63,21 @@ RestServer.get('/server', function routeGetServer(req, res, next) {
     return next();
 });
 
+RestServer.patch('/server', function routePatchServer(req, res, next) {
+    Routes.updateServerConfig();
+    return next();
+});
+
+RestServer.put('/server', function routePutServer(req, res, next) {
+    Routes.updateServerConfig();
+    return next();
+});
+
+RestServer.post('/server/rebuild', function routePostServerRebuild(req, res, next) {
+    Routes.rebuildServer();
+    return next();
+});
+
 RestServer.put('/server/power', function routePutServerPower(req, res, next) {
     Routes.putServerPower();
     return next();

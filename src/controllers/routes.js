@@ -13,7 +13,9 @@ const ConfigHelper = rfr('src/helpers/config.js');
 const ResponseHelper = rfr('src/helpers/responses.js');
 const BuilderController = rfr('src/controllers/builder.js');
 const Log = rfr('src/helpers/logger.js');
+const InitializeHelper = rfr('src/helpers/initialize.js').Initialize;
 
+const Initialize = new InitializeHelper();
 const Config = new ConfigHelper();
 let Responses;
 let Auth;
@@ -43,9 +45,13 @@ class RouteController {
     // Handles server power
     putServerPower() {
         if (!Auth.allowed('s:power')) return;
+        const self = this;
         if (this.req.params.action === 'start') {
             Auth.server().start(function (err) {
-                return Responses.generic204(err);
+                if (err && err.message.indexOf('Server is currently queued for a container rebuild') > -1) {
+                    return self.res.send(202, { 'message': err.message });
+                }
+                Responses.generic204(err);
             });
         } else if (this.req.params.action === 'stop') {
             Auth.server().stop(function (err) {
@@ -151,7 +157,25 @@ class RouteController {
         });
     }
 
+    updateServerConfig() {
+        if (!Auth.allowed('g:edit-server:patch')) return;
+        Auth.server().modifyConfig(this.req.params, (this.req.method === 'PUT'), function updateServerConfigModifyConfig(err) {
+            if (err) return Responses.generic500(err);
+            Auth.server().log.info('Processed ' + this.req.method + ' request for server, re-initializing now...');
+            Initialize.setup(Auth.server().json, function (initErr) {
+                if (initErr) Log.error(initErr);
+                return Responses.generic204(initErr);
+            });
+        });
+    }
 
+    rebuildServer() {
+        if (!Auth.allowed('g:edit-server:rebuild')) return;
+        Auth.server().modifyConfig({ rebuild: true }, false, function rebuildServerModifyConfig(err) {
+            Auth.server().log.info('Server has been queued for a container rebuild on next boot.');
+            return Responses.generic204(err);
+        });
+    }
 }
 
 module.exports = RouteController;

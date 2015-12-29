@@ -10,6 +10,8 @@
 const rfr = require('rfr');
 const Dockerode = require('dockerode');
 const isStream = require('isstream');
+const Async = require('async');
+const Util = require('util');
 
 const Status = rfr('src/helpers/status.js');
 const LoadConfig = rfr('src/helpers/config.js');
@@ -201,6 +203,85 @@ class Docker {
         });
     }
 
+    rebuild(next) {
+        const self = this;
+        const config = this.server.json.build;
+        const bindings = {};
+        const exposed = {};
+        Async.series([
+            function (callback) {
+                // Build the port bindings
+                Async.forEachOf(config.ports, function (ports, ip, eachCallback) {
+                    Async.each(ports, function (port, portCallback) {
+                        bindings[Util.format('%s/tcp', port)] = [{
+                            'HostIp': ip,
+                            'HostPort': port.toString(),
+                        }];
+                        bindings[Util.format('%s/udp', port)] = [{
+                            'HostIp': ip,
+                            'HostPort': port.toString(),
+                        }];
+                        exposed[Util.format('%s/tcp', port)] = {};
+                        exposed[Util.format('%s/udp', port)] = {};
+                        portCallback();
+                    }, function () {
+                        eachCallback();
+                    });
+                }, function () {
+                    return callback();
+                });
+            },
+            function (callback) {
+                self.server.log.debug('Removing server container...');
+                self.container.remove(function (err) {
+                    return callback(err);
+                });
+            },
+            function (callback) {
+                self.server.log.debug('Creating new container...');
+                DockerController.createContainer({
+                    Image: config.image,
+                    Hostname: 'container',
+                    User: config.user.toString(),
+                    Name: '/' + self.server.json.user,
+                    AttachStdin: true,
+                    AttachStdout: true,
+                    Tty: true,
+                    Mounts: [
+                        {
+                            Source: self.server.path(),
+                            Destination: '/home/container',
+                            RW: true,
+                        },
+                    ],
+                    Env: config.env,
+                    ExposedPorts: exposed,
+                    HostConfig: {
+                        Binds: [
+                            Util.format('%s:/home/container', self.server.path()),
+                        ],
+                        PortBindings: bindings,
+                        OomKillDisable: config.oom || false,
+                        CpuShares: (config.cpu * 1000),
+                        CpuPeriod: (config.cpu > 0) ? 100000 : 0,
+                        BlkioWeight: config.io,
+                        Dns: [
+                            '8.8.8.8',
+                            '8.8.4.4',
+                        ],
+                    },
+                }, function (err, container) {
+                    return callback(err, container);
+                });
+            },
+        ], function (err, data) {
+            if (err) self.server.log.fatal(err);
+            return next(err, {
+                id: data[2].id,
+                image: config.image,
+            });
+        });
+    }
 }
 
 module.exports = Docker;
