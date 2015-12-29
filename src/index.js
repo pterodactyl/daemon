@@ -9,13 +9,14 @@
  */
 const rfr = require('rfr');
 const Log = rfr('src/helpers/logger.js');
+
+Log.info('Starting Pterodactyl Daemon...');
+
 const Async = require('async');
 const Initializer = rfr('src/helpers/initialize.js').Initialize;
 const SFTPController = rfr('src/controllers/sftp.js');
 const Initialize = new Initializer();
 const SFTP = new SFTPController();
-
-Log.info('Starting Pterodactyl Daemon...');
 
 Async.series([
     function indexAsyncStartSFTP(callback) {
