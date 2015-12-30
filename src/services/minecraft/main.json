@@ -17,8 +17,8 @@
             "server.properties": {
                 "server-ip=": "server-ip=0.0.0.0",
                 "enable-query=": "enable-query=true",
-                "server-port=": "server-port={{ port }}",
-                "query.port=": "query.port={{ port }}"
+                "server-port=": "server-port={{ build.default.port }}",
+                "query.port=": "query.port={{ build.default.port }}"
             }
         },
         "output": {
@@ -46,8 +46,8 @@
         "configs": {
             "config.yml": {
                 "  query_enabled:": "  query_enabled: true",
-                "  query_port:": "  query_port: {{ port }}",
-                "  host:": "  host: 0.0.0.0:{{ port }}"
+                "  query_port:": "  query_port: {{ build.default.port }}",
+                "  host:": "  host: 0.0.0.0:{{ build.default.port }}"
             }
         },
         "log": {
