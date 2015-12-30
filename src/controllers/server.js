@@ -207,8 +207,8 @@ class Server extends EventEmitter {
         }
 
         this.setStatus(Status.STOPPING);
+        self.log.info('Process SIGINT request for server. Server will be forciably stopped.');
         this.docker.kill(function killDockerKill(err) {
-            self.log.info('Process SIGINT request for server. Server will be forciably stopped.');
             self.setStatus(Status.OFF);
             return next(err);
         });
