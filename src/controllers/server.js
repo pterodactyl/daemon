@@ -371,6 +371,14 @@ class Server extends EventEmitter {
         }
         const self = this;
         const newObject = (overwrite === true) ? _.extend(this.json, object) : _.deepExtend(this.json, object);
+
+        // Do a quick determination of wether or not we need to process a rebuild request for this server.
+        // If so, we need to append that action to the object that we're writing.
+        if (typeof object.build !== 'undefined') {
+            this.log.info('New configiguration has changes to the server\'s build settings. Server has been queued for rebuild on next boot.');
+            newObject.rebuild = true;
+        }
+
         Fs.writeJson(this.configLocation, newObject, function (err) {
             if (!err) self.json = newObject;
             return next(err);

@@ -160,12 +160,7 @@ class RouteController {
     updateServerConfig() {
         if (!Auth.allowed('g:edit-server:patch')) return;
         Auth.server().modifyConfig(this.req.params, (this.req.method === 'PUT'), function updateServerConfigModifyConfig(err) {
-            if (err) return Responses.generic500(err);
-            Auth.server().log.info('Processed ' + this.req.method + ' request for server, re-initializing now...');
-            Initialize.setup(Auth.server().json, function (initErr) {
-                if (initErr) Log.error(initErr);
-                return Responses.generic204(initErr);
-            });
+            return Responses.generic204(err);
         });
     }
 
