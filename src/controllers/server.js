@@ -25,7 +25,6 @@ const Websocket = rfr('src/http/socket.js');
 const UploadServer = rfr('src/http/upload.js');
 const FileSystem = rfr('src/controllers/fs.js');
 const ExtendedMixin = rfr('src/helpers/deepextend.js');
-
 const Config = new ConfigHelper();
 
 _.mixin({ 'deepExtend': ExtendedMixin });
@@ -127,14 +126,24 @@ class Server extends EventEmitter {
             return next(new Error('Server is already running.'));
         }
 
-        if (this.json.rebuild === true) {
+        if (this.json.rebuild === true || this.buildInProgress === true) {
             if (this.buildInProgress !== true) {
-                this.buildInProgress = true;
-                this.emit('console', '[Daemon] Your server is currently queued for a container rebuild. This should only take a few seconds, but could take a few minutes. You do not need to do anything else while this occurs. Your server will automatically continue with startup once this process is completed.');
-                this.rebuild(function (err) {
-                    if (err) {
-                        Log.fatal(err);
-                    }
+                Async.waterfall([
+                    function (callback) {
+                        self.buildInProgress = true;
+                        self.emit('console', '[Daemon] Your server is currently queued for a container rebuild. This should only take a few seconds, but could take a few minutes. You do not need to do anything else while this occurs. Your server will automatically continue with startup once this process is completed.');
+                        callback();
+                    },
+                    function (callback) {
+                        self.rebuild(function (err, server) {
+                            return callback(err, server);
+                        });
+                    },
+                    function (newServer, callback) {
+                        newServer.start(callback);
+                    },
+                ], function (err) {
+                    if (err) Log.error(err);
                 });
             } else {
                 this.emit('console', '[Daemon] Please wait while your server is being rebuilt...');
@@ -180,7 +189,13 @@ class Server extends EventEmitter {
         // So, what we will do is send a stop command, and then sit there and wait
         // until the container stops because the process stopped, at which point the crash
         // detection will not fire since we set the status to STOPPING.
-        this.command(this.service.object.stop, function (err) {
+        //
+        // Disabled for the time being, sometimes servers hang, and we need to compile
+        // up with a more graceful solution.
+        // this.command(this.service.object.stop, function (err) {
+        //     return next(err);
+        // });
+        this.docker.stop(function (err) {
             return next(err);
         });
     }
@@ -308,7 +323,7 @@ class Server extends EventEmitter {
         const totalUsage = (deltaTotal / deltaSystem) * cycle.cpu_usage.percpu_usage.length * 100;
 
         Async.forEachOf(cycle.cpu_usage.percpu_usage, function (cpu, index, callback) {
-            if (index in priorCycle.cpu_usage.percpu_usage) {
+            if (priorCycle.cpu_usage.percpu_usage !== null && index in priorCycle.cpu_usage.percpu_usage) {
                 const priorCycleCpu = priorCycle.cpu_usage.percpu_usage[index];
                 const deltaCore = cpu - priorCycleCpu;
                 perCoreUsage.push(parseFloat(((deltaCore / deltaSystem) * 100).toFixed(6).toString()));
@@ -318,7 +333,8 @@ class Server extends EventEmitter {
             self.processData.process = {
                 memory: {
                     total: self.docker.procData.memory_stats.usage,
-                    max: self.docker.procData.memory_stats.max_usage,
+                    cmax: self.docker.procData.memory_stats.max_usage,
+                    amax: self.json.build.memory * 1000000,
                 },
                 cpu: {
                     cores: perCoreUsage,
@@ -347,19 +363,47 @@ class Server extends EventEmitter {
 
     rebuild(next) {
         const self = this;
-        if (this.buildInProgress === true) return next(new Error('A rebuild request is already being processed.'));
-        this.docker.rebuild(function (err, data) {
-            if (err) return next(err);
-            self.log.debug('New container created successfully, re-initializing server...');
-            self.modifyConfig({
-                rebuild: false,
-                container: {
-                    id: data.id.substr(0, 12),
-                    image: data.image,
-                },
-            }, function (modifyErr) {
-                return next(modifyErr);
-            });
+        // You shouldn't really be able to make it this far without this being set,
+        // but for the sake of double checking...
+        if (this.buildInProgress !== true) this.buildInProgress = true;
+        Async.waterfall([
+            function (callback) {
+                self.log.debug('Running rebuild for server...');
+                self.docker.rebuild(function (err, data) {
+                    return callback(err, data);
+                });
+            },
+            function (data, callback) {
+                self.log.debug('New container created successfully, updating config...');
+                self.modifyConfig({
+                    rebuild: false,
+                    container: {
+                        id: data.id.substr(0, 12),
+                        image: data.image,
+                    },
+                }, function (err) {
+                    return callback(err);
+                });
+            },
+            function (callback) {
+                const InitializeHelper = rfr('src/helpers/initialize.js').Initialize;
+                const Initialize = new InitializeHelper();
+                Initialize.setup(self.json, function (err) {
+                    if (err) return callback(err);
+
+                    // If we don't do this we end up continuing to use the old server
+                    // object for things which causes issues since not all the functions
+                    // get updated.
+                    const Servers = rfr('src/helpers/initialize.js').Servers;
+                    return callback(err, Servers[self.json.uuid]);
+                });
+            },
+            function (server, callback) {
+                self.buildInProgress = false;
+                callback(null, server);
+            },
+        ], function (err, server) {
+            return next(err, server);
         });
     }
 }

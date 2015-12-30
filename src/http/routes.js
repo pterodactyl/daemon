@@ -39,7 +39,12 @@ RestServer.use(function (req, res, next) {
 
 RestServer.on('uncaughtException', function restifyUncaughtExceptionHandler(req, res, route, err) {
     Log.fatal({ path: route.spec.path, method: route.spec.method, msg: err.message }, err.stack);
-    return res.send(503, { 'error': 'An unhandled exception occured while attempting to process this request.' });
+    try {
+        return res.send(503, { 'error': 'An unhandled exception occured while attempting to process this request.' });
+    } catch (ex) {
+        // Response already sent it seems.
+        // Not even going to log it.
+    }
 });
 
 RestServer.get('/', function routeGetIndex(req, res, next) {

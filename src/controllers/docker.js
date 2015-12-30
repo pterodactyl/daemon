@@ -243,9 +243,11 @@ class Docker {
                     Image: config.image,
                     Hostname: 'container',
                     User: config.user.toString(),
-                    Name: '/' + self.server.json.user,
+                    name: self.server.json.user,
                     AttachStdin: true,
                     AttachStdout: true,
+                    AttachStderr: true,
+                    OpenStdin: true,
                     Tty: true,
                     Mounts: [
                         {
@@ -264,6 +266,7 @@ class Docker {
                         OomKillDisable: config.oom || false,
                         CpuShares: (config.cpu * 1000),
                         CpuPeriod: (config.cpu > 0) ? 100000 : 0,
+                        Memory: config.memory * 1000000,
                         BlkioWeight: config.io,
                         Dns: [
                             '8.8.8.8',
@@ -275,8 +278,10 @@ class Docker {
                 });
             },
         ], function (err, data) {
-            if (err) self.server.log.fatal(err);
-            return next(err, {
+            if (err) {
+                return next(err);
+            }
+            return next(null, {
                 id: data[2].id,
                 image: config.image,
             });
