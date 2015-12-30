@@ -216,15 +216,25 @@ class Server extends EventEmitter {
 
     restart(next) {
         const self = this;
-        this.stop(function (err) {
-            self.once('is:OFF', function () {
-                self.log.debug('Finished waiting for server stop, restarting now.');
-                self.start(function (startErr) {
-                    if (err) {
-                        self.log.error(startErr);
-                    }
+        Async.series([
+            function (callback) {
+                if (self.status !== Status.OFF) {
+                    self.once('is:OFF', function () {
+                        return callback();
+                    });
+                    self.stop(function (err) {
+                        if (err) return callback(err);
+                    });
+                } else {
+                    return callback();
+                }
+            },
+            function (callback) {
+                self.start(function (err) {
+                    return callback(err);
                 });
-            });
+            },
+        ], function (err) {
             return next(err);
         });
     }
