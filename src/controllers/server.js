@@ -277,6 +277,12 @@ class Server extends EventEmitter {
             return;
         }
 
+        if (this.json.container.crashDetection === false) {
+            this.setStatus(Status.OFF);
+            this.log.warn('Server detected as potentially crashed but crash detection has been disabled on this server.');
+            return;
+        }
+
         this.setStatus(Status.OFF);
         if (moment.isMoment(this.lastCrash)) {
             if (moment(this.lastCrash).add(60, 'seconds').isAfter(moment())) {
