@@ -70,6 +70,11 @@ RestServer.post('/servers', function routePostServers(req, res, next) {
     return next();
 });
 
+RestServer.del('/servers', function routeDeleteServer(req, res, next) {
+    Routes.deleteServer();
+    return next();
+});
+
 /**
  * Server Actions
  */

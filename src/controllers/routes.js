@@ -13,6 +13,7 @@ const Async = require('async');
 const ConfigHelper = rfr('src/helpers/config.js');
 const ResponseHelper = rfr('src/helpers/responses.js');
 const BuilderController = rfr('src/controllers/builder.js');
+const DeleteController = rfr('src/controllers/delete.js');
 
 const Config = new ConfigHelper();
 let Responses;
@@ -65,6 +66,14 @@ class RouteController {
             callback();
         }, function () {
             return self.res.send(responseData);
+        });
+    }
+
+    deleteServer() {
+        if (!Auth.allowed('g:servers:delete')) return;
+        const Delete = new DeleteController(Auth.server().json);
+        Delete.delete(function (err) {
+            return Responses.generic204(err);
         });
     }
 

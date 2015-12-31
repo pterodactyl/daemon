@@ -53,6 +53,8 @@ class Server extends EventEmitter {
         this.log = Log.child({ server: this.uuid });
         this.lastCrash = undefined;
 
+        // @TODO: If container doesn't exist attempt to create a new container and then try again.
+        // If that faisl it truly is a fatal error and we should exit.
         this.docker = new Docker(this, function constructorServer(err, status) {
             if (status === true) {
                 self.log.info('Daemon detected that the server container is currently running, re-attaching to it now!');
