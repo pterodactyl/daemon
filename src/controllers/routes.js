@@ -8,6 +8,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 const rfr = require('rfr');
+const Async = require('async');
 
 const ConfigHelper = rfr('src/helpers/config.js');
 const ResponseHelper = rfr('src/helpers/responses.js');
@@ -39,6 +40,24 @@ class RouteController {
         Config.save(this.req.params, function (err) {
             if (err) return this.res.send(500, { 'error': err.message });
             return this.res.send(204);
+        });
+    }
+
+    getAllServers() {
+        if (!Auth.allowed('g:servers:list')) return;
+        const responseData = {};
+        const self = this;
+        Async.each(Auth.allServers(), function (server, callback) {
+            responseData[server.json.uuid] = {
+                container: server.json.container,
+                service: server.json.service,
+                status: server.status,
+                query: server.processData.query,
+                proc: server.processData.process,
+            };
+            callback();
+        }, function () {
+            return self.res.send(responseData);
         });
     }
 

@@ -61,6 +61,12 @@ RestServer.put('/config', function routePutConfig(req, res, next) {
 });
 
 /**
+ * Big Picture Actions
+ */
+RestServer.get('/servers', function routeGetServers(req, res, next) {
+    Routes.getAllServers();
+    return next();
+});
  * Server Actions
  */
 RestServer.get('/server', function routeGetServer(req, res, next) {

@@ -63,6 +63,10 @@ class AuthorizationMiddleware {
         return this.token;
     }
 
+    allServers() {
+        return Servers;
+    }
+
 }
 
 module.exports = AuthorizationMiddleware;
