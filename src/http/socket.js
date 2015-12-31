@@ -9,7 +9,7 @@
  */
 const rfr = require('rfr');
 const RestServer = rfr('src/http/restify.js');
-const Socket = require('socket.io').listen(RestServer);
+const Socket = require('socket.io').listen(RestServer.server);
 
 class WebSocket {
     constructor(server) {
@@ -18,12 +18,13 @@ class WebSocket {
         this.installerSocket = Socket.of('/ws-install/' + this.server.json.uuid);
 
         // Standard Websocket Permissions
+        const self = this;
         this.websocket.use(function (params, next) {
             if (!params.handshake.query.token) {
                 return next(new Error('You must pass the correct handshake values.'));
             }
-            if (!this.server.hasPermission('s:console', params.handshake.query.token)) {
-                return next(new Error('You do not have permission to access this socket.'));
+            if (!self.server.hasPermission('s:console', params.handshake.query.token)) {
+                return next(new Error('You do not have permission to access this socket (ws).'));
             }
             return next();
         });
@@ -33,8 +34,8 @@ class WebSocket {
             if (!params.handshake.query.token) {
                 return next(new Error('You must pass the correct handshake values.'));
             }
-            if (!this.server.hasPermission('g:socket:install', params.handshake.query.token)) {
-                return next(new Error('You do not have permission to access this socket.'));
+            if (!self.server.hasPermission('g:socket:install', params.handshake.query.token)) {
+                return next(new Error('You do not have permission to access this socket (ws-install).'));
             }
             return next();
         });
