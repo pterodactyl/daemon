@@ -70,7 +70,7 @@ class RouteController {
     }
 
     deleteServer() {
-        if (!Auth.allowed('g:servers:delete')) return;
+        if (!Auth.allowed('g:server:delete')) return;
         const Delete = new DeleteController(Auth.server().json);
         Delete.delete(function (err) {
             return Responses.generic204(err);
@@ -179,14 +179,14 @@ class RouteController {
     }
 
     updateServerConfig() {
-        if (!Auth.allowed('g:edit-server:patch')) return;
+        if (!Auth.allowed('g:server:patch')) return;
         Auth.server().modifyConfig(this.req.params, (this.req.method === 'PUT'), function updateServerConfigModifyConfig(err) {
             return Responses.generic204(err);
         });
     }
 
     rebuildServer() {
-        if (!Auth.allowed('g:edit-server:rebuild')) return;
+        if (!Auth.allowed('g:server:rebuild')) return;
         Auth.server().modifyConfig({ rebuild: true }, false, function rebuildServerModifyConfig(err) {
             Auth.server().log.info('Server has been queued for a container rebuild on next boot.');
             return Responses.generic204(err);
