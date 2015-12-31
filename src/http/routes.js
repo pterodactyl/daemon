@@ -25,6 +25,14 @@ let Routes;
 RestServer.use(Restify.jsonBodyParser());
 RestServer.use(Restify.CORS()); // eslint-disable-line
 
+RestServer.opts(/.*/, function (req, res, next) {
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', req.header('Access-Control-Request-Method'));
+    res.header('Access-Control-Allow-Headers', req.header('Access-Control-Request-Headers'));
+    res.send(200);
+    return next();
+});
+
 RestServer.use(function (req, res, next) {
     // Do Authentication
     Auth = new AuthorizationMiddleware(req.headers['X-Access-Token'], req.headers['X-Access-Server'], res);
