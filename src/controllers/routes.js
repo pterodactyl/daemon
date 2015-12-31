@@ -31,9 +31,9 @@ class RouteController {
         this.res.send('Pterodactyl Management Daemon');
     }
 
-    // Saves config to disk
+    // Saves Daemon Configuration to Disk
     putConfig() {
-        if (!Auth.allowed('g:put-config')) return;
+        if (!Auth.allowed('c:config')) return;
         Config.save(this.req.params, function (err) {
             if (err) return this.res.send(500, { 'error': err.message });
             return this.res.send(204);
@@ -41,7 +41,7 @@ class RouteController {
     }
 
     postNewServer() {
-        if (!Auth.allowed('g:servers:create')) return;
+        if (!Auth.allowed('c:create')) return;
         const self = this;
         const Builder = new BuilderController(this.req.params);
         Builder.init(function (err, data) {
@@ -51,7 +51,7 @@ class RouteController {
     }
 
     getAllServers() {
-        if (!Auth.allowed('g:servers:list')) return;
+        if (!Auth.allowed('c:list')) return;
         const responseData = {};
         const self = this;
         Async.each(Auth.allServers(), function (server, callback) {

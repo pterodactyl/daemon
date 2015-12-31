@@ -26,15 +26,25 @@ class AuthorizationMiddleware {
     }
 
     allowed(perm) {
-        if (perm.indexOf('g:') === 0) {
+        // Master Controller; permissions not reliant on a specific server being defined.
+        if (perm.indexOf('c:') === 0) {
             if (typeof Config.get('keys') === 'object' && Config.get('keys').indexOf(this.token) > -1) {
                 return true;
             }
         }
 
+        // All other permissions controllers, do rely on a specific server being defined.
+        // Both 'c:*' and 'g:*' permissions use the same permission checking, but 'g:*' permissions
+        // require that a server header also be sent with the request.
         if (!this.token || !this.uuid) {
             this.res.send(403, { 'error': 'Missing required X-Access-Server headers.' });
             return false;
+        }
+
+        if (perm.indexOf('g:') === 0) {
+            if (typeof Config.get('keys') === 'object' && Config.get('keys').indexOf(this.token) > -1) {
+                return true;
+            }
         }
 
         if (perm.indexOf('s:') === 0) {
