@@ -194,13 +194,7 @@ class Server extends EventEmitter {
         // So, what we will do is send a stop command, and then sit there and wait
         // until the container stops because the process stopped, at which point the crash
         // detection will not fire since we set the status to STOPPING.
-        //
-        // Disabled for the time being, sometimes servers hang, and we need to compile
-        // up with a more graceful solution.
-        // this.command(this.service.object.stop, function (err) {
-        //     return next(err);
-        // });
-        this.docker.stop(function (err) {
+        this.command(this.service.object.stop, function (err) {
             return next(err);
         });
     }
