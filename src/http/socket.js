@@ -64,21 +64,21 @@ class WebSocket {
 
         // Sends query response to Websocket when it is called by the daemon function.
         this.server.on('query', function websocketQuery(query) {
-            self.websocket.emit({
+            self.websocket.emit('query', {
                 query,
             });
         });
 
         // Sends current server information to Websocket.
         this.server.on('proc', function websocketStats(data) {
-            self.websocket.emit({
+            self.websocket.emit('proc', {
                 data,
             });
         });
 
         // Sends change of server status to Websocket.
         this.server.on('status', function websocketStatus(data) {
-            self.websocket.emit({
+            self.websocket.emit('status', {
                 'status': data,
             });
         });
