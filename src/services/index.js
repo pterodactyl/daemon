@@ -57,7 +57,15 @@ class Core {
         Async.forEachOf(this.object.configs, function coreOnPreflightFileLoop(searches, file, callback) {
             // Read the file that we have looped to.
             Fs.readFile(self.server.path(file), function (err, data) {
-                if (err) return callback(err);
+                if (err) {
+                    // File doesn't exist
+                    // @TODO: handle restarting the server to see if the file appears
+                    // at which point we can write to it.
+                    if (err.message.toString().indexOf('ENOENT: no such file or directory') > -1) {
+                        return callback();
+                    }
+                    return callback(err);
+                }
                 // Loop through each line and set the new value if necessary.
                 parsedLines[file] = data.toString().split('\n');
                 Async.forEachOf(parsedLines[file], function (line, index, eachCallback) {
