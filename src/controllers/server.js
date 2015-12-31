@@ -288,6 +288,7 @@ class Server extends EventEmitter {
         }
 
         this.setStatus(Status.OFF);
+        this.emit('status', 'crashed');
         if (moment.isMoment(this.lastCrash)) {
             if (moment(this.lastCrash).add(60, 'seconds').isAfter(moment())) {
                 this.setCrashTime();
