@@ -28,12 +28,9 @@ RestServer.use(Restify.CORS()); // eslint-disable-line
 RestServer.use(function (req, res, next) {
     // Do Authentication
     Auth = new AuthorizationMiddleware(req.headers['X-Access-Token'], req.headers['X-Access-Server'], res);
-    Auth.init(function authInit(err) {
-        if (!err) {
-            Routes = new RouteController(Auth, req, res);
-            return next();
-        }
-        return res.send(403, { 'error': err.message });
+    Auth.init(function authInit() {
+        Routes = new RouteController(Auth, req, res);
+        return next();
     });
 });
 
@@ -67,6 +64,13 @@ RestServer.get('/servers', function routeGetServers(req, res, next) {
     Routes.getAllServers();
     return next();
 });
+
+RestServer.post('/servers', function routePostServers(req, res, next) {
+    Routes.postNewServer();
+    return next();
+});
+
+/**
  * Server Actions
  */
 RestServer.get('/server', function routeGetServer(req, res, next) {
@@ -121,14 +125,6 @@ RestServer.post(/^\/server\/file\/(.+)/, function routePostServerFile(req, res, 
 
 RestServer.del(/^\/server\/file\/(.+)/, function routePostServerFile(req, res, next) {
     Routes.deleteServerFile();
-    return next();
-});
-
-/**
- * Write new server file to disk.
- */
-RestServer.post('/server/new', function routePostServerNew(req, res, next) {
-    Routes.postServerNew();
     return next();
 });
 

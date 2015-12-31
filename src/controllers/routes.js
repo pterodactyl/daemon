@@ -13,10 +13,7 @@ const Async = require('async');
 const ConfigHelper = rfr('src/helpers/config.js');
 const ResponseHelper = rfr('src/helpers/responses.js');
 const BuilderController = rfr('src/controllers/builder.js');
-const Log = rfr('src/helpers/logger.js');
-const InitializeHelper = rfr('src/helpers/initialize.js').Initialize;
 
-const Initialize = new InitializeHelper();
 const Config = new ConfigHelper();
 let Responses;
 let Auth;
@@ -40,6 +37,16 @@ class RouteController {
         Config.save(this.req.params, function (err) {
             if (err) return this.res.send(500, { 'error': err.message });
             return this.res.send(204);
+        });
+    }
+
+    postNewServer() {
+        if (!Auth.allowed('g:servers:create')) return;
+        const self = this;
+        const Builder = new BuilderController(this.req.params);
+        Builder.init(function (err, data) {
+            if (err) return Responses.generic500(err);
+            return self.res.send(200, data);
         });
     }
 
@@ -110,20 +117,6 @@ class RouteController {
         } else {
             this.res.send(500, { 'error': 'Missing command in request.' });
         }
-    }
-
-    // Creates new server on the system.
-    postServerNew() {
-        const self = this;
-        if (!Auth.allowed('g:server:new')) return;
-        const Builder = new BuilderController(this.req.params);
-        Builder.init(function (err) {
-            if (err) {
-                Log.error(err, 'An error occured while attempting to initalize a new server.');
-                return Responses.generic500(err);
-            }
-            return self.res.send(204);
-        });
     }
 
     // Returns listing of server files.

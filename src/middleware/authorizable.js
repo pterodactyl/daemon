@@ -22,9 +22,6 @@ class AuthorizationMiddleware {
     }
 
     init(next) {
-        if (!this.token || !this.uuid) {
-            return next(new Error('Missing required X-Access-Token or X-Access-Server headers in request.'));
-        }
         return next();
     }
 
@@ -35,12 +32,17 @@ class AuthorizationMiddleware {
             }
         }
 
+        if (!this.token || !this.uuid) {
+            this.res.send(403, { 'error': 'Missing required X-Access-Server headers.' });
+            return false;
+        }
+
         if (perm.indexOf('s:') === 0) {
             if (typeof Config.get('keys') === 'object' && Config.get('keys').indexOf(this.token) > -1) {
                 return true;
             }
 
-            if (typeof Servers[this.server] !== 'undefined') {
+            if (typeof Servers[this.uuid] !== 'undefined') {
                 if (Servers[this.uuid].hasPermission(perm, this.token)) {
                     return true;
                 }

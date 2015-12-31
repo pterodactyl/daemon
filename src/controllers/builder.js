@@ -11,8 +11,21 @@ const rfr = require('rfr');
 const Async = require('async');
 const Fs = require('fs-extra');
 const Path = require('path');
+const Dockerode = require('dockerode');
+const Util = require('util');
+const RandomString = require('randomstring');
+
+const Log = rfr('src/helpers/logger.js');
 const InitializeHelper = rfr('src/helpers/initialize.js').Initialize;
+const ConfigHelper = rfr('src/helpers/config.js');
+const SFTPController = rfr('src/controllers/sftp.js');
+
+const Config = new ConfigHelper();
+const SFTP = new SFTPController();
 const ServerInitializer = new InitializeHelper();
+const DockerController = new Dockerode({
+    socketPath: Config.get('docker.socket', '/var/run/docker.sock'),
+});
 
 class Builder {
 
@@ -21,37 +34,197 @@ class Builder {
             throw new Error('Invalid JSON was passed to Builder.');
         }
         this.json = json;
+        this.log = Log.child({ server: this.json.uuid });
     }
 
     init(next) {
         const self = this;
+        // @TODO: validate everything needed is here in the JSON.
         Async.series([
-            function initAsyncWriteConfig(callback) {
-                self.writeConfigToDisk(callback);
+            function initAsyncSetupSFTP(callback) {
+                self.log.info('Creating SFTP user on the system...');
+                SFTP.create(self.json.user, RandomString.generate(), function (err) {
+                    return callback(err);
+                });
             },
-            function initAsyncInitialize(callback) {
-                ServerInitializer.setup(self.json, callback);
+            function initAsyncGetUser(callback) {
+                self.log.info('Retrieving the user\'s ID...');
+                SFTP.uid(self.json.user, function (err, uid) {
+                    if (err || uid === null) {
+                        SFTP.delete(self.json.user, function (delErr) {
+                            if (delErr) Log.fatal(delErr);
+                            Log.warn('Cleaned up after failed server creation.');
+                        });
+                        return (err !== null) ? callback(err) : callback(new Error('Unable to retrieve the user ID.'));
+                    }
+                    self.log.info('User ID is: ' + uid);
+                    self.json.build.user = parseInt(uid, 10);
+                    return callback();
+                });
             },
             function initAsyncBuildContainer(callback) {
-                self.buildContainer(self.json.uuid, callback);
+                self.log.info('Building container for server');
+                self.buildContainer(self.json.uuid, function (err, data) {
+                    if (err) {
+                        SFTP.delete(self.json.user, function (delErr) {
+                            if (delErr) Log.fatal(delErr);
+                            Log.warn('Cleaned up after failed server creation.');
+                        });
+                        return callback(err);
+                    }
+                    self.json.container.id = data.id.substr(0, 12);
+                    self.json.container.image = data.image;
+                    return callback();
+                });
+            },
+            function initAsyncWriteConfig(callback) {
+                self.log.info('Writing configuration to disk...');
+                self.writeConfigToDisk(function (err) {
+                    if (err) {
+                        Async.parallel([
+                            function (parallelCallback) {
+                                SFTP.delete(self.json.user, function (asyncErr) {
+                                    if (asyncErr) Log.fatal(err);
+                                    return parallelCallback();
+                                });
+                            },
+                            function (parallelCallback) {
+                                const container = DockerController.getContainer(self.json.container.id);
+                                container.remove(function (asyncErr) {
+                                    if (asyncErr) Log.fatal(asyncErr);
+                                    return parallelCallback();
+                                });
+                            },
+                        ], function () {
+                            Log.warn('Cleaned up after failed server creation.');
+                        });
+                    }
+                    return callback(err);
+                });
+            },
+            function initAsyncInitialize(callback) {
+                ServerInitializer.setup(self.json, function (err) {
+                    if (err) {
+                        Async.parallel([
+                            function (parallelCallback) {
+                                SFTP.delete(self.json.user, function (asyncErr) {
+                                    if (asyncErr) Log.fatal(err);
+                                    return parallelCallback();
+                                });
+                            },
+                            function (parallelCallback) {
+                                const container = DockerController.getContainer(self.json.container.id);
+                                container.remove(function (asyncErr) {
+                                    if (asyncErr) Log.fatal(asyncErr);
+                                    return parallelCallback();
+                                });
+                            },
+                            function (parallelCallback) {
+                                Fs.remove(Path.join('./config/servers', this.json.uuid, '/server.json'), function (asyncErr) {
+                                    if (asyncErr) Log.fatal(asyncErr);
+                                    return parallelCallback();
+                                });
+                            },
+                        ], function () {
+                            Log.warn('Cleaned up after failed server creation.');
+                        });
+                    }
+                    return callback(err);
+                });
             },
         ], function initAsyncCallback(err) {
-            return next(err);
+            if (err) {
+                Log.error(err);
+                return next(new Error('An error occured while attempting to add a new container to the system.'));
+            }
+            return next(null, self.json);
         });
     }
 
     writeConfigToDisk(next) {
-        const self = this;
+        if (typeof this.json.uuid === 'undefined') {
+            return next(new Error('No UUID was passed properly in the JSON recieved.'));
+        }
         // Attempt to write to disk, return error if failed, otherwise return nothing.
-        // Theoretically every time this is called we should consider rebuilding the container
-        // and re initalize the server. Buider.init() handles this though.
-        Fs.writeJson(Path.join('./config/servers', self.json.uuid + '.json'), self.json, function writeConfigWrite(err) {
+        Fs.outputJson(Path.join('./config/servers', this.json.uuid, '/server.json'), this.json, function writeConfigWrite(err) {
             return next(err);
         });
     }
 
-    buildContainer(uuid, next) {
-        return next();
+    buildContainer(json, next) {
+        const self = this;
+        const config = this.json.build;
+        const bindings = {};
+        const exposed = {};
+        Async.series([
+            function (callback) {
+                // Build the port bindings
+                Async.forEachOf(config.ports, function (ports, ip, eachCallback) {
+                    Async.each(ports, function (port, portCallback) {
+                        bindings[Util.format('%s/tcp', port)] = [{
+                            'HostIp': ip,
+                            'HostPort': port.toString(),
+                        }];
+                        bindings[Util.format('%s/udp', port)] = [{
+                            'HostIp': ip,
+                            'HostPort': port.toString(),
+                        }];
+                        exposed[Util.format('%s/tcp', port)] = {};
+                        exposed[Util.format('%s/udp', port)] = {};
+                        portCallback();
+                    }, function () {
+                        eachCallback();
+                    });
+                }, function () {
+                    return callback();
+                });
+            },
+            function (callback) {
+                DockerController.createContainer({
+                    Image: config.image,
+                    Hostname: 'container',
+                    User: config.user.toString(),
+                    name: self.json.user,
+                    AttachStdin: true,
+                    AttachStdout: true,
+                    AttachStderr: true,
+                    OpenStdin: true,
+                    Tty: true,
+                    Mounts: [
+                        {
+                            Source: Path.join(Config.get('sftp.path', '/srv/data'), self.json.user, '/data'),
+                            Destination: '/home/container',
+                            RW: true,
+                        },
+                    ],
+                    Env: config.env,
+                    ExposedPorts: exposed,
+                    HostConfig: {
+                        Binds: [
+                            Util.format('%s:/home/container', Path.join(Config.get('sftp.path', '/srv/data'), self.json.user, '/data')),
+                        ],
+                        PortBindings: bindings,
+                        OomKillDisable: config.oom || false,
+                        CpuShares: (config.cpu * 1000),
+                        CpuPeriod: (config.cpu > 0) ? 100000 : 0,
+                        Memory: config.memory * 1000000,
+                        BlkioWeight: config.io,
+                        Dns: [
+                            '8.8.8.8',
+                            '8.8.4.4',
+                        ],
+                    },
+                }, function (err, container) {
+                    return callback(err, container);
+                });
+            },
+        ], function (err, data) {
+            if (err) return next(err);
+            return next(null, {
+                id: data[1].id,
+                image: config.image,
+            });
+        });
     }
 
 }

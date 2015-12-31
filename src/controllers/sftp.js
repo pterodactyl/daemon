@@ -20,7 +20,7 @@ const DockerController = new Dockerode({
 // docker run -d --name sftp -v /srv/data:/sftp-root -v /srv/daemon/config/credentials:/creds -p 2022:22 quay.io/pterodactyl/scrappy
 class SFTP {
     constructor() {
-        this._container = DockerController.getContainer(Config.get('sftp.container'));
+        this.container = DockerController.getContainer(Config.get('sftp.container'));
     }
 
     /**
@@ -29,7 +29,7 @@ class SFTP {
      * @return {[type]}        [description]
      */
     startService(next) {
-        this._container.start(function sftpContainerStart(err) {
+        this.container.start(function sftpContainerStart(err) {
             // Container is already running, we can just continue on and pretend we started it just now.
             if (err && err.message.indexOf('HTTP code is 304 which indicates error: container already started') > -1) {
                 return next();
@@ -46,18 +46,46 @@ class SFTP {
      * @return {Callback}
      */
     create(username, password, next) {
-        return this._doExec(['scrappyuser', '-u', username, '-p', password], next);
+        this._doExec(['scrappyuser', '-u', username, '-p', password], function (err) {
+            return next(err);
+        });
     }
 
     /**
      * Updates the password for a SFTP user on the system.
      * @param  string     username
-     * @param  password   password
+     * @param  string   password
      * @param  {Function} next
      * @return {Callback}
      */
     password(username, password, next) {
-        return this._doExec(['scrappypwd', '-u', username, '-p', password], next);
+        this._doExec(['scrappypwd', '-u', username, '-p', password], function (err) {
+            return next(err);
+        });
+    }
+
+    /**
+     * Gets the UID for a specified user.
+     * @param  string   username
+     * @param  {Function} next
+     * @return {[type]}]
+     */
+    uid(username, next) {
+        this._doExec(['id', '-u', username], function (err, userid) {
+            return next(err, userid);
+        });
+    }
+
+    /**
+     * Deletes the specified user and folders from the container.
+     * @param  string   username
+     * @param  {Function} next
+     * @return {[type]}]
+     */
+    delete(username, next) {
+        this._doExec(['scrappydel', '-u', username], function (err) {
+            return next(err);
+        });
     }
 
     /**
@@ -67,7 +95,8 @@ class SFTP {
      * @return {Callback}
      */
     _doExec(command, next) {
-        this._container.exec({
+        let uidResponse = null;
+        this.container.exec({
             Cmd: command,
             AttachStdin: true,
             AttachStdout: true,
@@ -77,17 +106,23 @@ class SFTP {
             exec.start(function sftpExecStreamStart(execErr, stream) {
                 if (!execErr && stream) {
                     stream.setEncoding('utf8');
+                    stream.on('data', function sftpExecStreamData(data) {
+                        if (/^(\d{5})$/.test(data.replace(/[\x00-\x1F\x7F-\x9F]/g, ''))) {
+                            uidResponse = data.replace(/[\x00-\x1F\x7F-\x9F]/g, '');
+                        }
+                    });
                     stream.on('end', function sftpExecStreamEnd() {
                         exec.inspect(function sftpExecInspect(inspectErr, data) {
                             if (inspectErr) return next(inspectErr);
                             if (data.ExitCode !== 0) {
                                 return next(new Error('Docker returned a non-zero exit code when attempting to execute a SFTP command.'));
                             }
-                            return next();
+                            return next(null, uidResponse);
                         });
                     });
+                } else {
+                    return next(execErr);
                 }
-                return next(execErr);
             });
         });
     }
