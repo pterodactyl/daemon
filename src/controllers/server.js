@@ -25,6 +25,9 @@ const Websocket = rfr('src/http/socket.js');
 const UploadServer = rfr('src/http/upload.js');
 const FileSystem = rfr('src/controllers/fs.js');
 const ExtendedMixin = rfr('src/helpers/deepextend.js');
+const SFTPController = rfr('src/controllers/sftp.js');
+
+const SFTP = new SFTPController();
 const Config = new ConfigHelper();
 
 _.mixin({ 'deepExtend': ExtendedMixin });
@@ -429,6 +432,12 @@ class Server extends EventEmitter {
             },
         ], function (err, server) {
             return next(err, server);
+        });
+    }
+
+    setPassword(password, next) {
+        SFTP.password(this.json.user, password, function (err) {
+            return next(err);
         });
     }
 }

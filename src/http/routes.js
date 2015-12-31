@@ -93,6 +93,11 @@ RestServer.put('/server', function routePutServer(req, res, next) {
     return next();
 });
 
+RestServer.post('/server/password', function routePostServerPassword(req, res, next) {
+    Routes.setSFTPPassword();
+    return next();
+});
+
 RestServer.post('/server/rebuild', function routePostServerRebuild(req, res, next) {
     Routes.rebuildServer();
     return next();

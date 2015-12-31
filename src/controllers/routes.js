@@ -192,6 +192,13 @@ class RouteController {
             return Responses.generic204(err);
         });
     }
+
+    setSFTPPassword() {
+        if (!Auth.allowed('s:set-password')) return;
+        Auth.server().setPassword(this.req.params.password, function (err) {
+            return Responses.generic204(err);
+        });
+    }
 }
 
 module.exports = RouteController;
