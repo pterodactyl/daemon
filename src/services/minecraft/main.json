@@ -22,9 +22,9 @@
             }
         },
         "output": {
-            "find": "\r\n",
-            "flags": "gi",
-            "replace": ""
+            "find": "(\r\n)",
+            "flags": "gm",
+            "replace": "\n"
         },
         "log": {
             "custom": false,

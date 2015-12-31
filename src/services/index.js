@@ -123,7 +123,14 @@ class Core {
     }
 
     sanitizeSocketData(data) {
-        return data.replace(new RegExp(this.object.output.find || '\r\n', this.object.output.flags || 'g'), this.object.output.replace || '');
+        let newData = data.replace(new RegExp(this.object.output.find || '\r\n', this.object.output.flags || 'gm'), this.object.output.replace || '\n');
+        if (newData.indexOf('\n') === 0) {
+            newData = newData.substr(1);
+        }
+        if (!newData.endsWith('\n')) {
+            newData = newData + '\n';
+        }
+        return newData;
     }
 }
 
