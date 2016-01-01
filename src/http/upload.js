@@ -41,7 +41,7 @@ class Upload {
                     return;
                 }
 
-                if (!self.server.hasPermission('s:files:put', meta.token)) {
+                if (!self.server.hasPermission('s:files:upload', meta.token)) {
                     stream.write({ 'error': 'You do not have permission to upload files to this server.' });
                     stream.end();
                     return;
