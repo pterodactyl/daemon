@@ -8,18 +8,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 const rfr = require('rfr');
-const _ = require('underscore');
-const Path = require('path');
 const Async = require('async');
+const _ = require('underscore');
 const Fs = require('fs-extra');
+const extendify = require('extendify');
 
-const ExtendedMixin = rfr('src/helpers/deepextend.js');
-const ConfigHelper = rfr('src/helpers/config.js');
 const Status = rfr('src/helpers/status.js');
-
-const Config = new ConfigHelper();
-
-_.mixin({ 'deepExtend': ExtendedMixin });
 
 class Core {
     constructor(server, config) {
@@ -34,8 +28,12 @@ class Core {
             if (self.option.match(element.tag)) {
                 // Handle "symlink" in the configuration for plugins...
                 self.object = element;
+                const deepExtend = extendify({
+                    inPlace: false,
+                    arrays: 'replace',
+                });
                 if (typeof element.symlink !== 'undefined' && typeof config[element.symlink] !== 'undefined') {
-                    self.object = _.deepExtend(config[element.symlink], element);
+                    self.object = deepExtend(config[element.symlink], element);
                 }
             }
         });

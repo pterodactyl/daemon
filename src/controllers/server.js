@@ -15,6 +15,7 @@ const EventEmitter = require('events').EventEmitter;
 const Querystring = require('querystring');
 const Path = require('path');
 const Fs = require('fs-extra');
+const extendify = require('extendify');
 
 const Log = rfr('src/helpers/logger.js');
 const Docker = rfr('src/controllers/docker.js');
@@ -24,13 +25,10 @@ const ConfigHelper = rfr('src/helpers/config.js');
 const Websocket = rfr('src/http/socket.js');
 const UploadServer = rfr('src/http/upload.js');
 const FileSystem = rfr('src/controllers/fs.js');
-const ExtendedMixin = rfr('src/helpers/deepextend.js');
 const SFTPController = rfr('src/controllers/sftp.js');
 
 const SFTP = new SFTPController();
 const Config = new ConfigHelper();
-
-_.mixin({ 'deepExtend': ExtendedMixin });
 
 class Server extends EventEmitter {
 
@@ -369,7 +367,11 @@ class Server extends EventEmitter {
             overwrite = false; // eslint-disable-line
         }
         const self = this;
-        const newObject = (overwrite === true) ? _.extend(this.json, object) : _.deepExtend(this.json, object);
+        const deepExtend = extendify({
+            inPlace: false,
+            arrays: 'replace',
+        });
+        const newObject = (overwrite === true) ? _.extend(this.json, object) : deepExtend(this.json, object);
 
         // Do a quick determination of wether or not we need to process a rebuild request for this server.
         // If so, we need to append that action to the object that we're writing.
