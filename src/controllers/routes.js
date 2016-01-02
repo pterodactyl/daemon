@@ -100,7 +100,10 @@ class RouteController {
             });
         } else if (this.req.params.action === 'restart') {
             Auth.server().restart(function (err) {
-                return Responses.generic204(err);
+                if (err && err.message.indexOf('Server is currently queued for a container rebuild') > -1) {
+                    return self.res.send(202, { 'message': err.message });
+                }
+                Responses.generic204(err);
             });
         } else if (this.req.params.action === 'kill') {
             Auth.server().kill(function (err) {
