@@ -353,7 +353,7 @@ class Server extends EventEmitter {
                 },
                 cpu: {
                     cores: perCoreUsage,
-                    total: parseFloat(totalUsage.toFixed(6).toString()),
+                    total: parseFloat(totalUsage.toFixed(3).toString()),
                 },
             };
             self.emit('proc', self.processData.process);
