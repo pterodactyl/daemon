@@ -212,7 +212,9 @@ class Docker {
             function (callback) {
                 // Build the port bindings
                 Async.forEachOf(config.ports, function (ports, ip, eachCallback) {
+                    if (!Array.isArray(ports)) return eachCallback();
                     Async.each(ports, function (port, portCallback) {
+                        if (/^\d{1,6}$/.test(port) !== true) return portCallback();
                         bindings[Util.format('%s/tcp', port)] = [{
                             'HostIp': ip,
                             'HostPort': port.toString(),
