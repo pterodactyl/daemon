@@ -9,11 +9,17 @@
  */
 const rfr = require('rfr');
 const Async = require('async');
+const Request = require('request');
+const Util = require('util');
+const Fs = require('fs-extra');
+const Mime = require('mime');
+const Path = require('path');
 
 const ConfigHelper = rfr('src/helpers/config.js');
 const ResponseHelper = rfr('src/helpers/responses.js');
 const BuilderController = rfr('src/controllers/builder.js');
 const DeleteController = rfr('src/controllers/delete.js');
+const Log = rfr('src/helpers/logger.js');
 
 const Config = new ConfigHelper();
 let Responses;
@@ -197,6 +203,57 @@ class RouteController {
         if (!Auth.allowed('s:set-password')) return;
         Auth.server().setPassword(this.req.params.password, function (err) {
             return Responses.generic204(err);
+        });
+    }
+
+    downloadServerFile() {
+        if (!Config.get('remote.download')) {
+            return this.res.send(501, { 'error': 'This action has not been properly configured on the daemon.' });
+        }
+
+        const self = this;
+        Request.post(Config.get('remote.download'), {
+            form: {
+                token: this.req.params[0],
+            },
+        }, function (err, response, body) {
+            if (err) {
+                Log.warn(err, 'Download action failed due to an error with the request.');
+                return self.res.send(500, { 'error': 'An error occured while attempting to perform this request.' });
+            }
+
+            if (response.statusCode === 200) {
+                try {
+                    const json = JSON.parse(body);
+                    if (typeof json !== 'undefined' && json.path) {
+                        const Server = Auth.allServers();
+                        // Does the server even exist?
+                        if (typeof Server[json.server] === 'undefined') {
+                            return self.res.send(404, { 'error': 'No server found for the specified resource.' });
+                        }
+
+                        // Get necessary information for the download.
+                        const Filename = Path.basename(json.path);
+                        const Mimetype = Mime.lookup(json.path);
+                        const File = Server[json.server].path(json.path);
+                        const Stat = Fs.statSync(File);
+                        self.res.writeHead(200, {
+                            'Content-Type': Mimetype,
+                            'Content-Length': Stat.size,
+                            'Content-Disposition': Util.format('attachment; filename=%s', Filename),
+                        });
+                        const Filestream = Fs.createReadStream(File);
+                        Filestream.pipe(self.res);
+                    } else {
+                        return self.res.send(424, { 'error': 'The upstream response did not include a valid download path.' });
+                    }
+                } catch (ex) {
+                    Log.error(ex);
+                    return self.res.send(500, { 'error': 'An unexpected error occured while attempting to process this request.' });
+                }
+            } else {
+                return self.res.send(502, { 'error': 'An error occured while attempting to authenticate with an upstream provider.', res_code: response.statusCode });
+            }
         });
     }
 }

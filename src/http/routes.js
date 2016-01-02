@@ -146,6 +146,11 @@ RestServer.del(/^\/server\/file\/(.+)/, function routePostServerFile(req, res, n
     return next();
 });
 
+RestServer.get(/^\/server\/download\/([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})/, function routeGetServerDownload(req, res, next) {
+    Routes.downloadServerFile();
+    return next();
+});
+
 RestServer.listen(Config.get('web.listen', 8080), Config.get('web.host', '0.0.0.0'), function listen() {
     Log.info(Util.format('The following services are now listening on %s:%d: REST, Websocket, Uploads',
         Config.get('web.host', '0.0.0.0'),
