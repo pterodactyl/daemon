@@ -373,6 +373,17 @@ class Server extends EventEmitter {
         });
         const newObject = (overwrite === true) ? _.extend(this.json, object) : deepExtend(this.json, object);
 
+        // Ports are a pain in the butt.
+        if (typeof object.build !== 'undefined') {
+            _.each(object.build, function (obj, ident) {
+                if (ident.endsWith('|overwrite')) {
+                    const item = ident.split('|')[0];
+                    self.json.build[item] = obj;
+                    delete self.json.build[ident];
+                }
+            });
+        }
+
         // Do a quick determination of wether or not we need to process a rebuild request for this server.
         // If so, we need to append that action to the object that we're writing.
         if (typeof object.build !== 'undefined') {
