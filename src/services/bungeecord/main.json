@@ -1,0 +1,31 @@
+{
+    "latest": {
+        "tag": "^(latest)$",
+        "symlink": "bungeecord"
+    },
+    "bungeecord": {
+        "tag": "^(bungeecord)$",
+        "symlink": "vanilla",
+        "startup": {
+            "done": "[INFO] Listening on "
+        },
+        "stop": "end",
+        "configs": {
+            "config.yml": {
+                "  query_enabled:": "  query_enabled: true",
+                "  query_port:": "  query_port: {{ build.default.port }}",
+                "  host:": "  host: 0.0.0.0:{{ build.default.port }}"
+            }
+        },
+        "log": {
+            "custom": false,
+            "location": "proxy.log.0"
+        },
+        "output": {
+            "find": "(\r\n)",
+            "flags": "gm",
+            "replace": "\n"
+        },
+        "query": "minecraftping"
+    }
+}

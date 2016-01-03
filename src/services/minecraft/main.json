@@ -1,11 +1,10 @@
 {
     "latest": {
-        "id": "latest",
         "tag": "^(latest)$",
         "symlink": "vanilla"
     },
     "vanilla": {
-        "tag": "^(vanilla-[\\w\\d._-]+)$",
+        "tag": "^(vanilla){1}(-[\\w\\d.-]+)?$",
         "startup": {
             "done": ")! For help, type ",
             "userInteraction": [
@@ -35,23 +34,5 @@
     "spigot": {
         "tag": "^(spigot)$",
         "symlink": "vanilla"
-    },
-    "bungeecord": {
-        "tag": "^(bungeecord)$",
-        "symlink": "vanilla",
-        "startup": {
-            "done": "[INFO] Listening on "
-        },
-        "stop": "end",
-        "configs": {
-            "config.yml": {
-                "  query_enabled:": "  query_enabled: true",
-                "  query_port:": "  query_port: {{ build.default.port }}",
-                "  host:": "  host: 0.0.0.0:{{ build.default.port }}"
-            }
-        },
-        "log": {
-            "location": "proxy.log.0"
-        }
     }
 }
