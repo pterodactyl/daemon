@@ -12,6 +12,7 @@ const Dockerode = require('dockerode');
 const isStream = require('isstream');
 const Async = require('async');
 const Util = require('util');
+const _ = require('underscore');
 
 const Status = rfr('src/helpers/status.js');
 const LoadConfig = rfr('src/helpers/config.js');
@@ -241,6 +242,18 @@ class Docker {
             },
             function (callback) {
                 self.server.log.debug('Creating new container...');
+
+                // Add some additional environment variables
+                config.env.SERVER_MEMORY = config.memory;
+                config.env.SERVER_IP = config.default.ip;
+                config.env.SERVER_PORT = config.default.port;
+
+                const environment = [];
+                _.each(config.env, function (value, index) {
+                    environment.push(Util.format('%s=%s', index, value));
+                });
+
+                // Make the container
                 DockerController.createContainer({
                     Image: config.image,
                     Hostname: 'container',
@@ -258,7 +271,7 @@ class Docker {
                             RW: true,
                         },
                     ],
-                    Env: config.env,
+                    Env: environment,
                     ExposedPorts: exposed,
                     HostConfig: {
                         Binds: [

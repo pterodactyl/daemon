@@ -16,10 +16,10 @@ const Querystring = require('querystring');
 const Path = require('path');
 const Fs = require('fs-extra');
 const extendify = require('extendify');
+const Util = require('util');
 
 const Log = rfr('src/helpers/logger.js');
 const Docker = rfr('src/controllers/docker.js');
-const Service = rfr('src/services/minecraft/index.js');
 const Status = rfr('src/helpers/status.js');
 const ConfigHelper = rfr('src/helpers/config.js');
 const Websocket = rfr('src/http/socket.js');
@@ -63,6 +63,7 @@ class Server extends EventEmitter {
             return next(err);
         });
 
+        const Service = rfr(Util.format('src/services/%s/index.js', this.json.service.type));
         this.service = new Service(this);
 
         this.socketIO = new Websocket(this).init();

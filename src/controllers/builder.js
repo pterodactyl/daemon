@@ -14,6 +14,7 @@ const Path = require('path');
 const Dockerode = require('dockerode');
 const Util = require('util');
 const RandomString = require('randomstring');
+const _ = require('underscore');
 
 const Log = rfr('src/helpers/logger.js');
 const InitializeHelper = rfr('src/helpers/initialize.js').Initialize;
@@ -72,6 +73,7 @@ class Builder {
                         });
                         return callback(err);
                     }
+                    self.json.container = {};
                     self.json.container.id = data.id.substr(0, 12);
                     self.json.container.image = data.image;
                     return callback();
@@ -180,6 +182,17 @@ class Builder {
                 });
             },
             function (callback) {
+                // Add some additional environment variables
+                config.env.SERVER_MEMORY = config.memory;
+                config.env.SERVER_IP = config.default.ip;
+                config.env.SERVER_PORT = config.default.port;
+
+                const environment = [];
+                _.each(config.env, function (value, index) {
+                    environment.push(Util.format('%s=%s', index, value));
+                });
+
+                // Make the container
                 DockerController.createContainer({
                     Image: config.image,
                     Hostname: 'container',
@@ -197,7 +210,7 @@ class Builder {
                             RW: true,
                         },
                     ],
-                    Env: config.env,
+                    Env: environment,
                     ExposedPorts: exposed,
                     HostConfig: {
                         Binds: [
