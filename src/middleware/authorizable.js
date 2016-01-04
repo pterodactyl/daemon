@@ -41,18 +41,16 @@ class AuthorizationMiddleware {
             return false;
         }
 
-        if (perm.indexOf('g:') === 0) {
-            if (typeof Config.get('keys') === 'object' && Config.get('keys').indexOf(this.token) > -1) {
-                return true;
+        if (typeof Servers[this.uuid] !== 'undefined') {
+            if (perm.indexOf('g:') === 0) {
+                if (typeof Config.get('keys') === 'object' && Config.get('keys').indexOf(this.token) > -1) {
+                    return true;
+                }
             }
-        }
-
-        if (perm.indexOf('s:') === 0) {
-            if (typeof Config.get('keys') === 'object' && Config.get('keys').indexOf(this.token) > -1) {
-                return true;
-            }
-
-            if (typeof Servers[this.uuid] !== 'undefined') {
+            if (perm.indexOf('s:') === 0) {
+                if (typeof Config.get('keys') === 'object' && Config.get('keys').indexOf(this.token) > -1) {
+                    return true;
+                }
                 if (Servers[this.uuid].hasPermission(perm, this.token)) {
                     return true;
                 }
