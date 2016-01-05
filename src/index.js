@@ -15,8 +15,11 @@ Log.info('Starting Pterodactyl Daemon...');
 const Async = require('async');
 const Initializer = rfr('src/helpers/initialize.js').Initialize;
 const SFTPController = rfr('src/controllers/sftp.js');
+const LiveStats = rfr('src/http/stats.js');
+
 const Initialize = new Initializer();
 const SFTP = new SFTPController();
+const Stats = new LiveStats();
 
 Async.series([
     function indexAsyncStartSFTP(callback) {
@@ -27,6 +30,11 @@ Async.series([
     function indexAsyncInitialize(callback) {
         Log.info('Attempting to load servers and initialize daemon...');
         Initialize.init(callback);
+    },
+    function indexAsyncStartsSocket(callback) {
+        Log.info('Configuring websocket for daemon stats...');
+        Stats.init();
+        return callback();
     },
 ], function indexAsyncCallback(err) {
     if (err) {

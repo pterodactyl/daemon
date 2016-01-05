@@ -96,4 +96,5 @@ class WebSocket {
     }
 }
 
-module.exports = WebSocket;
+exports.ServerSockets = WebSocket;
+exports.Socket = Socket;
