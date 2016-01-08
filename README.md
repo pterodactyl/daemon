@@ -8,7 +8,7 @@ Please see `CONTRIBUTING.md` for information needed if you want to contribute to
 
 ## Building Project
 ```
-git clone https://ithub.com/Pterodactyl/Daemon.git /srv/daemon
+git clone https://github.com/Pterodactyl/Daemon.git /srv/daemon
 cd /srv/daemon
 npm install [--production]
 npm start
