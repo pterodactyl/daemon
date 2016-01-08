@@ -279,7 +279,7 @@ class Docker {
                         ],
                         PortBindings: bindings,
                         OomKillDisable: config.oom_disabled || false,
-                        CpuShares: (config.cpu * 1000),
+                        CpuQuota: (config.cpu > 0) ? (config.cpu * 1000) : -1,
                         CpuPeriod: (config.cpu > 0) ? 100000 : 0,
                         Memory: config.memory * 1000000,
                         BlkioWeight: config.io,
