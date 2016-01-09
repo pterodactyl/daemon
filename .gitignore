@@ -36,3 +36,4 @@ daemon
 !config/servers/.githold
 !config/credentials/.githold
 !lib/.githold
+!logs/.githold
