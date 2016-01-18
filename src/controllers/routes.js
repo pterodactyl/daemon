@@ -85,9 +85,9 @@ class RouteController {
 
     // Handles server power
     putServerPower() {
-        if (!Auth.allowed('s:power')) return;
         const self = this;
         if (this.req.params.action === 'start') {
+            if (!Auth.allowed('s:power:start')) return;
             Auth.server().start(function (err) {
                 if (err && err.message.indexOf('Server is currently queued for a container rebuild') > -1) {
                     return self.res.send(202, { 'message': err.message });
@@ -95,10 +95,12 @@ class RouteController {
                 Responses.generic204(err);
             });
         } else if (this.req.params.action === 'stop') {
+            if (!Auth.allowed('s:power:stop')) return;
             Auth.server().stop(function (err) {
                 return Responses.generic204(err);
             });
         } else if (this.req.params.action === 'restart') {
+            if (!Auth.allowed('s:power:restart')) return;
             Auth.server().restart(function (err) {
                 if (err && err.message.indexOf('Server is currently queued for a container rebuild') > -1) {
                     return self.res.send(202, { 'message': err.message });
@@ -106,6 +108,7 @@ class RouteController {
                 Responses.generic204(err);
             });
         } else if (this.req.params.action === 'kill') {
+            if (!Auth.allowed('s:power:kill')) return;
             Auth.server().kill(function (err) {
                 return Responses.generic204(err);
             });

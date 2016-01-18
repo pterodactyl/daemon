@@ -179,7 +179,12 @@ class Server extends EventEmitter {
         });
     }
 
-    stop(next) {
+    stop(ignorePermission, next) {
+        if (typeof ignorePermission === 'function') {
+            next = ignorePermission; // eslint-disable-line
+            ignorePermission = false; // eslint-disable-line
+        }
+
         if (this.status === Status.OFF) {
             return next(new Error('Server is already stopped.'));
         }
@@ -193,7 +198,7 @@ class Server extends EventEmitter {
         // So, what we will do is send a stop command, and then sit there and wait
         // until the container stops because the process stopped, at which point the crash
         // detection will not fire since we set the status to STOPPING.
-        this.command(this.service.object.stop, function (err) {
+        this.command(this.service.object.stop, ignorePermission, function (err) {
             return next(err);
         });
     }
@@ -219,7 +224,7 @@ class Server extends EventEmitter {
                     self.once('is:OFF', function () {
                         return callback();
                     });
-                    self.stop(function (err) {
+                    self.stop(true, function (err) {
                         if (err) return callback(err);
                     });
                 } else {
@@ -250,13 +255,19 @@ class Server extends EventEmitter {
     /**
      * Send command to server.
      */
-    command(command, next) {
+    command(command, ignore, next) {
+        if (typeof ignore === 'function') {
+            next = ignore; // eslint-disable-line
+            ignore = false; // eslint-disable-line
+        }
+
         if (this.status === Status.OFF) {
             return next(new Error('Server is currently stopped.'));
         }
 
         // Prevent a user sending a stop command manually from crashing the server.
-        if (command.startsWith(this.service.object.stop)) {
+        if (command.trim().replace(/^\/*/, '').startsWith(this.service.object.stop)) {
+            if (!ignore && !this.hasPermission('s:power:stop')) return next(new Error('Permission denied for stop command.'));
             this.setStatus(Status.STOPPING);
         }
 
