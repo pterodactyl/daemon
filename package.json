@@ -19,7 +19,7 @@
     "daemon",
     "wings"
   ],
-  "author": "Dane Everitt",
+  "author": "Dane Everitt <dane@daneeveritt.com>",
   "license": "GPL-3.0",
   "bugs": {
     "url": "https://github.com/Pterodactyl/Daemon/issues"
