@@ -33,6 +33,7 @@
     "async": "^1.5.0",
     "binaryjs": "^0.2.1",
     "bunyan": "^1.5.1",
+    "chokidar": "^1.4.2",
     "dockerode": "^2.2.7",
     "extendify": "^1.0.0",
     "fs-extra": "^0.26.3",

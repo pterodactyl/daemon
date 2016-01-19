@@ -48,6 +48,7 @@ class Server extends EventEmitter {
             query: null,
         };
 
+        this.knownWrite = false;
         this.buildInProgress = false;
         this.configLocation = Path.join(__dirname, '../../config/servers/', this.uuid, 'server.json');
 
@@ -367,6 +368,7 @@ class Server extends EventEmitter {
             next = overwrite; // eslint-disable-line
             overwrite = false; // eslint-disable-line
         }
+
         const self = this;
         const deepExtend = extendify({
             inPlace: false,
@@ -392,8 +394,14 @@ class Server extends EventEmitter {
             newObject.rebuild = true;
         }
 
+        this.knownWrite = true;
         Fs.writeJson(this.configLocation, newObject, function (err) {
+            // Ideally we wouldn't need this, and could just let the
+            // file water handle it. However, the water is slightly slow,
+            // and the async actions don't wait for the JSON to be updated
+            // which causes some issues...
             if (!err) self.json = newObject;
+            self.knownWrite = false;
             return next(err);
         });
     }

@@ -7,13 +7,47 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+const rfr = require('rfr');
 const Fs = require('fs-extra');
 const Async = require('async');
 const Path = require('path');
+const Chokidar = require('chokidar');
+
+const Log = rfr('src/helpers/logger.js');
 
 class FileSystem {
     constructor(server) {
         this.server = server;
+
+        const self = this;
+        const Watcher = Chokidar.watch(this.server.configLocation, {
+            persistent: true,
+        });
+
+        Watcher.on('change', function () {
+            if (self.server.knownWrite !== true) {
+                Fs.readJson(self.server.configLocation, function (err, object) {
+                    if (err) {
+                        // Try to overwrite those changes with the old config.
+                        self.server.log.warn(err, 'An error was detected with the changed file, attempting to undo the changes.');
+                        self.server.knownWrite = true;
+                        Fs.writeJson(self.server.configLocation, self.server.json, function (writeErr) {
+                            if (!writeErr) {
+                                self.server.log.debug('Successfully undid those remote changes.');
+                            } else {
+                                self.server.log.fatal(writeErr, 'Unable to undo those changes, this could break the daemon badly.');
+                            }
+                        });
+                    } else {
+                        self.server.log.debug('Detected file change, updating JSON object correspondingly.');
+                        self.server.json = object;
+                    }
+                    self.server.knownWrite = false;
+                });
+            } else {
+                self.server.knownWrite = false;
+            }
+        });
     }
 
     write(file, data, next) {
