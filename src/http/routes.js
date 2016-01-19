@@ -152,7 +152,8 @@ RestServer.get(/^\/server\/download\/([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[
 });
 
 RestServer.listen(Config.get('web.listen', 8080), Config.get('web.host', '0.0.0.0'), function listen() {
-    Log.info(Util.format('The following services are now listening on %s:%d: REST, Websocket, Uploads',
+    Log.info(Util.format('Pterodactyl Daemon is now listening for %s connections on %s:%s',
+        (Config.get('web.ssl.enabled') === true) ? 'secure' : 'insecure',
         Config.get('web.host', '0.0.0.0'),
         Config.get('web.listen', 8080)
     ));
