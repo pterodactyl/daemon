@@ -27,9 +27,7 @@
   "homepage": "https://github.com/Pterodactyl/Daemon#readme",
   "devDependencies": {
     "eslint": "^1.10.3",
-    "eslint-config-airbnb": "^2.1.1",
-    "eslint-plugin-react": "^3.12.0",
-    "nexe": "^0.4.2"
+    "eslint-config-airbnb": "^2.1.1"
   },
   "dependencies": {
     "async": "^1.5.0",
