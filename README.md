@@ -4,55 +4,26 @@ The server control and management daemon built specifically for Pterodactyl Pane
 # Contributing
 Please see `CONTRIBUTING.md` for information needed if you want to contribute to this project.
 
-# Running Developmental Builds
-
-## Building Project
+# License
 ```
-git clone https://github.com/Pterodactyl/Daemon.git /srv/daemon
-cd /srv/daemon
-npm install [--production]
-npm start
-```
+Pterodactyl - Daemon
+Copyright (c) 2015 - 2016 Dane Everitt <dane@daneeveritt.com>
 
-## Building Executable
-It is possible to ship the daemon as an executable file. To do this, you will need to make use of `nexe` which is packaged and included with this program. You should run this after running `npm run build` since we are using the built files to compile the program.
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-```
-node_modules/nexe/bin/nexe -i src/*.js package.json -o daemon -r 4.2.3
-```
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 
-This will output a file called `daemon` which can be run using `./daemon` in that directory. In order to have cleaner output, you will need to pass the output to `bunyan`, using `./daemon | node_modules/bunyan/bin/bunyan -o short`
-
-## Building Configuration File
-A basic configuration will need to be created in order to run a developmental build.
-
-```
-{
-    "web": {
-        "listen": 8080,
-        "ssl": {
-            "enabled": false,
-            "certificate": "~/.ssl/public.crt",
-            "key": "~/.ssl/public.key"
-        }
-    },
-    "docker": {
-      "socket": "/var/run/docker.sock"
-    },
-    "sftp": {
-        "path": "/srv/data",
-        "port": 2022,
-        "container": "10ada0566a18"
-    },
-    "logger": {
-        "path": "logs/",
-        "src": false,
-        "level": "info",
-        "period": "1d",
-        "count": 3
-    },
-    "keys": [
-      "9b6c1fa5-fa5f-49f4-970e-bf2bb28272b0"
-    ]
-}
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 ```
