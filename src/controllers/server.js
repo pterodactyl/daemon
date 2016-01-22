@@ -409,10 +409,19 @@ class Server extends EventEmitter {
             newObject.rebuild = true;
         }
 
-        this.knownWrite = true;
-        Fs.writeJson(this.configLocation, newObject, function (err) {
-            if (!err) self.json = newObject;
-            self.knownWrite = false;
+        Async.series([
+            function (callback) {
+                self.knownWrite = true;
+                callback();
+            },
+            function (callback) {
+                Fs.writeJson(self.configLocation, newObject, function (err) {
+                    if (!err) self.json = newObject;
+                    return callback(err);
+                });
+            },
+        ], function (err) {
+            if (err) self.knownWrite = false;
             return next(err);
         });
     }

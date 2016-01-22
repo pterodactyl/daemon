@@ -22,13 +22,10 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-const rfr = require('rfr');
 const Fs = require('fs-extra');
 const Async = require('async');
 const Path = require('path');
 const Chokidar = require('chokidar');
-
-const Log = rfr('src/helpers/logger.js');
 
 class FileSystem {
     constructor(server) {
@@ -37,6 +34,7 @@ class FileSystem {
         const self = this;
         const Watcher = Chokidar.watch(this.server.configLocation, {
             persistent: true,
+            awaitWriteFinish: true,
         });
 
         Watcher.on('change', function () {
