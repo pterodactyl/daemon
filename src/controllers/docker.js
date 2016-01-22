@@ -250,12 +250,6 @@ class Docker {
                 });
             },
             function (callback) {
-                self.server.log.debug('Removing server container...');
-                self.container.remove(function (err) {
-                    return callback(err);
-                });
-            },
-            function (callback) {
                 self.server.log.debug('Creating new container...');
 
                 // Add some additional environment variables
@@ -273,7 +267,6 @@ class Docker {
                     Image: config.image,
                     Hostname: 'container',
                     User: config.user.toString(),
-                    name: self.server.json.user,
                     AttachStdin: true,
                     AttachStdout: true,
                     AttachStderr: true,
@@ -311,9 +304,14 @@ class Docker {
             if (err) {
                 return next(err);
             }
-            return next(null, {
-                id: data[2].id,
-                image: config.image,
+            self.server.log.debug('Removing old server container...');
+            // @TODO: logic here to determine if this failed, if so we need to
+            // remove the newly created server probably.
+            self.container.remove(function (removeError) {
+                return next(removeError, {
+                    id: data[1].id,
+                    image: config.image,
+                });
             });
         });
     }
