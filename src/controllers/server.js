@@ -411,10 +411,6 @@ class Server extends EventEmitter {
 
         this.knownWrite = true;
         Fs.writeJson(this.configLocation, newObject, function (err) {
-            // Ideally we wouldn't need this, and could just let the
-            // file water handle it. However, the water is slightly slow,
-            // and the async actions don't wait for the JSON to be updated
-            // which causes some issues...
             if (!err) self.json = newObject;
             self.knownWrite = false;
             return next(err);
