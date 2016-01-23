@@ -55,11 +55,9 @@ class FileSystem {
                         self.server.log.debug('Detected file change, updating JSON object correspondingly.');
                         self.server.json = object;
                     }
-                    self.server.knownWrite = false;
                 });
-            } else {
-                self.server.knownWrite = false;
             }
+            self.server.knownWrite = false;
         });
     }
 
