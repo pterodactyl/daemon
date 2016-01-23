@@ -151,11 +151,7 @@ class Builder {
                 });
             },
         ], function initAsyncCallback(err) {
-            if (err) {
-                Log.error(err);
-                return next(new Error('An error occured while attempting to add a new container to the system.'));
-            }
-            return next(null, self.json);
+            return next(err, self.json);
         });
     }
 
@@ -265,7 +261,7 @@ class Builder {
         ], function (err, data) {
             if (err) return next(err);
             return next(null, {
-                id: data[1].id,
+                id: data[2].id,
                 image: config.image,
             });
         });

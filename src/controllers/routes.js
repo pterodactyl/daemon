@@ -29,6 +29,7 @@ const Util = require('util');
 const Fs = require('fs-extra');
 const Mime = require('mime');
 const Path = require('path');
+const Crypto = require('crypto');
 
 const ConfigHelper = rfr('src/helpers/config.js');
 const ResponseHelper = rfr('src/helpers/responses.js');
@@ -64,11 +65,33 @@ class RouteController {
 
     postNewServer() {
         if (!Auth.allowed('c:create')) return;
-        const self = this;
         const Builder = new BuilderController(this.req.params);
+        this.res.send(202, { 'message': 'Server is being built now, this might take some time if the docker image doesn\'t exist on the system yet.' });
+
+        // We sent a HTTP 202 since this might take awhile.
+        // We do need to monitor for errors and negatiate with
+        // the panel if they do occur.
         Builder.init(function (err, data) {
-            if (err) return Responses.generic500(err);
-            return self.res.send(200, data);
+            if (err) Log.error(err);
+
+            const HMAC = Crypto.createHmac('sha256', Config.get('keys.0'));
+            HMAC.update(data.uuid);
+
+            Request.post(Config.get('remote.installed'), {
+                form: {
+                    server: data.uuid,
+                    signed: HMAC.digest('base64'),
+                    installed: (err) ? 'error' : 'installed',
+                },
+                followAllRedirects: true,
+                timeout: 5000,
+            }, function (requestErr, response, body) {
+                if (requestErr || response.statusCode !== 200) {
+                    Log.warn(requestErr, 'An error occured while attempting to alert the panel of server install status.', { code: (typeof response !== 'undefined') ? response.statusCode : null, responseBody: body });
+                } else {
+                    Log.info('Notified remote panel of server install status.');
+                }
+            });
         });
     }
 
