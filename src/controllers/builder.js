@@ -32,6 +32,7 @@ const RandomString = require('randomstring');
 const _ = require('underscore');
 
 const Log = rfr('src/helpers/logger.js');
+const ImageHelper = rfr('src/helpers/image.js');
 const InitializeHelper = rfr('src/helpers/initialize.js').Initialize;
 const ConfigHelper = rfr('src/helpers/config.js');
 const SFTPController = rfr('src/controllers/sftp.js');
@@ -175,6 +176,22 @@ class Builder {
         const exposed = {};
         Async.series([
             function (callback) {
+                // The default is to not automatically update images.
+                if (Config.get('docker.autoupdate_images', false) === false) {
+                    ImageHelper.exists(config.image, function (err) {
+                        if (!err) return callback();
+                        Log.info(Util.format('Pulling image %s because it doesn\'t exist on the system.', config.image));
+                        ImageHelper.pull(config.image, function (pullErr) {
+                            return callback(pullErr);
+                        });
+                    });
+                } else {
+                    ImageHelper.pull(config.image, function (err) {
+                        return callback(err);
+                    });
+                }
+            },
+            function (callback) {
                 // Build the port bindings
                 Async.forEachOf(config.ports, function (ports, ip, eachCallback) {
                     Async.each(ports, function (port, portCallback) {
@@ -212,7 +229,6 @@ class Builder {
                     Image: config.image,
                     Hostname: 'container',
                     User: config.user.toString(),
-                    name: self.json.user,
                     AttachStdin: true,
                     AttachStdout: true,
                     AttachStderr: true,

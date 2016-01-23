@@ -29,8 +29,10 @@ const Async = require('async');
 const Util = require('util');
 const _ = require('underscore');
 
+const Log = rfr('src/helpers/logger.js');
 const Status = rfr('src/helpers/status.js');
 const LoadConfig = rfr('src/helpers/config.js');
+const ImageHelper = rfr('src/helpers/image.js');
 
 const Config = new LoadConfig();
 const DockerController = new Dockerode({
@@ -226,6 +228,22 @@ class Docker {
         const exposed = {};
         Async.series([
             function (callback) {
+                // The default is to not automatically update images.
+                if (Config.get('docker.autoupdate_images', false) === false) {
+                    ImageHelper.exists(config.image, function (err) {
+                        if (!err) return callback();
+                        Log.info(Util.format('Pulling image %s because it doesn\'t exist on the system.', config.image));
+                        ImageHelper.pull(config.image, function (pullErr) {
+                            return callback(pullErr);
+                        });
+                    });
+                } else {
+                    ImageHelper.pull(config.image, function (err) {
+                        return callback(err);
+                    });
+                }
+            },
+            function (callback) {
                 // Build the port bindings
                 Async.forEachOf(config.ports, function (ports, ip, eachCallback) {
                     if (!Array.isArray(ports)) return eachCallback();
@@ -309,7 +327,7 @@ class Docker {
             // remove the newly created server probably.
             self.container.remove(function (removeError) {
                 return next(removeError, {
-                    id: data[1].id,
+                    id: data[2].id,
                     image: config.image,
                 });
             });
