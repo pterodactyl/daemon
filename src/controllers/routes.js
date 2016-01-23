@@ -240,7 +240,7 @@ class RouteController {
             form: {
                 token: this.req.params[0],
             },
-            timeout: 5,
+            timeout: 5000,
         }, function (err, response, body) {
             if (err) {
                 Log.warn(err, 'Download action failed due to an error with the request.');
