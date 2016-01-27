@@ -31,11 +31,6 @@ const ConfigHelper = rfr('src/helpers/config.js');
 const RestServer = rfr('src/http/restify.js');
 
 const Config = new ConfigHelper();
-const BinaryServer = binaryJS({
-    server: RestServer,
-    chunkSize: 40960,
-    path: '/upload/',
-});
 
 class Upload {
     constructor(server) {
@@ -44,6 +39,12 @@ class Upload {
 
     init() {
         const self = this;
+        const BinaryServer = binaryJS({
+            server: RestServer,
+            chunkSize: 40960,
+            path: '/upload/' + this.server.json.uuid,
+        });
+
         // Prevents a scary looking error from NodeJS about possible
         // memory leak. There is no leak. (only leeks!)
         BinaryServer.removeAllListeners('connection');
@@ -57,12 +58,13 @@ class Upload {
                 }
 
                 if (!self.server.hasPermission('s:files:upload', meta.token)) {
-                    stream.write({ 'error': 'You do not have permission to upload files to this server.' });
+                    stream.write({ 'error': meta.token });
+                    // stream.write({ 'error': 'You do not have permission to upload files to this server.' });
                     stream.end();
                     return;
                 }
 
-                if (meta.size > Config.get('uploads.maximumSize', 1000000)) {
+                if (meta.size > Config.get('uploads.maximumSize', 100000000)) {
                     stream.write({ 'error': 'That file is too big to upload.' });
                     stream.end();
                     return;
