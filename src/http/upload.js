@@ -58,8 +58,7 @@ class Upload {
                 }
 
                 if (!self.server.hasPermission('s:files:upload', meta.token)) {
-                    stream.write({ 'error': meta.token });
-                    // stream.write({ 'error': 'You do not have permission to upload files to this server.' });
+                    stream.write({ 'error': 'You do not have permission to upload files to this server.' });
                     stream.end();
                     return;
                 }
@@ -77,8 +76,8 @@ class Upload {
                     }
 
                     // Write uploaded file to server
-                    const FileWritter = Fs.createWriteStream(self.server.path(Path.join(meta.path, meta.name)));
-                    stream.pipe(FileWritter);
+                    const FileWriter = Fs.createWriteStream(self.server.path(Path.join(meta.path, meta.name)));
+                    stream.pipe(FileWriter);
                     stream.on('data', function (data) {
                         stream.write({ rx: data.length / meta.size });
                     });
