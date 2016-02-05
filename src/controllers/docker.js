@@ -184,7 +184,7 @@ class Docker {
             self.stream = stream;
             function onProgress(data) { self.server.output(data); }
             function onFinished(attachStreamErr) {
-                if (attachStreamErr) self.log.warn(attachStreamErr);
+                if (attachStreamErr) self.server.log.warn(attachStreamErr);
                 self.stream = undefined;
                 self.server.streamClosed();
             }
