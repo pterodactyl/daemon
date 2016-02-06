@@ -27,24 +27,24 @@ const binaryJS = require('binaryjs').BinaryServer;
 const Fs = require('fs-extra');
 const Path = require('path');
 
+const Initializer = rfr('src/helpers/initialize.js');
 const ConfigHelper = rfr('src/helpers/config.js');
 const RestServer = rfr('src/http/restify.js');
+const BinaryServer = binaryJS({
+    server: RestServer,
+    chunkSize: 40960,
+    path: '/upload/',
+});
 
 const Config = new ConfigHelper();
 
 class Upload {
-    constructor(server) {
-        this.server = server;
+    constructor() {
+        //
     }
 
     init() {
         const self = this;
-        const BinaryServer = binaryJS({
-            server: RestServer,
-            chunkSize: 40960,
-            path: '/upload/' + this.server.json.uuid,
-        });
-
         // Prevents a scary looking error from NodeJS about possible
         // memory leak. There is no leak. (only leeks!)
         BinaryServer.removeAllListeners('connection');
@@ -57,7 +57,14 @@ class Upload {
                     return;
                 }
 
-                if (!self.server.hasPermission('s:files:upload', meta.token)) {
+                if (typeof Initializer.Servers === 'undefined' || typeof Initializer.Servers[meta.server] === 'undefined') {
+                    stream.write({ 'error': 'You do not have permission to upload files to this server.' });
+                    stream.end();
+                    return;
+                }
+
+                const Server = Initializer.Servers[meta.server];
+                if (!Server.hasPermission('s:files:upload', meta.token)) {
                     stream.write({ 'error': 'You do not have permission to upload files to this server.' });
                     stream.end();
                     return;
@@ -69,14 +76,14 @@ class Upload {
                     return;
                 }
 
-                Fs.ensureDir(self.server.path(meta.path), function (err) {
+                Fs.ensureDir(Server.path(meta.path), function (err) {
                     if (err) {
-                        this.server.log.error(err);
+                        Server.log.error(err);
                         return;
                     }
 
                     // Write uploaded file to server
-                    const FileWriter = Fs.createWriteStream(self.server.path(Path.join(meta.path, meta.name)));
+                    const FileWriter = Fs.createWriteStream(Server.path(Path.join(meta.path, meta.name)));
                     stream.pipe(FileWriter);
                     stream.on('data', function (data) {
                         stream.write({ rx: data.length / meta.size });
