@@ -211,7 +211,11 @@ class Docker {
             self.procStream = stream;
             self.procStream.setEncoding('utf8');
             self.procStream.on('data', function dockerTopStreamData(data) {
-                self.procData = JSON.parse(data);
+                try {
+                    self.procData = JSON.parse(data);
+                } catch (ex) {
+                    self.server.log.warn(ex.stack);
+                }
             });
             self.procStream.on('end', function dockerTopSteamEnd() {
                 self.procStream = undefined;
