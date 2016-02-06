@@ -151,7 +151,7 @@ class Server extends EventEmitter {
                 Async.waterfall([
                     function (callback) {
                         self.buildInProgress = true;
-                        self.emit('console', '[Daemon] Your server is currently queued for a container rebuild. This should only take a few seconds, but could take a few minutes. You do not need to do anything else while this occurs. Your server will automatically continue with startup once this process is completed.');
+                        self.emit('console', '\n[Daemon] Your server is currently queued for a container rebuild. This should only take a few seconds, but could take a few minutes. You do not need to do anything else while this occurs. Your server will automatically continue with startup once this process is completed.');
                         callback();
                     },
                     function (callback) {
@@ -163,10 +163,14 @@ class Server extends EventEmitter {
                         newServer.start(callback);
                     },
                 ], function (err) {
-                    if (err) Log.error(err);
+                    if (err) {
+                        self.emit('console', '\n[Daemon] An error was encountered while attempting to rebuild this container.');
+                        this.buildInProgress = false;
+                        Log.error(err);
+                    }
                 });
             } else {
-                this.emit('console', '[Daemon] Please wait while your server is being rebuilt...');
+                this.emit('console', '\n[Daemon] Please wait while your server is being rebuilt...');
             }
             return next(new Error('Server is currently queued for a container rebuild. Your request has been accepted and will be processed once the rebuild is complete.'));
         }
