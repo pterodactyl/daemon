@@ -45,6 +45,7 @@ class Docker {
         this.containerID = this.server.json.container.id;
         this.container = DockerController.getContainer(this.containerID);
         this.stream = undefined;
+        this.procStream = undefined;
         this.procData = undefined;
 
         // Check status and attach if server is running currently.
@@ -136,14 +137,16 @@ class Docker {
 
         this.container.exec({ Cmd: command, AttachStdin: true, AttachStdout: true, Tty: true }, function dockerExec(err, exec) {
             if (err) return next(err);
-            function onProgress(data) { self.server.output(data); }
-            function onFinished(execStreamErr) {
-                if (execStreamErr) self.log.warn(execStreamErr);
-                self.server.streamClosed();
-            }
             exec.start(function dockerExecStartStart(execErr, stream) {
                 if (!execErr && stream) {
-                    DockerController.modem.followProgress(stream, onFinished, onProgress);
+                    stream.setEncoding('utf8');
+                    stream.on('data', function dockerExecStreamData(data) {
+                        // Send data to the Server.output() function.
+                        self.server.output(data);
+                    });
+                    stream.on('end', function dockerExecStreamEnd() {
+                        self.server.streamClosed();
+                    });
                 } else {
                     return next(execErr);
                 }
@@ -182,13 +185,14 @@ class Docker {
         this.container.attach({ stream: true, stdin: true, stdout: true, stderr: true }, function dockerAttach(err, stream) {
             if (err) return next(err);
             self.stream = stream;
-            function onProgress(data) { self.server.output(data); }
-            function onFinished(attachStreamErr) {
-                if (attachStreamErr) self.server.log.warn(attachStreamErr);
+            self.stream.setEncoding('utf8');
+            self.stream.on('data', function dockerAttachStreamData(data) {
+                self.server.output(data);
+            });
+            self.stream.on('end', function dockerAttachStreamEnd() {
                 self.stream = undefined;
                 self.server.streamClosed();
-            }
-            DockerController.modem.followProgress(stream, onFinished, onProgress);
+            });
 
             // Go ahead and setup the stats stream so we can pull data as needed.
             self.stats(next);
@@ -204,12 +208,15 @@ class Docker {
         const self = this;
         this.container.stats({ stream: true }, function dockerTop(err, stream) {
             if (err) return next(err);
-            function onProgress(data) { self.procData = data; }
-            function onFinished(statsStreamErr) {
-                if (statsStreamErr) self.log.warn(statsStreamErr);
+            self.procStream = stream;
+            self.procStream.setEncoding('utf8');
+            self.procStream.on('data', function dockerTopStreamData(data) {
+                self.procData = JSON.parse(data);
+            });
+            self.procStream.on('end', function dockerTopSteamEnd() {
+                self.procStream = undefined;
                 self.procData = undefined;
-            }
-            DockerController.modem.followProgress(stream, onFinished, onProgress);
+            });
             return next();
         });
     }
