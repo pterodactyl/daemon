@@ -58,8 +58,14 @@ class DockerImage {
      */
     static pull(image, next) {
         DockerController.pull(image, function (err, stream) {
-            function onFinished(streamErr) { return next(streamErr); }
-            DockerController.modem.followProgress(stream, onFinished);
+            if (err) return next(err);
+            stream.setEncoding('utf8');
+            stream.on('end', function dockerImagePullStreamEnd() {
+                return next();
+            });
+            stream.on('error', function dockerImagePullStreamError(streamErr) {
+                return next(streamErr);
+            });
         });
     }
 }
