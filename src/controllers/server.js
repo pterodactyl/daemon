@@ -313,11 +313,13 @@ class Server extends EventEmitter {
             if (moment(this.lastCrash).add(60, 'seconds').isAfter(moment())) {
                 this.setCrashTime();
                 this.log.debug('Server detected as crashed but has crashed within the last 60 seconds, aborting reboot.');
+                this.emit('console', '\n[Daemon] Server detected as crashed! Unable to reboot due to crash within last 60 seconds.\n');
                 return;
             }
         }
 
         this.log.debug('Server detected as crashed... attempting reboot.');
+        this.emit('console', '\n[Daemon] Server detected as crashed! Attempting to reboot server now.\n');
         this.setCrashTime();
 
         this.start(function streamClosedStart(err) {
