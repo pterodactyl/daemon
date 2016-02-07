@@ -29,7 +29,7 @@
             "custom": false,
             "location": "logs/latest.log"
         },
-        "query": "minecraftping"
+        "query": "minecraft"
     },
     "spigot": {
         "tag": "^(spigot)$",

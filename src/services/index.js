@@ -27,6 +27,7 @@ const Async = require('async');
 const _ = require('underscore');
 const Fs = require('fs-extra');
 const extendify = require('extendify');
+const Gamedig = require('gamedig');
 
 const Status = rfr('src/helpers/status.js');
 
@@ -51,6 +52,18 @@ class Core {
                     self.object = deepExtend(config[element.symlink], element);
                 }
             }
+        });
+    }
+
+    doQuery(next) {
+        const self = this;
+        Gamedig.query({
+            type: self.object.query,
+            host: self.json.build.default.ip,
+            port: self.json.build.default.port,
+        }, function (response) {
+            if (response.error) return next(new Error('Server unresponsive to query attempt. (' + response.error + ')'));
+            return next(null, response);
         });
     }
 

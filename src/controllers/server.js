@@ -69,6 +69,7 @@ class Server extends EventEmitter {
 
         this.log = Log.child({ server: this.uuid });
         this.lastCrash = undefined;
+        this.failedQueryCount = 0;
 
         // @TODO: If container doesn't exist attempt to create a new container and then try again.
         // If that faisl it truly is a fatal error and we should exit.
@@ -117,11 +118,17 @@ class Server extends EventEmitter {
             if (this.intervals.process === null) {
                 this.intervals.process = setInterval(this.process, 2000, this);
             }
+            if (this.intervals.query === null) {
+                this.intervals.query = setInterval(this.query, 10000, this);
+            }
         } else {
             // Server has been stopped, lets clear the interval as well as any stored
             // information about the process or query. Lets also detach the stats stream.
             clearInterval(this.intervals.process);
+            clearInterval(this.intervals.query);
             this.intervals.process = null;
+            this.intervals.query = null;
+            this.failedQueryCount = 0;
             this.processData.process = {};
             this.processData.query = {};
         }
@@ -335,6 +342,34 @@ class Server extends EventEmitter {
             return returnPath;
         }
         return dataPath;
+    }
+
+    query(self) {
+        if (self.status !== Status.ON) return;
+
+        self.service.doQuery(function (err, response) {
+            if (err) {
+                self.failedQueryCount++;
+                self.log.warn(err.message);
+                if (self.failedQueryCount >= 3) {
+                    self.docker.kill(function queryKillContainer(killErr) {
+                        if (killErr) return self.log.fatal(killErr);
+                    });
+                }
+                return;
+            }
+
+            self.failedQueryCount = 0;
+            self.processData.query = {
+                name: response.name,
+                map: response.map,
+                maxplayers: response.maxplayers,
+                players: response.players,
+                bots: response.bots,
+                raw: response.raw || {},
+            };
+            self.emit('query', self.processData.query);
+        });
     }
 
     process(self) {

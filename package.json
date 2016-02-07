@@ -38,6 +38,7 @@
     "dockerode": "^2.2.7",
     "extendify": "^1.0.0",
     "fs-extra": "^0.26.3",
+    "gamedig": "^0.2.24",
     "is-json": "^1.2.5",
     "isstream": "^0.1.2",
     "lodash": "^3.10.1",

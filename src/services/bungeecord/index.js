@@ -48,6 +48,10 @@ class Service extends Core {
         return super.onStop(next);
     }
 
+    doQuery(next) {
+        return super.doQuery(next);
+    }
+
     sanitizeSocketData(data) {
         return super.sanitizeSocketData(data);
     }
