@@ -25,9 +25,12 @@
 const rfr = require('rfr');
 const Async = require('async');
 const _ = require('underscore');
+const _l = require('lodash');
 const Fs = require('fs-extra');
 const extendify = require('extendify');
 const Gamedig = require('gamedig');
+const isStream = require('isstream');
+const Path = require('path');
 
 const Status = rfr('src/helpers/status.js');
 
@@ -38,6 +41,7 @@ class Core {
         this.json = server.json;
         this.option = this.json.service.option;
         this.object = undefined;
+        this.logStream = undefined;
 
         // Find our data on initialization.
         _.each(config, function coreOnConstructorLoop(element) {
@@ -116,7 +120,22 @@ class Core {
                 });
             });
         }, function (err) {
-            return next(err);
+            if (err) return next(err);
+            if (_l.get(self.object, 'log.custom', false) === true) {
+                if (isStream.isWritable(self.logStream)) {
+                    self.logStream.end(function () {
+                        self.logStream = false;
+                    });
+                }
+                Fs.remove(self.server.path(_l.get(self.object, 'log.location', 'logs/latest.log')), function (removeErr) {
+                    if (removeErr && removeErr.message.indexOf('ENOENT: no such file or directory') < 0) {
+                        return next(removeErr);
+                    }
+                    return next();
+                });
+            } else {
+                return next();
+            }
         });
     }
 
@@ -126,25 +145,60 @@ class Core {
 
     onConsole(data) {
         const self = this;
-        // Started
-        if (data.indexOf(this.object.startup.done) > -1) {
-            self.server.setStatus(Status.ON);
-        }
 
-        // Stopped; Don't trigger crash
-        if (this.server.status !== Status.ON && typeof this.object.startup.userInteraction !== 'undefined') {
-            Async.each(this.object.startup.userInteraction, function coreOnConsoleAsyncEach(string) {
-                if (data.indexOf(string) > -1) {
-                    self.server.log.info('Server detected as requiring user interaction, stopping now.');
-                    self.server.setStatus(Status.STOPPING);
+        Async.parallel([
+            function handleCustomLog() {
+                // Custom Log?
+                if (_l.get(self.object, 'log.custom', false) === true) {
+                    if (isStream.isWritable(self.logStream)) {
+                        self.logStream.write(data);
+                    } else {
+                        const LogFile = self.server.path(_l.get(self.object, 'log.location', 'logs/latest.log'));
+                        Async.series([
+                            function (callback) {
+                                self.logStream = Fs.createOutputStream(LogFile, {
+                                    mode: '0755',
+                                    defaultEncoding: 'utf8',
+                                });
+                                return callback();
+                            },
+                            function (callback) {
+                                Fs.chown(Path.dirname(LogFile), self.json.build.user, self.json.build.user, callback);
+                            },
+                        ], function (cbErr) {
+                            if (cbErr) self.server.log.warn(cbErr);
+                        });
+                    }
                 }
-            });
-        }
+            },
+            function handlePowerStarts() {
+                // Started
+                if (data.indexOf(self.object.startup.done) > -1) {
+                    self.server.setStatus(Status.ON);
+                }
 
-        this.server.emit('console', this.sanitizeSocketData(data));
+                // Stopped; Don't trigger crash
+                if (self.server.status !== Status.ON && typeof self.object.startup.userInteraction !== 'undefined') {
+                    Async.each(self.object.startup.userInteraction, function coreOnConsoleAsyncEach(string) {
+                        if (data.indexOf(string) > -1) {
+                            self.server.log.info('Server detected as requiring user interaction, stopping now.');
+                            self.server.setStatus(Status.STOPPING);
+                        }
+                    });
+                }
+            },
+            function sendToSocket() {
+                self.server.emit('console', self.sanitizeSocketData(data));
+            },
+        ]);
     }
 
     onStop(next) {
+        if (isStream.isWritable(this.logStream)) {
+            this.logStream.end(function () {
+                self.logStream = false;
+            });
+        }
         return next();
     }
 
