@@ -2,7 +2,7 @@
     "srcds": {
         "tag": "^(srcds)$",
         "startup": {
-            "done": "to Steam servers",
+            "done": "Assigned anonymous gameserver Steam ID",
             "userInteraction": []
         },
         "stop": "quit",
