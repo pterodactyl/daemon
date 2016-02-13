@@ -285,6 +285,13 @@ class Docker {
                     environment.push(Util.format('%s=%s', index, value));
                 });
 
+                // How Much Swap?
+                let swapSpace = 0;
+                if (config.swap < 0) {
+                    swapSpace = -1;
+                } else if (config.swap > 0 && config.memory > 0) {
+                    swapSpace = ((config.memory + config.swap) * 1000000);
+                }
                 // Make the container
                 DockerController.createContainer({
                     Image: config.image,
@@ -313,7 +320,7 @@ class Docker {
                         CpuQuota: (config.cpu > 0) ? (config.cpu * 1000) : -1,
                         CpuPeriod: (config.cpu > 0) ? 100000 : 0,
                         Memory: config.memory * 1000000,
-                        MemorySwap: (config.swap < 0) ? -1 : ((config.memory + config.swap) * 1000000),
+                        MemorySwap: swapSpace,
                         BlkioWeight: config.io,
                         Dns: [
                             '8.8.8.8',
