@@ -353,6 +353,7 @@ class Server extends EventEmitter {
             if (err) {
                 self.failedQueryCount++;
                 self.log.warn(err.message);
+                self.service.onConsole('[Daemon] ' + err.message + '\n');
                 if (self.failedQueryCount >= 3) {
                     self.docker.kill(function queryKillContainer(killErr) {
                         if (killErr) return self.log.fatal(killErr);
