@@ -24,9 +24,7 @@
  */
 const rfr = require('rfr');
 const Dockerode = require('dockerode');
-const Util = require('util');
 
-const Log = rfr('src/helpers/logger.js');
 const LoadConfig = rfr('src/helpers/config.js');
 
 const Config = new LoadConfig();
@@ -60,6 +58,9 @@ class DockerImage {
         DockerController.pull(image, function (err, stream) {
             if (err) return next(err);
             stream.setEncoding('utf8');
+            stream.on('data', function () {
+                // do nothing
+            });
             stream.on('end', function dockerImagePullStreamEnd() {
                 return next();
             });

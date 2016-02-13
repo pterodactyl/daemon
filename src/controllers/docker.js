@@ -242,6 +242,7 @@ class Docker {
                         });
                     });
                 } else {
+                    Log.info(Util.format('Checking if we need to update image %s, if so it will happen now.', config.image));
                     ImageHelper.pull(config.image, function (err) {
                         return callback(err);
                     });
