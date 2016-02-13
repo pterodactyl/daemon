@@ -34,7 +34,7 @@ class FileSystem {
         const self = this;
         const Watcher = Chokidar.watch(this.server.configLocation, {
             persistent: true,
-            awaitWriteFinish: true,
+            awaitWriteFinish: false,
         });
 
         Watcher.on('change', function () {
