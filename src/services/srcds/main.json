@@ -1,0 +1,21 @@
+{
+    "srcds": {
+        "tag": "^(srcds)$",
+        "startup": {
+            "done": "to Steam servers",
+            "userInteraction": []
+        },
+        "stop": "quit",
+        "configs": {},
+        "output": {
+            "find": "(\r\n)",
+            "flags": "gm",
+            "replace": "\n"
+        },
+        "log": {
+            "custom": true,
+            "location": "logs/latest.log"
+        },
+        "query": "protocol-valve"
+    }
+}
