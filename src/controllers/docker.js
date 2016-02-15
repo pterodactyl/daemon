@@ -212,9 +212,13 @@ class Docker {
             self.procStream.setEncoding('utf8');
             self.procStream.on('data', function dockerTopStreamData(data) {
                 try {
-                    self.procData = JSON.parse(data);
+                    self.procData = (typeof data !== 'object') ? JSON.parse(data) : data;
                 } catch (ex) {
-                    self.server.log.warn(ex.stack);
+                    // We could log this, but for some reason the streams
+                    // like to return little bits and pieces of data rather
+                    // than the entire JSON object.
+                    // @TODO: look into fixing this.
+                    // self.server.log.warn(ex.stack);
                 }
             });
             self.procStream.on('end', function dockerTopSteamEnd() {
