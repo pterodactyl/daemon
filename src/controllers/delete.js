@@ -31,6 +31,7 @@ const Path = require('path');
 const SFTPController = rfr('src/controllers/sftp.js');
 const ConfigHelper = rfr('src/helpers/config.js');
 const Log = rfr('src/helpers/logger.js');
+const Status = rfr('src/helpers/status.js');
 
 const Config = new ConfigHelper();
 const SFTP = new SFTPController();
@@ -51,6 +52,9 @@ class Delete {
             function (callback) {
                 self.log.info('Clearing servers object...');
                 const Servers = rfr('src/helpers/initialize.js').Servers;
+
+                // Prevent crash detection
+                Servers[self.json.uuid].setStatus(Status.OFF);
                 delete Servers[self.json.uuid];
                 return callback();
             },
