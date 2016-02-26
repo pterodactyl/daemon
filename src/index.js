@@ -31,12 +31,22 @@ const Async = require('async');
 const Initializer = rfr('src/helpers/initialize.js').Initialize;
 const SFTPController = rfr('src/controllers/sftp.js');
 const LiveStats = rfr('src/http/stats.js');
+const ConfigHelper = rfr('src/helpers/config.js');
 
 const Initialize = new Initializer();
 const SFTP = new SFTPController();
 const Stats = new LiveStats();
+const Config = new ConfigHelper();
 
 Async.series([
+    function indexAsyncConfigureDockerInterface(callback) {
+        if (!Config.get('docker.interface')) {
+            Log.info('Checking docker0 interface and setting configuration values.');
+            return Config.initDockerInterface(callback);
+        }
+        Log.info('Docker interface detected as ' + Config.get('docker.interface'));
+        return callback();
+    },
     function indexAsyncStartSFTP(callback) {
         Log.info('Attempting to start SFTP service container...');
         SFTP.startService(callback);

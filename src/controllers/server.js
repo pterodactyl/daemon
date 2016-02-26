@@ -26,6 +26,7 @@ const rfr = require('rfr');
 const Async = require('async');
 const moment = require('moment');
 const _ = require('underscore');
+const _l = require('lodash');
 const EventEmitter = require('events').EventEmitter;
 const Querystring = require('querystring');
 const Path = require('path');
@@ -450,6 +451,18 @@ class Server extends EventEmitter {
             this.log.info('New configiguration has changes to the server\'s build settings. Server has been queued for rebuild on next boot.');
             newObject.rebuild = true;
         }
+
+        // Update 127.0.0.1 to point to the docker0 interface.
+        if (newObject.build.default.ip === '127.0.0.1') {
+            newObject.build.default.ip = Config.get('docker.interface');
+        }
+
+        _.each(newObject.build.ports, function (ports, ip) {
+            if (ip === '127.0.0.1') {
+                newObject.build.ports[Config.get('docker.interface')] = ports;
+                delete newObject.build.ports[ip];
+            }
+        });
 
         Async.series([
             function (callback) {

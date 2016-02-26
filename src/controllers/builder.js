@@ -58,6 +58,23 @@ class Builder {
         const self = this;
         // @TODO: validate everything needed is here in the JSON.
         Async.series([
+            function initAsyncUpdateJson(callback) {
+                self.log.info('Updating passed JSON to route correct interfaces.');
+                // Update 127.0.0.1 to point to the docker0 interface.
+                if (self.json.build.default.ip === '127.0.0.1') {
+                    self.json.build.default.ip = Config.get('docker.interface');
+                }
+                Async.forEachOf(self.json.build.ports, function (ports, ip, asyncCallback) {
+                    if (ip === '127.0.0.1') {
+                        self.json.build.ports[Config.get('docker.interface')] = ports;
+                        delete self.json.build.ports[ip];
+                        return asyncCallback();
+                    }
+                    return asyncCallback();
+                }, function () {
+                    return callback();
+                });
+            },
             function initAsyncSetupSFTP(callback) {
                 self.log.info('Creating SFTP user on the system...');
                 SFTP.create(self.json.user, RandomString.generate(), function (err) {

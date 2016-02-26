@@ -22,12 +22,15 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+const Async = require('async');
 const Fs = require('fs-extra');
+const Proc = require('child_process');
 
 class Config {
 
     constructor() {
         this.configJson = this._raw();
+        this.docker0 = null;
     }
 
     _raw() {
@@ -58,6 +61,26 @@ class Config {
 
         Fs.writeJson('./config/core.json', json, function (err) {
             if (!err) self.configJson = json;
+            return next(err);
+        });
+    }
+
+    initDockerInterface(next) {
+        const self = this;
+        Async.waterfall([
+            function configDockerInterfaceGetIp(callback) {
+                Proc.exec('ifconfig docker0 | grep \'inet addr\' | cut -d: -f2 | awk \'{print $1}\'', function (err, stdout) {
+                    if (err) return callback(err);
+                    if (!stdout) return callback(new Error('Unable to establish the current docker0 interface IP address.'));
+                    return callback(null, stdout);
+                });
+            },
+            function configDockerInterfaceSetIp(ip, callback) {
+                const config = self._raw();
+                config.docker.interface = ip.replace(/(\n|\r)+$/, '');
+                Fs.writeJson('./config/core.json', config, callback);
+            },
+        ], function (err) {
             return next(err);
         });
     }
