@@ -26,7 +26,6 @@ const rfr = require('rfr');
 const Async = require('async');
 const moment = require('moment');
 const _ = require('underscore');
-const _l = require('lodash');
 const EventEmitter = require('events').EventEmitter;
 const Querystring = require('querystring');
 const Path = require('path');
