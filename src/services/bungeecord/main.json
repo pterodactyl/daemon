@@ -7,7 +7,7 @@
         "tag": "^(bungeecord)$",
         "symlink": "vanilla",
         "startup": {
-            "done": "[INFO] Listening on "
+            "done": "Listening on "
         },
         "stop": "end",
         "configs": {
