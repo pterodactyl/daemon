@@ -31,6 +31,7 @@ const extendify = require('extendify');
 const Gamedig = require('gamedig');
 const isStream = require('isstream');
 const Path = require('path');
+const createOutputStream = require('create-output-stream');
 
 const Status = rfr('src/helpers/status.js');
 
@@ -156,7 +157,7 @@ class Core {
                         const LogFile = self.server.path(_l.get(self.object, 'log.location', 'logs/latest.log'));
                         Async.series([
                             function (callback) {
-                                self.logStream = Fs.createOutputStream(LogFile, {
+                                self.logStream = createOutputStream(LogFile, {
                                     mode: '0755',
                                     defaultEncoding: 'utf8',
                                 });
