@@ -37,3 +37,5 @@ daemon
 !config/credentials/.githold
 !lib/.githold
 !logs/.githold
+
+.DS_Store
