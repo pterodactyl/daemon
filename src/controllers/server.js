@@ -26,6 +26,7 @@ const rfr = require('rfr');
 const Async = require('async');
 const moment = require('moment');
 const _ = require('underscore');
+const _l = require('lodash');
 const EventEmitter = require('events').EventEmitter;
 const Querystring = require('querystring');
 const Path = require('path');
@@ -92,7 +93,11 @@ class Server extends EventEmitter {
         if (typeof perm !== 'undefined' && typeof token !== 'undefined') {
             if (typeof this.json.keys !== 'undefined' && token in this.json.keys) {
                 if (this.json.keys[token].indexOf(perm) > -1) {
-                    return true;
+                    // Check Suspension Status
+                    if (_l.get(this.json, 'suspended', 0) === 0) {
+                        return true;
+                    }
+                    return false;
                 }
             }
         }
@@ -531,6 +536,59 @@ class Server extends EventEmitter {
             return next(err);
         });
     }
+
+    suspend(next) {
+        const self = this;
+        Async.parallel([
+            function setConfigToSuspended(callback) {
+                self.modifyConfig({
+                    suspended: 1,
+                }, function (err) {
+                    return callback(err);
+                });
+            },
+            function killRunningServerProcess(callback) {
+                if (self.status !== Status.OFF) {
+                    return self.kill(callback);
+                }
+                return callback();
+            },
+            function disableSFTPAccess(callback) {
+                SFTP.lock(self.json.user, function (err) {
+                    return callback(err);
+                });
+            },
+        ], function (err) {
+            if (!err) {
+                self.log.warn('Server has been suspended.');
+            }
+            return next(err);
+        });
+    }
+
+    unsuspend(next) {
+        const self = this;
+        Async.parallel([
+            function setConfigToUnsuspended(callback) {
+                self.modifyConfig({
+                    suspended: 0,
+                }, function (err) {
+                    return callback(err);
+                });
+            },
+            function enableSFTPAccess(callback) {
+                SFTP.unlock(self.json.user, function (err) {
+                    return callback(err);
+                });
+            },
+        ], function (err) {
+            if (!err) {
+                self.log.info('Server has been unsuspended.');
+            }
+            return next(err);
+        });
+    }
+
 }
 
 module.exports = Server;

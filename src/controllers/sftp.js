@@ -104,6 +104,30 @@ class SFTP {
     }
 
     /**
+     * Locks an account to prevent SFTP access. Used for server suspension.
+     * @param   string    username
+     * @param   {Function} next
+     * @return  void
+     */
+    lock(username, next) {
+        this._doExec(['passwd', '-l', username], function (err) {
+            return next(err);
+        });
+    }
+
+    /**
+     * Unlocks an account to allow SFTP access. Used for server unsuspension.
+     * @param   string    username
+     * @param   {Function} next
+     * @return  void
+     */
+    unlock(username, next) {
+        this._doExec(['passwd', '-u', username], function (err) {
+            return next(err);
+        });
+    }
+
+    /**
      * Handles passing execution to the container for create and password.
      * @param  array     command
      * @param  {Function} next

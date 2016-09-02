@@ -1,6 +1,6 @@
 {
   "name": "pterodactyl-daemon",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "description": "Server management wrapper built for Pterodactyl Panel.",
   "main": "index.js",
   "directories": {
@@ -36,7 +36,7 @@
     "bunyan": "^1.5.1",
     "chokidar": "^1.4.2",
     "create-output-stream": "0.0.1",
-    "dockerode": "^2.2.7",
+    "dockerode": "^2.3.0",
     "extendify": "^1.0.0",
     "fs-extra": "^0.30.0",
     "gamedig": "^0.2.24",
