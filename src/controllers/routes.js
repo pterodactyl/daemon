@@ -253,6 +253,20 @@ class RouteController {
         });
     }
 
+    postServerSuspend() {
+        if (!Auth.allowed('g:server:suspend')) return;
+        Auth.server().suspend(function (err) {
+            return Responses.generic204(err);
+        });
+    }
+
+    postServerUnsuspend() {
+        if (!Auth.allowed('g:server:unsuspend')) return;
+        Auth.server().unsuspend(function (err) {
+            return Responses.generic204(err);
+        });
+    }
+
     downloadServerFile() {
         if (!Config.get('remote.download')) {
             return this.res.send(501, { 'error': 'This action has not been properly configured on the daemon.' });

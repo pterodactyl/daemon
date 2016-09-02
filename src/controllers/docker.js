@@ -121,6 +121,28 @@ class Docker {
     }
 
     /**
+     * Pauses a running container and returns a callback when done.
+     * @param  {Function} next [description]
+     * @return {[type]}        [description]
+     */
+    pause(next) {
+        this.container.pause(function (err) {
+            return next(err);
+        });
+    }
+
+    /**
+     * Unpauses a running container and returns a callback when done.
+     * @param  {Function} next [description]
+     * @return {[type]}        [description]
+     */
+    unpause(next) {
+        this.container.unpause(function (err) {
+            return next(err);
+        });
+    }
+
+    /**
      * Executes a command in the container requested.
      * @param  array    command
      * @param  function next
