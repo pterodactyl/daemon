@@ -41,7 +41,7 @@ const LiveStats = rfr('src/http/stats.js');
 const ConfigHelper = rfr('src/helpers/config.js');
 
 const Initialize = new Initializer();
-const SFTP = new SFTPController();
+const SFTP = new SFTPController(true);
 const Stats = new LiveStats();
 const Config = new ConfigHelper();
 

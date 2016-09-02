@@ -37,8 +37,12 @@ const DockerController = new Dockerode({
 });
 
 class SFTP {
-    constructor() {
-        this.container = undefined;
+    constructor(init) {
+        if (_.isUndefined(init)) {
+            this.container = DockerController.getContainer(Config.get('sftp.container'));
+        } else {
+            this.container = undefined;
+        }
     }
 
     buildContainer(next) {
