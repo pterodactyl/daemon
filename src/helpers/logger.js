@@ -25,6 +25,7 @@
 const rfr = require('rfr');
 const Bunyan = require('bunyan');
 const Path = require('path');
+
 const LoadConfig = rfr('src/helpers/config.js');
 const Config = new LoadConfig();
 

@@ -25,6 +25,7 @@
 const Async = require('async');
 const Fs = require('fs-extra');
 const Proc = require('child_process');
+const _ = require('lodash');
 
 class Config {
 
@@ -41,7 +42,10 @@ class Config {
         let getObject;
         try {
             this.configJson = this._raw(); // Without this things don't ever end up updated...
-            getObject = key.split('.').reduce((o, i) => o[i], this.configJson);
+            // getObject = key.split('.').reduce((o, i) => o[i], this.configJson);
+            getObject = _.reduce(key.split('.'), function (o, i) {
+                return o[i];
+            }, this.configJson);
         } catch (ex) {
             //
         }
@@ -55,7 +59,7 @@ class Config {
 
     save(json, next) {
         const self = this;
-        if (!json || typeof json !== 'object' || json === null || !Object.keys(json).length) {
+        if (!json || !_.isObject(json) || json === null || !_.keys(json).length) {
             throw new Error('Invalid JSON was passed to Builder.');
         }
 

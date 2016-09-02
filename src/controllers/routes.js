@@ -30,6 +30,7 @@ const Fs = require('fs-extra');
 const Mime = require('mime');
 const Path = require('path');
 const Crypto = require('crypto');
+const _ = require('lodash');
 
 const ConfigHelper = rfr('src/helpers/config.js');
 const ResponseHelper = rfr('src/helpers/responses.js');
@@ -127,7 +128,7 @@ class RouteController {
         if (this.req.params.action === 'start') {
             if (!Auth.allowed('s:power:start')) return;
             Auth.server().start(function (err) {
-                if (err && err.message.indexOf('Server is currently queued for a container rebuild') > -1) {
+                if (err && _.includes(err.message, 'Server is currently queued for a container rebuild')) {
                     return self.res.send(202, { 'message': err.message });
                 }
                 Responses.generic204(err);
@@ -140,7 +141,7 @@ class RouteController {
         } else if (this.req.params.action === 'restart') {
             if (!Auth.allowed('s:power:restart')) return;
             Auth.server().restart(function (err) {
-                if (err && err.message.indexOf('Server is currently queued for a container rebuild') > -1) {
+                if (err && _.includes(err.message, 'Server is currently queued for a container rebuild')) {
                     return self.res.send(202, { 'message': err.message });
                 }
                 Responses.generic204(err);
@@ -169,7 +170,7 @@ class RouteController {
     // Sends command to server
     postServerCommand() {
         if (!Auth.allowed('s:command')) return;
-        if (typeof this.req.params.command !== 'undefined') {
+        if (!_.isUndefied(this.req.params.command)) {
             if (this.req.params.command.trim().replace(/^\/*/, '').startsWith(Auth.server().service.object.stop)) {
                 if (!Auth.allowed('s:power:stop')) return;
             }
@@ -290,7 +291,7 @@ class RouteController {
                     if (typeof json !== 'undefined' && json.path) {
                         const Server = Auth.allServers();
                         // Does the server even exist?
-                        if (typeof Server[json.server] === 'undefined') {
+                        if (_.isUndefined(Server[json.server])) {
                             return self.res.send(404, { 'error': 'No server found for the specified resource.' });
                         }
 

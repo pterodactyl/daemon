@@ -40,7 +40,7 @@ class Stats {
             if (!params.handshake.query.token) {
                 return next(new Error('You must pass the correct handshake values.'));
             }
-            if (typeof Config.get('keys') !== 'object' || Config.get('keys').indexOf(params.handshake.query.token) < 0) {
+            if (!_.isObject(Config.get('keys')) || !_.includes(Config.get('keys'), params.handshake.query.token)) {
                 return next(new Error('Invalid handshake value passed.'));
             }
             return next();
@@ -71,9 +71,9 @@ class Stats {
                 proc: server.processData.process,
             };
             if (server.status !== Status.OFF) {
-                statData.memory = statData.memory + _.get(server.processData, 'process.memory.total', 0);
-                statData.cpu = statData.cpu + _.get(server.processData, 'process.cpu.total', 0);
-                statData.players = statData.players + _.get(server.processData, 'query.players.length', 0);
+                statData.memory += _.get(server.processData, 'process.memory.total', 0);
+                statData.cpu += _.get(server.processData, 'process.cpu.total', 0);
+                statData.players += _.get(server.processData, 'query.players.length', 0);
             }
             return callback();
         }, function () {

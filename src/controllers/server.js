@@ -25,8 +25,7 @@
 const rfr = require('rfr');
 const Async = require('async');
 const moment = require('moment');
-const _ = require('underscore');
-const _l = require('lodash');
+const _ = require('lodash');
 const EventEmitter = require('events').EventEmitter;
 const Querystring = require('querystring');
 const Path = require('path');
@@ -91,10 +90,10 @@ class Server extends EventEmitter {
 
     hasPermission(perm, token) {
         if (typeof perm !== 'undefined' && typeof token !== 'undefined') {
-            if (typeof this.json.keys !== 'undefined' && token in this.json.keys) {
-                if (this.json.keys[token].indexOf(perm) > -1) {
+            if (!_.isUndefined(this.json.keys) && token in this.json.keys) {
+                if (_.includes(this.json.keys[token], perm)) {
                     // Check Suspension Status
-                    if (_l.get(this.json, 'suspended', 0) === 0) {
+                    if (_.get(this.json, 'suspended', 0) === 0) {
                         return true;
                     }
                     return false;
@@ -386,10 +385,10 @@ class Server extends EventEmitter {
         // When the server is started a stream of process data is begun
         // which is stored in Docker.procData. We wilol now access that
         // and process it.
-        if (typeof self.docker.procData === 'undefined') return;
+        if (_.isUndefined(self.docker.procData)) return;
 
         // We need previous cycle information as well.
-        if (typeof self.docker.procData.precpu_stats.cpu_usage === 'undefined') return;
+        if (_.isUndefined(self.docker.procData.precpu_stats.cpu_usage)) return;
 
         const perCoreUsage = [];
         const priorCycle = self.docker.procData.precpu_stats;
@@ -426,7 +425,7 @@ class Server extends EventEmitter {
     // while keeping any that are not listed. If overwrite = false (PATCH request) then only the
     // specific data keys that exist are changed or added. (see _.extend documentation).
     modifyConfig(object, overwrite, next) {
-        if (typeof overwrite === 'function') {
+        if (_.isFunction(overwrite)) {
             next = overwrite; // eslint-disable-line
             overwrite = false; // eslint-disable-line
         }
@@ -436,11 +435,11 @@ class Server extends EventEmitter {
             inPlace: false,
             arrays: 'replace',
         });
-        const newObject = (overwrite === true) ? _.extend(this.json, object) : deepExtend(this.json, object);
+        const newObject = (overwrite === true) ? _.assignIn(this.json, object) : deepExtend(this.json, object);
 
         // Ports are a pain in the butt.
-        if (typeof newObject.build !== 'undefined') {
-            _.each(newObject.build, function (obj, ident) {
+        if (!_.isUndefined(newObject.build)) {
+            _.forEach(newObject.build, function (obj, ident) {
                 if (ident.endsWith('|overwrite')) {
                     const item = ident.split('|')[0];
                     newObject.build[item] = obj;
@@ -451,7 +450,7 @@ class Server extends EventEmitter {
 
         // Do a quick determination of wether or not we need to process a rebuild request for this server.
         // If so, we need to append that action to the object that we're writing.
-        if (typeof object.build !== 'undefined') {
+        if (!_.isUndefined(object.build)) {
             this.log.info('New configiguration has changes to the server\'s build settings. Server has been queued for rebuild on next boot.');
             newObject.rebuild = true;
         }
@@ -461,7 +460,7 @@ class Server extends EventEmitter {
             newObject.build.default.ip = Config.get('docker.interface');
         }
 
-        _.each(newObject.build.ports, function (ports, ip) {
+        _.forEach(newObject.build.ports, function (ports, ip) {
             if (ip === '127.0.0.1') {
                 newObject.build.ports[Config.get('docker.interface')] = ports;
                 delete newObject.build.ports[ip];

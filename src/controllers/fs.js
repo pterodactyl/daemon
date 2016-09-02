@@ -26,6 +26,7 @@ const Fs = require('fs-extra');
 const Async = require('async');
 const Path = require('path');
 const Chokidar = require('chokidar');
+const _ = require('lodash');
 
 class FileSystem {
     constructor(server) {
@@ -85,7 +86,7 @@ class FileSystem {
 
     readEnd(file, bytes, next) {
         const self = this;
-        if (typeof bytes === 'function') {
+        if (_.isFunction(bytes)) {
             next = bytes; // eslint-disable-line
             bytes = 80000; // eslint-disable-line
         }
@@ -104,7 +105,7 @@ class FileSystem {
             }
             const stream = Fs.createReadStream(self.server.path(file), opts);
             stream.on('data', function (data) {
-                lines = lines + data;
+                lines += data;
             });
             stream.on('end', function () {
                 return next(null, lines);
@@ -129,7 +130,7 @@ class FileSystem {
     }
 
     copy(path, newpath, opts, next) {
-        if (typeof opts === 'function') {
+        if (_.isFunction(opts)) {
             next = opts; // eslint-disable-line
             opts = {}; // eslint-disable-line
         }

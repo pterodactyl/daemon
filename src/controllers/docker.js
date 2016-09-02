@@ -27,7 +27,7 @@ const Dockerode = require('dockerode');
 const isStream = require('isstream');
 const Async = require('async');
 const Util = require('util');
-const _ = require('underscore');
+const _ = require('lodash');
 
 const Log = rfr('src/helpers/logger.js');
 const Status = rfr('src/helpers/status.js');
@@ -60,7 +60,7 @@ class Docker {
             if (err) return next(err);
             // We kind of have to assume that if the server is running it is on
             // and not in the process of booting or stopping.
-            if (typeof data.State.Running !== 'undefined' && data.State.Running !== false) {
+            if (!_.isUndefined(data.State.Running) && data.State.Running !== false) {
                 self.server.setStatus(Status.ON);
                 self.attach(function (attachErr) {
                     return next(attachErr, (!attachErr));
@@ -86,7 +86,7 @@ class Docker {
         const self = this;
         this.container.start(function dockerStart(err) {
             // Container is already running, we can just continue on and pretend we started it just now.
-            if (err && err.message.indexOf('HTTP code is 304 which indicates error: container already started') > -1) {
+            if (err && _.includes(err.message, 'HTTP code is 304 which indicates error: container already started')) {
                 self.server.setStatus(Status.ON);
                 return next();
             } else if (err) {
@@ -200,7 +200,7 @@ class Docker {
         // Check if we are currently running exec(). If we don't do this then we encounter issues
         // where the daemon thinks the container is crashed even if it is not. Mostly an issue
         // with exec(), but still worth checking out here.
-        if (typeof this.stream !== 'undefined' || isStream(this.stream)) {
+        if (!_.isUndefined(this.stream) || isStream(this.stream)) {
             return next(new Error('An active stream is already in use for this container.'));
         }
 
@@ -234,7 +234,7 @@ class Docker {
             self.procStream.setEncoding('utf8');
             self.procStream.on('data', function dockerTopStreamData(data) {
                 try {
-                    self.procData = (typeof data !== 'object') ? JSON.parse(data) : data;
+                    self.procData = (_.isObject(data)) ? data : JSON.parse(data);
                 } catch (ex) {
                     // We could log this, but for some reason the streams
                     // like to return little bits and pieces of data rather
@@ -277,7 +277,7 @@ class Docker {
             function (callback) {
                 // Build the port bindings
                 Async.forEachOf(config.ports, function (ports, ip, eachCallback) {
-                    if (!Array.isArray(ports)) return eachCallback();
+                    if (!_.isArray(ports)) return eachCallback();
                     Async.each(ports, function (port, portCallback) {
                         if (/^\d{1,6}$/.test(port) !== true) return portCallback();
                         bindings[Util.format('%s/tcp', port)] = [{
@@ -307,7 +307,7 @@ class Docker {
                 config.env.SERVER_PORT = config.default.port;
 
                 const environment = [];
-                _.each(config.env, function (value, index) {
+                _.forEach(config.env, function (value, index) {
                     environment.push(Util.format('%s=%s', index, value));
                 });
 

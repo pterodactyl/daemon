@@ -26,6 +26,7 @@ const rfr = require('rfr');
 const binaryJS = require('binaryjs').BinaryServer;
 const Fs = require('fs-extra');
 const Path = require('path');
+const _ = require('lodash');
 
 const Initializer = rfr('src/helpers/initialize.js');
 const ConfigHelper = rfr('src/helpers/config.js');
@@ -39,12 +40,8 @@ const BinaryServer = binaryJS({
 const Config = new ConfigHelper();
 
 class Upload {
-    constructor() {
-        //
-    }
 
     init() {
-        const self = this;
         // Prevents a scary looking error from NodeJS about possible
         // memory leak. There is no leak. (only leeks!)
         BinaryServer.removeAllListeners('connection');
@@ -57,7 +54,7 @@ class Upload {
                     return;
                 }
 
-                if (typeof Initializer.Servers === 'undefined' || typeof Initializer.Servers[meta.server] === 'undefined') {
+                if (_.isUndefined(Initializer.Servers) || _.isUndefined(Initializer.Servers[meta.server])) {
                     stream.write({ 'error': 'You do not have permission to upload files to this server.' });
                     stream.end();
                     return;

@@ -23,6 +23,7 @@
  * SOFTWARE.
  */
 const rfr = require('rfr');
+
 const RestServer = rfr('src/http/restify.js');
 const Socket = require('socket.io').listen(RestServer.server);
 

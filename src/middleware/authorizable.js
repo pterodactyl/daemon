@@ -23,6 +23,7 @@
  * SOFTWARE.
  */
 const rfr = require('rfr');
+const _ = require('lodash');
 
 const Servers = rfr('src/helpers/initialize.js').Servers;
 const LoadConfig = rfr('src/helpers/config.js');
@@ -41,9 +42,15 @@ class AuthorizationMiddleware {
     }
 
     allowed(perm) {
+        const configKeys = Config.get('keys');
+
+        if (!_.isObject(configKeys)) {
+            return false;
+        }
+
         // Master Controller; permissions not reliant on a specific server being defined.
-        if (perm.indexOf('c:') === 0) {
-            if (typeof Config.get('keys') === 'object' && Config.get('keys').indexOf(this.token) > -1) {
+        if (_.startsWith(perm, 'c:')) {
+            if (_.includes(configKeys, this.token)) {
                 return true;
             }
         }
@@ -56,14 +63,14 @@ class AuthorizationMiddleware {
             return false;
         }
 
-        if (typeof Servers[this.uuid] !== 'undefined') {
-            if (perm.indexOf('g:') === 0) {
-                if (typeof Config.get('keys') === 'object' && Config.get('keys').indexOf(this.token) > -1) {
+        if (!_.isUndefined(Servers[this.uuid])) {
+            if (_.startsWith(perm, 'g:')) {
+                if (_.includes(configKeys, this.token)) {
                     return true;
                 }
             }
-            if (perm.indexOf('s:') === 0) {
-                if (typeof Config.get('keys') === 'object' && Config.get('keys').indexOf(this.token) > -1) {
+            if (_.startsWith(perm, 's:')) {
+                if (_.includes(configKeys, this.token)) {
                     return true;
                 }
                 if (Servers[this.uuid].hasPermission(perm, this.token)) {

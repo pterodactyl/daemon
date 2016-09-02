@@ -24,8 +24,7 @@
  */
 const rfr = require('rfr');
 const Async = require('async');
-const _ = require('underscore');
-const _l = require('lodash');
+const _ = require('lodash');
 const Fs = require('fs-extra');
 const extendify = require('extendify');
 const Gamedig = require('gamedig');
@@ -45,7 +44,7 @@ class Core {
         this.logStream = undefined;
 
         // Find our data on initialization.
-        _.each(config, function coreOnConstructorLoop(element) {
+        _.forEach(config, function coreOnConstructorLoop(element) {
             if (self.option.match(element.tag)) {
                 // Handle "symlink" in the configuration for plugins...
                 self.object = element;
@@ -53,7 +52,7 @@ class Core {
                     inPlace: false,
                     arrays: 'replace',
                 });
-                if (typeof element.symlink !== 'undefined' && typeof config[element.symlink] !== 'undefined') {
+                if (!_.isUndefined(element.symlink) && !_.isUndefined(config[element.symlink])) {
                     self.object = deepExtend(config[element.symlink], element);
                 }
             }
@@ -92,7 +91,7 @@ class Core {
                     // File doesn't exist
                     // @TODO: handle restarting the server to see if the file appears
                     // at which point we can write to it.
-                    if (err.message.toString().indexOf('ENOENT: no such file or directory') > -1) {
+                    if (_.includes(err.message.toString(), 'ENOENT: no such file or directory')) {
                         return callback();
                     }
                     return callback(err);
@@ -106,7 +105,10 @@ class Core {
                         if (line.startsWith(find)) {
                             // Set the new line value.
                             const newLineValue = replaceString.replace(/{{ (\S+) }}/g, function ($0, $1) {
-                                return ($1).split('.').reduce((o, i) => o[i], self.json);
+                                // return ($1).split('.').reduce((o, i) => o[i], self.json);
+                                return _.reduce(($1).split('.'), function (o, i) {
+                                    return o[i];
+                                }, self.json);
                             });
                             parsedLines[file][index] = newLineValue;
                         }
@@ -122,14 +124,14 @@ class Core {
             });
         }, function (err) {
             if (err) return next(err);
-            if (_l.get(self.object, 'log.custom', false) === true) {
+            if (_.get(self.object, 'log.custom', false) === true) {
                 if (isStream.isWritable(self.logStream)) {
                     self.logStream.end(function () {
                         self.logStream = false;
                     });
                 }
-                Fs.remove(self.server.path(_l.get(self.object, 'log.location', 'logs/latest.log')), function (removeErr) {
-                    if (removeErr && removeErr.message.indexOf('ENOENT: no such file or directory') < 0) {
+                Fs.remove(self.server.path(_.get(self.object, 'log.location', 'logs/latest.log')), function (removeErr) {
+                    if (removeErr && !_.includes(removeErr.message, 'ENOENT: no such file or directory')) {
                         return next(removeErr);
                     }
                     return next();
@@ -150,11 +152,11 @@ class Core {
         Async.parallel([
             function handleCustomLog() {
                 // Custom Log?
-                if (_l.get(self.object, 'log.custom', false) === true) {
+                if (_.get(self.object, 'log.custom', false) === true) {
                     if (isStream.isWritable(self.logStream)) {
                         self.logStream.write(data);
                     } else {
-                        const LogFile = self.server.path(_l.get(self.object, 'log.location', 'logs/latest.log'));
+                        const LogFile = self.server.path(_.get(self.object, 'log.location', 'logs/latest.log'));
                         Async.series([
                             function (callback) {
                                 self.logStream = createOutputStream(LogFile, {
@@ -174,14 +176,14 @@ class Core {
             },
             function handlePowerStarts() {
                 // Started
-                if (data.indexOf(self.object.startup.done) > -1) {
+                if (_.includes(data, self.object.startup.done)) {
                     self.server.setStatus(Status.ON);
                 }
 
                 // Stopped; Don't trigger crash
-                if (self.server.status !== Status.ON && typeof self.object.startup.userInteraction !== 'undefined') {
+                if (self.server.status !== Status.ON && !_.isUndefined(self.object.startup.userInteraction)) {
                     Async.each(self.object.startup.userInteraction, function coreOnConsoleAsyncEach(string) {
-                        if (data.indexOf(string) > -1) {
+                        if (_.includes(data, string)) {
                             self.server.log.info('Server detected as requiring user interaction, stopping now.');
                             self.server.setStatus(Status.STOPPING);
                         }
@@ -195,6 +197,7 @@ class Core {
     }
 
     onStop(next) {
+        const self = this;
         if (isStream.isWritable(this.logStream)) {
             this.logStream.end(function () {
                 self.logStream = false;
@@ -205,11 +208,11 @@ class Core {
 
     sanitizeSocketData(data) {
         let newData = data.replace(new RegExp(this.object.output.find || '\r\n', this.object.output.flags || 'gm'), this.object.output.replace || '\n');
-        if (newData.indexOf('\n') === 0) {
+        if (_.startsWith(newData, '\n')) {
             newData = newData.substr(1);
         }
-        if (!newData.endsWith('\n')) {
-            newData = newData + '\n';
+        if (!_.endsWith(newData, '\n')) {
+            newData += '\n';
         }
         return newData;
     }

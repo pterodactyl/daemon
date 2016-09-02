@@ -23,11 +23,12 @@
  * SOFTWARE.
  */
 const rfr = require('rfr');
+const Async = require('async');
+
 const Log = rfr('src/helpers/logger.js');
 
 Log.info('Starting Pterodactyl Daemon...');
 
-const Async = require('async');
 const Initializer = rfr('src/helpers/initialize.js').Initialize;
 const SFTPController = rfr('src/controllers/sftp.js');
 const LiveStats = rfr('src/http/stats.js');

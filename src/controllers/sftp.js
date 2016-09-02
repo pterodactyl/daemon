@@ -26,6 +26,7 @@ const rfr = require('rfr');
 
 const LoadConfig = rfr('src/helpers/config.js');
 const Dockerode = require('dockerode');
+const _ = require('lodash');
 
 const Config = new LoadConfig();
 const DockerController = new Dockerode({
@@ -46,7 +47,7 @@ class SFTP {
     startService(next) {
         this.container.start(function sftpContainerStart(err) {
             // Container is already running, we can just continue on and pretend we started it just now.
-            if (err && err.message.indexOf('HTTP code is 304 which indicates error: container already started') > -1) {
+            if (err && _.includes(err.message, 'HTTP code is 304 which indicates error: container already started')) {
                 return next();
             }
             return next(err);

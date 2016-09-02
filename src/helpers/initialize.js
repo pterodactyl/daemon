@@ -27,15 +27,14 @@ const Async = require('async');
 const Path = require('path');
 const Util = require('util');
 const Fs = require('fs-extra');
+const _ = require('lodash');
+
 const Log = rfr('src/helpers/logger.js');
 
 const Server = rfr('src/controllers/server.js');
 const Servers = {};
 
 class Initialize {
-    constructor() {
-        //
-    }
 
     /**
      * Initializes all servers on the system and loads them into memory for NodeJS.
@@ -57,7 +56,7 @@ class Initialize {
                         }
 
                         // Is this JSON valid enough?
-                        if (typeof json.uuid === 'undefined') {
+                        if (_.isUndefined(json.uuid)) {
                             Log.warn(Util.format('Detected valid JSON, but server was missing a UUID in %s, skipping...', file));
                             return;
                         }

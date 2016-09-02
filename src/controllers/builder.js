@@ -29,7 +29,7 @@ const Path = require('path');
 const Dockerode = require('dockerode');
 const Util = require('util');
 const RandomString = require('randomstring');
-const _ = require('underscore');
+const _ = require('lodash');
 
 const Log = rfr('src/helpers/logger.js');
 const ImageHelper = rfr('src/helpers/image.js');
@@ -47,7 +47,7 @@ const DockerController = new Dockerode({
 class Builder {
 
     constructor(json) {
-        if (!json || typeof json !== 'object' || json === null || !Object.keys(json).length) {
+        if (!json || !_.isObject(json) || json === null || !_.keys(json).length) {
             throw new Error('Invalid JSON was passed to Builder.');
         }
         this.json = json;
@@ -173,7 +173,7 @@ class Builder {
     }
 
     writeConfigToDisk(next) {
-        if (typeof this.json.uuid === 'undefined') {
+        if (_.isUndefined(this.json.uuid)) {
             return next(new Error('No UUID was passed properly in the JSON recieved.'));
         }
         // Attempt to write to disk, return error if failed, otherwise return nothing.
@@ -233,8 +233,8 @@ class Builder {
                 config.env.SERVER_PORT = config.default.port;
 
                 const environment = [];
-                _.each(config.env, function (value, index) {
-                    environment.push(Util.format('%s=%s', index, value));
+                _.forEach(config.env, function (value, index) {
+                    return environment.push(Util.format('%s=%s', index, value));
                 });
 
                 // How Much Swap?
