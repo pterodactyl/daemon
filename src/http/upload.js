@@ -46,8 +46,8 @@ class Upload {
         // memory leak. There is no leak. (only leeks!)
         BinaryServer.removeAllListeners('connection');
 
-        BinaryServer.on('connection', function initBinaryServerConnection(client) {
-            client.on('stream', function initBinaryServerConnectionStream(stream, meta) {
+        BinaryServer.on('connection', client => {
+            client.on('stream', (stream, meta) => {
                 if (!meta.token || !meta.server) {
                     stream.write({ 'error': 'Missing required meta variables in the request.' });
                     stream.end();
@@ -73,7 +73,7 @@ class Upload {
                     return;
                 }
 
-                Fs.ensureDir(Server.path(meta.path), function (err) {
+                Fs.ensureDir(Server.path(meta.path), err => {
                     if (err) {
                         Server.log.error(err);
                         return;
@@ -82,7 +82,7 @@ class Upload {
                     // Write uploaded file to server
                     const FileWriter = Fs.createWriteStream(Server.path(Path.join(meta.path, meta.name)));
                     stream.pipe(FileWriter);
-                    stream.on('data', function (data) {
+                    stream.on('data', data => {
                         stream.write({ rx: data.length / meta.size });
                     });
                 });

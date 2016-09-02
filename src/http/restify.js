@@ -51,14 +51,14 @@ const RestServer = Restify.createServer({
     key: (Config.get('web.ssl.enabled') === true) ? Fs.readFileSync(Config.get('web.ssl.key')) : null,
 });
 
-RestServer.pre(function (req, res, next) {
+RestServer.pre((req, res, next) => {
     // Fix Headers
     if ('x-access-server' in req.headers && !('X-Access-Server' in req.headers)) {
-        req.headers['X-Access-Server'] = req.headers['x-access-server'];
+        req.headers['X-Access-Server'] = req.headers['x-access-server']; // eslint-disable-line
     }
 
     if ('x-access-token' in req.headers && !('X-Access-Token' in req.headers)) {
-        req.headers['X-Access-Token'] = req.headers['x-access-token'];
+        req.headers['X-Access-Token'] = req.headers['x-access-token']; // eslint-disable-line
     }
     return next();
 });

@@ -41,9 +41,7 @@ class DockerImage {
      */
     static exists(img, next) {
         const Image = DockerController.getImage(img);
-        Image.inspect(function (err) {
-            return next(err);
-        });
+        Image.inspect(next);
     }
 
     /**
@@ -53,16 +51,12 @@ class DockerImage {
      * @return {Function}
      */
     static pull(image, next) {
-        DockerController.pull(image, function (err, stream) {
+        DockerController.pull(image, (err, stream) => {
             if (err) return next(err);
             stream.setEncoding('utf8');
             stream.on('data', _.noop());
-            stream.on('end', function dockerImagePullStreamEnd() {
-                return next();
-            });
-            stream.on('error', function dockerImagePullStreamError(streamErr) {
-                return next(streamErr);
-            });
+            stream.on('end', next);
+            stream.on('error', next);
         });
     }
 }

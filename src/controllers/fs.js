@@ -32,45 +32,41 @@ class FileSystem {
     constructor(server) {
         this.server = server;
 
-        const self = this;
         const Watcher = Chokidar.watch(this.server.configLocation, {
             persistent: true,
             awaitWriteFinish: false,
         });
 
-        Watcher.on('change', function () {
-            if (self.server.knownWrite !== true) {
-                Fs.readJson(self.server.configLocation, function (err, object) {
+        Watcher.on('change', () => {
+            if (this.server.knownWrite !== true) {
+                Fs.readJson(this.server.configLocation, (err, object) => {
                     if (err) {
                         // Try to overwrite those changes with the old config.
-                        self.server.log.warn(err, 'An error was detected with the changed file, attempting to undo the changes.');
-                        self.server.knownWrite = true;
-                        Fs.writeJson(self.server.configLocation, self.server.json, function (writeErr) {
+                        this.server.log.warn(err, 'An error was detected with the changed file, attempting to undo the changes.');
+                        this.server.knownWrite = true;
+                        Fs.writeJson(this.server.configLocation, this.server.json, writeErr => {
                             if (!writeErr) {
-                                self.server.log.debug('Successfully undid those remote changes.');
+                                this.server.log.debug('Successfully undid those remote changes.');
                             } else {
-                                self.server.log.fatal(writeErr, 'Unable to undo those changes, this could break the daemon badly.');
+                                this.server.log.fatal(writeErr, 'Unable to undo those changes, this could break the daemon badly.');
                             }
                         });
                     } else {
-                        self.server.log.debug('Detected file change, updating JSON object correspondingly.');
-                        self.server.json = object;
+                        this.server.log.debug('Detected file change, updating JSON object correspondingly.');
+                        this.server.json = object;
                     }
                 });
             }
-            self.server.knownWrite = false;
+            this.server.knownWrite = false;
         });
     }
 
     write(file, data, next) {
-        Fs.outputFile(this.server.path(file), data, function (err) {
-            return next(err);
-        });
+        Fs.outputFile(this.server.path(file), data, next);
     }
 
     read(file, next) {
-        const self = this;
-        Fs.stat(this.server.path(file), function (err, stat) {
+        Fs.stat(this.server.path(file), (err, stat) => {
             if (err) return next(err);
             if (!stat.isFile()) {
                 return next(new Error('The file requested does not appear to be a file.'));
@@ -78,19 +74,16 @@ class FileSystem {
             if (stat.size > 10000000) {
                 return next(new Error('This file is too large to open.'));
             }
-            Fs.readFile(self.server.path(file), 'utf8', function (readErr, data) {
-                return next(readErr, data);
-            });
+            Fs.readFile(this.server.path(file), 'utf8', next);
         });
     }
 
     readEnd(file, bytes, next) {
-        const self = this;
         if (_.isFunction(bytes)) {
             next = bytes; // eslint-disable-line
             bytes = 80000; // eslint-disable-line
         }
-        Fs.stat(this.server.path(file), function (err, stat) {
+        Fs.stat(this.server.path(file), (err, stat) => {
             if (err) return next(err);
             if (!stat.isFile()) {
                 return next(new Error('The file requested does not appear to be a file.'));
@@ -103,12 +96,12 @@ class FileSystem {
                     end: stat.size,
                 };
             }
-            const stream = Fs.createReadStream(self.server.path(file), opts);
-            stream.on('data', function (data) {
+            const stream = Fs.createReadStream(this.server.path(file), opts);
+            stream.on('data', data => {
                 lines += data;
             });
-            stream.on('end', function () {
-                return next(null, lines);
+            stream.on('end', () => {
+                next(null, lines);
             });
         });
     }
@@ -118,15 +111,11 @@ class FileSystem {
         if (Path.resolve(this.server.path(path)) === this.server.path()) {
             return next(new Error('You cannot delete your home folder.'));
         }
-        Fs.remove(this.server.path(path), function (err) {
-            return next(err);
-        });
+        Fs.remove(this.server.path(path), next);
     }
 
     move(path, newpath, next) {
-        Fs.move(this.server.path(path), this.server.path(newpath), function (err) {
-            return next(err);
-        });
+        Fs.move(this.server.path(path), this.server.path(newpath), next);
     }
 
     copy(path, newpath, opts, next) {
@@ -137,17 +126,14 @@ class FileSystem {
         Fs.copy(this.server.path(path), this.server.path(newpath), {
             clobber: opts.clobber || false,
             preserveTimestamps: opts.timestamps || false,
-        }, function (err) {
-            return next(err);
-        });
+        }, next);
     }
 
     directory(path, next) {
         const files = [];
-        const self = this;
         Async.series([
-            function asyncDirectoryExists(callback) {
-                Fs.stat(self.server.path(path), function (err, s) {
+            callback => {
+                Fs.stat(this.server.path(path), (err, s) => {
                     if (err) return callback(err);
                     if (!s.isDirectory()) {
                         return callback(new Error('The path requested is not a valid directory on the system.'));
@@ -155,11 +141,11 @@ class FileSystem {
                     return callback();
                 });
             },
-            function asyncDirectoryRead(callback) {
-                Fs.readdir(self.server.path(path), function (err, contents) {
-                    Async.each(contents, function asyncDirectoryReadAsyncEach(item, eachCallback) {
+            callback => {
+                Fs.readdir(this.server.path(path), (err, contents) => {
+                    Async.each(contents, (item, eachCallback) => {
                         // Lets limit the callback hell
-                        const stat = Fs.statSync(Path.join(self.server.path(path), item));
+                        const stat = Fs.statSync(Path.join(this.server.path(path), item));
                         files.push({
                             'name': item,
                             'created': stat.ctime,
@@ -170,13 +156,13 @@ class FileSystem {
                             'symlink': stat.isSymbolicLink(),
                         });
                         eachCallback();
-                    }, function () {
-                        return callback(null, files);
+                    }, () => {
+                        callback(null, files);
                     });
                 });
             },
-        ], function (err, data) {
-            return next(err, data[1]);
+        ], (err, data) => {
+            next(err, data[1]);
         });
     }
 }
