@@ -24,23 +24,23 @@
  */
 class Responses {
     constructor(req, res) {
-        this._req = req;
-        this._res = res;
+        this.req = req;
+        this.res = res;
     }
 
     generic204(err) {
         if (err) {
             return this.generic500(err);
         }
-        return this._res.send(204);
+        return this.res.send(204);
     }
 
     generic500(err) {
-        return this._res.send(500, {
+        return this.res.send(500, {
             'error': err.message,
-            'route': this._req.path,
-            'req_id': this._req.id,
-            'type': this._req.contentType,
+            'route': this.req.path,
+            'req_id': this.req.id,
+            'type': this.req.contentType,
         });
     }
 

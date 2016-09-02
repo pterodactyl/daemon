@@ -36,7 +36,6 @@ const Status = rfr('src/helpers/status.js');
 
 class Core {
     constructor(server, config) {
-        const self = this;
         this.server = server;
         this.json = server.json;
         this.option = this.json.service.option;
@@ -44,29 +43,28 @@ class Core {
         this.logStream = undefined;
 
         // Find our data on initialization.
-        _.forEach(config, function coreOnConstructorLoop(element) {
-            if (self.option.match(element.tag)) {
+        _.forEach(config, element => {
+            if (this.option.match(element.tag)) {
                 // Handle "symlink" in the configuration for plugins...
-                self.object = element;
+                this.object = element;
                 const deepExtend = extendify({
                     inPlace: false,
                     arrays: 'replace',
                 });
                 if (!_.isUndefined(element.symlink) && !_.isUndefined(config[element.symlink])) {
-                    self.object = deepExtend(config[element.symlink], element);
+                    this.object = deepExtend(config[element.symlink], element);
                 }
             }
         });
     }
 
     doQuery(next) {
-        const self = this;
         Gamedig.query({
-            type: self.object.query,
-            host: self.json.build.default.ip,
-            port: self.json.build.default.port,
-        }, function (response) {
-            if (response.error) return next(new Error('Server unresponsive to query attempt. (' + response.error + ')'));
+            type: this.object.query,
+            host: this.json.build.default.ip,
+            port: this.json.build.default.port,
+        }, response => {
+            if (response.error) return next(new Error(`Server unresponsive to query attempt. (${response.error})`));
             return next(null, response);
         });
     }
@@ -81,12 +79,11 @@ class Core {
     // is opened, and then all of the lines are run at the same time.
     // Very quick function, surprisingly...
     onPreflight(next) {
-        const self = this;
         const parsedLines = [];
         // Check each configuration file and set variables as needed.
-        Async.forEachOf(this.object.configs, function coreOnPreflightFileLoop(searches, file, callback) {
+        Async.forEachOf(this.object.configs, (searches, file, callback) => {
             // Read the file that we have looped to.
-            Fs.readFile(self.server.path(file), function (err, data) {
+            Fs.readFile(this.server.path(file), (err, data) => {
                 if (err) {
                     // File doesn't exist
                     // @TODO: handle restarting the server to see if the file appears
@@ -98,39 +95,32 @@ class Core {
                 }
                 // Loop through each line and set the new value if necessary.
                 parsedLines[file] = data.toString().split('\n');
-                Async.forEachOf(parsedLines[file], function (line, index, eachCallback) {
+                Async.forEachOf(parsedLines[file], (line, index, eachCallback) => {
                     // Check line aganist each possible search/replace set in the config array.
-                    Async.forEachOf(searches, function (replaceString, find, searchCallback) {
+                    Async.forEachOf(searches, (replaceString, find, searchCallback) => {
                         // Positive Match
                         if (line.startsWith(find)) {
                             // Set the new line value.
-                            const newLineValue = replaceString.replace(/{{ (\S+) }}/g, function ($0, $1) {
-                                // return ($1).split('.').reduce((o, i) => o[i], self.json);
-                                return _.reduce(($1).split('.'), function (o, i) {
-                                    return o[i];
-                                }, self.json);
+                            const newLineValue = replaceString.replace(/{{ (\S+) }}/g, ($0, $1) => { // eslint-disable-line
+                                return _.reduce(($1).split('.'), (o, i) => o[i], this.json);
                             });
                             parsedLines[file][index] = newLineValue;
                         }
                         searchCallback();
-                    }, function () {
-                        eachCallback();
-                    });
-                }, function () {
-                    Fs.writeFile(self.server.path(file), parsedLines[file].join('\n'), function (writeErr) {
-                        return callback(writeErr);
-                    });
+                    }, eachCallback);
+                }, () => {
+                    Fs.writeFile(this.server.path(file), parsedLines[file].join('\n'), callback);
                 });
             });
-        }, function (err) {
+        }, err => {
             if (err) return next(err);
-            if (_.get(self.object, 'log.custom', false) === true) {
-                if (isStream.isWritable(self.logStream)) {
-                    self.logStream.end(function () {
-                        self.logStream = false;
+            if (_.get(this.object, 'log.custom', false) === true) {
+                if (isStream.isWritable(this.logStream)) {
+                    this.logStream.end(() => {
+                        this.logStream = false;
                     });
                 }
-                Fs.remove(self.server.path(_.get(self.object, 'log.location', 'logs/latest.log')), function (removeErr) {
+                Fs.remove(this.server.path(_.get(this.object, 'log.location', 'logs/latest.log')), removeErr => {
                     if (removeErr && !_.includes(removeErr.message, 'ENOENT: no such file or directory')) {
                         return next(removeErr);
                     }
@@ -147,60 +137,57 @@ class Core {
     }
 
     onConsole(data) {
-        const self = this;
-
         Async.parallel([
-            function handleCustomLog() {
+            () => {
                 // Custom Log?
-                if (_.get(self.object, 'log.custom', false) === true) {
-                    if (isStream.isWritable(self.logStream)) {
-                        self.logStream.write(data);
+                if (_.get(this.object, 'log.custom', false) === true) {
+                    if (isStream.isWritable(this.logStream)) {
+                        this.logStream.write(data);
                     } else {
-                        const LogFile = self.server.path(_.get(self.object, 'log.location', 'logs/latest.log'));
+                        const LogFile = this.server.path(_.get(this.object, 'log.location', 'logs/latest.log'));
                         Async.series([
-                            function (callback) {
-                                self.logStream = createOutputStream(LogFile, {
+                            callback => {
+                                this.logStream = createOutputStream(LogFile, {
                                     mode: '0755',
                                     defaultEncoding: 'utf8',
                                 });
                                 return callback();
                             },
-                            function (callback) {
-                                Fs.chown(Path.dirname(LogFile), self.json.build.user, self.json.build.user, callback);
+                            callback => {
+                                Fs.chown(Path.dirname(LogFile), this.json.build.user, this.json.build.user, callback);
                             },
-                        ], function (cbErr) {
-                            if (cbErr) self.server.log.warn(cbErr);
+                        ], err => {
+                            if (err) this.server.log.warn(err);
                         });
                     }
                 }
             },
-            function handlePowerStarts() {
+            () => {
                 // Started
-                if (_.includes(data, self.object.startup.done)) {
-                    self.server.setStatus(Status.ON);
+                if (_.includes(data, this.object.startup.done)) {
+                    this.server.setStatus(Status.ON);
                 }
 
                 // Stopped; Don't trigger crash
-                if (self.server.status !== Status.ON && !_.isUndefined(self.object.startup.userInteraction)) {
-                    Async.each(self.object.startup.userInteraction, function coreOnConsoleAsyncEach(string) {
+                if (this.server.status !== Status.ON && !_.isUndefined(this.object.startup.userInteraction)) {
+                    Async.each(this.object.startup.userInteraction, string => {
                         if (_.includes(data, string)) {
-                            self.server.log.info('Server detected as requiring user interaction, stopping now.');
-                            self.server.setStatus(Status.STOPPING);
+                            this.server.log.info('Server detected as requiring user interaction, stopping now.');
+                            this.server.setStatus(Status.STOPPING);
                         }
                     });
                 }
             },
-            function sendToSocket() {
-                self.server.emit('console', self.sanitizeSocketData(data));
+            () => {
+                this.server.emit('console', this.sanitizeSocketData(data));
             },
         ]);
     }
 
     onStop(next) {
-        const self = this;
         if (isStream.isWritable(this.logStream)) {
-            this.logStream.end(function () {
-                self.logStream = false;
+            this.logStream.end(() => {
+                this.logStream = false;
             });
         }
         return next();

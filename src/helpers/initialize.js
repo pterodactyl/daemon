@@ -42,14 +42,13 @@ class Initialize {
      * @return {[type]}        [description]
      */
     init(next) {
-        const self = this;
-        this._folders = [];
-        Fs.walk('./config/servers/').on('data', function (data) {
-            self._folders.push(data.path);
-        }).on('end', function () {
-            Async.each(self._folders, function (file, callback) {
+        this.folders = [];
+        Fs.walk('./config/servers/').on('data', data => {
+            this.folders.push(data.path);
+        }).on('end', () => {
+            Async.each(this.folders, (file, callback) => {
                 if (Path.extname(file) === '.json') {
-                    Fs.readJson(file, function (errJson, json) {
+                    Fs.readJson(file, (errJson, json) => {
                         if (errJson) {
                             Log.warn(errJson, Util.format('Unable to parse JSON in %s due to an error, skipping...', file));
                             return;
@@ -62,14 +61,12 @@ class Initialize {
                         }
 
                         // Initalize the Server
-                        self.setup(json, callback);
+                        this.setup(json, callback);
                     });
                 } else {
                     return callback();
                 }
-            }, function (errAsync) {
-                return next(errAsync);
-            });
+            }, next);
         });
     }
 
@@ -80,7 +77,7 @@ class Initialize {
      * @return {[type]}        [description]
      */
     setup(json, next) {
-        Servers[json.uuid] = new Server(json, function setupCallback(err) {
+        Servers[json.uuid] = new Server(json, err => {
             Log.info({ server: json.uuid }, 'Loaded configuration and initalized server.');
             return next(err);
         });

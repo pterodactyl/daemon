@@ -40,29 +40,29 @@ const Stats = new LiveStats();
 const Config = new ConfigHelper();
 
 Async.series([
-    function indexAsyncConfigureDockerInterface(callback) {
+    callback => {
         if (!Config.get('docker.interface')) {
             Log.info('Checking docker0 interface and setting configuration values.');
             return Config.initDockerInterface(callback);
         }
-        Log.info('Docker interface detected as ' + Config.get('docker.interface'));
+        Log.info(`Docker interface detected as ${Config.get('docker.interface')}`);
         return callback();
     },
-    function indexAsyncStartSFTP(callback) {
+    callback => {
         Log.info('Attempting to start SFTP service container...');
         SFTP.startService(callback);
-        Log.info('SFTP service container booted!');
     },
-    function indexAsyncInitialize(callback) {
+    callback => {
+        Log.info('SFTP service container booted!');
         Log.info('Attempting to load servers and initialize daemon...');
         Initialize.init(callback);
     },
-    function indexAsyncStartsSocket(callback) {
+    callback => {
         Log.info('Configuring websocket for daemon stats...');
         Stats.init();
         return callback();
     },
-], function indexAsyncCallback(err) {
+], err => {
     if (err) {
         // Log a fatal error and exit.
         // We need this to initialize successfully without any errors.
@@ -73,10 +73,10 @@ Async.series([
     Log.info('Initialization Successful!');
 });
 
-process.on('uncaughtException', function processUncaughtException(err) {
+process.on('uncaughtException', err => {
     Log.fatal(err, 'A fatal error occured during an operation.');
 });
 
-process.on('SIGUSR2', function processSIGUSR2() {
+process.on('SIGUSR2', () => {
     Log.reopenFileStreams();
 });

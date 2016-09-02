@@ -36,7 +36,7 @@ const Config = new ConfigHelper();
 class Stats {
     constructor() {
         this.statSocket = Socket.of('/stats/');
-        this.statSocket.use(function socketConstructor(params, next) {
+        this.statSocket.use((params, next) => {
             if (!params.handshake.query.token) {
                 return next(new Error('You must pass the correct handshake values.'));
             }
@@ -48,21 +48,19 @@ class Stats {
     }
 
     init() {
-        const self = this;
-        setInterval(function () {
-            self.send();
+        setInterval(() => {
+            this.send();
         }, 2000);
     }
 
     send() {
-        const self = this;
         const responseData = {};
         const statData = {
             memory: 0,
             cpu: 0,
             players: 0,
         };
-        Async.each(Servers, function (server, callback) {
+        Async.each(Servers, (server, callback) => {
             responseData[server.json.uuid] = {
                 container: server.json.container,
                 service: server.json.service,
@@ -76,8 +74,8 @@ class Stats {
                 statData.players += _.get(server.processData, 'query.players.length', 0);
             }
             return callback();
-        }, function () {
-            self.statSocket.emit('live-stats', {
+        }, () => {
+            this.statSocket.emit('live-stats', {
                 'servers': responseData,
                 'stats': statData,
             });

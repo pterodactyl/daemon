@@ -49,7 +49,6 @@ class Server extends EventEmitter {
 
     constructor(json, next) {
         super();
-        const self = this;
         this.status = Status.OFF;
         this.json = json;
         this.uuid = this.json.uuid;
@@ -73,9 +72,9 @@ class Server extends EventEmitter {
 
         // @TODO: If container doesn't exist attempt to create a new container and then try again.
         // If that faisl it truly is a fatal error and we should exit.
-        this.docker = new Docker(this, function constructorServer(err, status) {
+        this.docker = new Docker(this, (err, status) => {
             if (status === true) {
-                self.log.info('Daemon detected that the server container is currently running, re-attaching to it now!');
+                this.log.info('Daemon detected that the server container is currently running, re-attaching to it now!');
             }
             return next(err);
         });
@@ -112,7 +111,7 @@ class Server extends EventEmitter {
         // stopping, and if so, we prevent changing the status to starting or on. This allows the
         // server to not crash when we press stop before it is compeltely started.
         if (this.status === Status.STOPPING && (status === Status.ON || status === Status.STARTING)) {
-            this.log.debug('Recieved request to mark server as ' + inverted[status] + ' but the server is currently marked as STOPPING.');
+            this.log.debug(`Recieved request to mark server as ${inverted[status]} but the server is currently marked as STOPPING.`);
             return;
         }
 
@@ -137,9 +136,9 @@ class Server extends EventEmitter {
             this.processData.query = {};
         }
 
-        this.log.info('Server status has been changed to ' + inverted[status]);
+        this.log.info(`Server status has been changed to ${inverted[status]}`);
         this.status = status;
-        this.emit('is:' + inverted[status]);
+        this.emit(`is:${inverted[status]}`);
         this.emit('status', status);
     }
 
@@ -152,7 +151,6 @@ class Server extends EventEmitter {
     }
 
     start(next) {
-        const self = this;
         if (this.status !== Status.OFF) {
             return next(new Error('Server is already running.'));
         }
@@ -160,22 +158,20 @@ class Server extends EventEmitter {
         if (this.json.rebuild === true || this.buildInProgress === true) {
             if (this.buildInProgress !== true) {
                 Async.waterfall([
-                    function (callback) {
-                        self.buildInProgress = true;
-                        self.emit('console', '\n[Daemon] Your server is currently queued for a container rebuild. This should only take a few seconds, but could take a few minutes. You do not need to do anything else while this occurs. Your server will automatically continue with startup once this process is completed.');
+                    callback => {
+                        this.buildInProgress = true;
+                        this.emit('console', '\n[Daemon] Your server is currently queued for a container rebuild. This should only take a few seconds, but could take a few minutes. You do not need to do anything else while this occurs. Your server will automatically continue with startup once this process is completed.');
                         callback();
                     },
-                    function (callback) {
-                        self.rebuild(function (err, server) {
-                            return callback(err, server);
-                        });
+                    callback => {
+                        this.rebuild(callback);
                     },
-                    function (newServer, callback) {
+                    (newServer, callback) => {
                         newServer.start(callback);
                     },
-                ], function (err) {
+                ], err => {
                     if (err) {
-                        self.emit('console', '\n[Daemon] An error was encountered while attempting to rebuild this container.');
+                        this.emit('console', '\n[Daemon] An error was encountered while attempting to rebuild this container.');
                         this.buildInProgress = false;
                         Log.error(err);
                     }
@@ -187,19 +183,19 @@ class Server extends EventEmitter {
         }
 
         Async.series([
-            function startAsyncPreflight(callback) {
-                self.log.debug('Initializing for boot sequence, running preflight checks.');
-                self.preflight(callback);
+            callback => {
+                this.log.debug('Initializing for boot sequence, running preflight checks.');
+                this.preflight(callback);
             },
-            function startAsyncStart(callback) {
-                self.docker.start(callback);
+            callback => {
+                this.docker.start(callback);
             },
-            function startAsyncAttach(callback) {
-                self.docker.attach(callback);
+            callback => {
+                this.docker.attach(callback);
             },
-        ], function startAsyncDone(err, reboot) {
+        ], (err, reboot) => {
             if (err) {
-                self.log.error(err);
+                this.log.error(err);
                 return next(err);
             }
 
@@ -224,54 +220,44 @@ class Server extends EventEmitter {
         // So, what we will do is send a stop command, and then sit there and wait
         // until the container stops because the process stopped, at which point the crash
         // detection will not fire since we set the status to STOPPING.
-        this.command(this.service.object.stop, function (err) {
-            return next(err);
-        });
+        this.command(this.service.object.stop, next);
     }
 
     kill(next) {
-        const self = this;
         if (this.status === Status.OFF) {
             return next(new Error('Server is already stopped.'));
         }
 
         this.setStatus(Status.STOPPING);
-        this.docker.kill(function killDockerKill(err) {
-            self.setStatus(Status.OFF);
+        this.docker.kill(err => {
+            this.setStatus(Status.OFF);
             return next(err);
         });
     }
 
     restart(next) {
-        const self = this;
         Async.series([
-            function (callback) {
-                if (self.status !== Status.OFF) {
-                    self.once('is:OFF', function () {
-                        return callback();
-                    });
-                    self.stop(function (err) {
+            callback => {
+                if (this.status !== Status.OFF) {
+                    this.once('is:OFF', callback);
+                    this.stop(err => {
                         if (err) return callback(err);
                     });
                 } else {
                     return callback();
                 }
             },
-            function (callback) {
-                self.start(function (err) {
-                    return callback(err);
-                });
+            callback => {
+                this.start(callback);
             },
-        ], function (err) {
-            return next(err);
-        });
+        ], next);
     }
 
     /**
      * Send output from server container to websocket.
      */
     output(output) {
-        if (output.replace(/[\x00-\x1F\x7F-\x9F]/g, '') === null || output.replace(/[\x00-\x1F\x7F-\x9F]/g, '') === '' || output.replace(/[\x00-\x1F\x7F-\x9F]/g, '') === ' ') {
+        if (output.replace(/[\x00-\x1F\x7F-\x9F]/g, '') === null || output.replace(/[\x00-\x1F\x7F-\x9F]/g, '') === '' || output.replace(/[\x00-\x1F\x7F-\x9F]/g, '') === ' ') { // eslint-disable-line
             return;
         }
         // For now, log to console, and strip control characters from output.
@@ -298,8 +284,6 @@ class Server extends EventEmitter {
      * Determines if the container stream should have ended yet, if not, mark server crashed.
      */
     streamClosed() {
-        const self = this;
-
         if (this.status === Status.OFF || this.status === Status.STOPPING) {
             this.setStatus(Status.OFF);
             return;
@@ -326,8 +310,8 @@ class Server extends EventEmitter {
         this.emit('console', '\n[Daemon] Server detected as crashed! Attempting to reboot server now.\n');
         this.setCrashTime();
 
-        this.start(function streamClosedStart(err) {
-            if (err) self.log.fatal(err);
+        this.start(err => {
+            if (err) this.log.fatal(err);
         });
     }
 
@@ -350,24 +334,25 @@ class Server extends EventEmitter {
         return dataPath;
     }
 
+    // Still using self here because of intervals.
     query(self) {
         if (self.status !== Status.ON) return;
 
-        self.service.doQuery(function (err, response) {
+        self.service.doQuery((err, response) => {
             if (err) {
-                self.failedQueryCount++;
+                self.failedQueryCount++; // eslint-disable-line
                 self.log.warn(err.message);
-                self.service.onConsole('[Daemon] ' + err.message + '\n');
+                self.service.onConsole(`[Daemon] ${err.message}\n`);
                 if (self.failedQueryCount >= 3) {
-                    self.docker.kill(function queryKillContainer(killErr) {
+                    self.docker.kill(killErr => {
                         if (killErr) return self.log.fatal(killErr);
                     });
                 }
                 return;
             }
 
-            self.failedQueryCount = 0;
-            self.processData.query = {
+            self.failedQueryCount = 0; // eslint-disable-line
+            self.processData.query = { // eslint-disable-line
                 name: response.name,
                 map: response.map,
                 maxplayers: response.maxplayers,
@@ -398,15 +383,15 @@ class Server extends EventEmitter {
         const deltaSystem = cycle.system_cpu_usage - priorCycle.system_cpu_usage;
         const totalUsage = (deltaTotal / deltaSystem) * cycle.cpu_usage.percpu_usage.length * 100;
 
-        Async.forEachOf(cycle.cpu_usage.percpu_usage, function (cpu, index, callback) {
+        Async.forEachOf(cycle.cpu_usage.percpu_usage, (cpu, index, callback) => {
             if (priorCycle.cpu_usage.percpu_usage !== null && index in priorCycle.cpu_usage.percpu_usage) {
                 const priorCycleCpu = priorCycle.cpu_usage.percpu_usage[index];
                 const deltaCore = cpu - priorCycleCpu;
                 perCoreUsage.push(parseFloat(((deltaCore / deltaSystem) * cycle.cpu_usage.percpu_usage.length * 100).toFixed(3).toString()));
             }
             callback();
-        }, function () {
-            self.processData.process = {
+        }, () => {
+            self.processData.process = { // eslint-disable-line
                 memory: {
                     total: self.docker.procData.memory_stats.usage,
                     cmax: self.docker.procData.memory_stats.max_usage,
@@ -430,7 +415,6 @@ class Server extends EventEmitter {
             overwrite = false; // eslint-disable-line
         }
 
-        const self = this;
         const deepExtend = extendify({
             inPlace: false,
             arrays: 'replace',
@@ -439,7 +423,7 @@ class Server extends EventEmitter {
 
         // Ports are a pain in the butt.
         if (!_.isUndefined(newObject.build)) {
-            _.forEach(newObject.build, function (obj, ident) {
+            _.forEach(newObject.build, (obj, ident) => {
                 if (ident.endsWith('|overwrite')) {
                     const item = ident.split('|')[0];
                     newObject.build[item] = obj;
@@ -461,7 +445,7 @@ class Server extends EventEmitter {
             newObject.build.default.ip = Config.get('docker.interface');
         }
 
-        _.forEach(newObject.build.ports, function (ports, ip) {
+        _.forEach(newObject.build.ports, (ports, ip) => {
             if (ip === '127.0.0.1') {
                 newObject.build.ports[Config.get('docker.interface')] = ports;
                 delete newObject.build.ports[ip];
@@ -469,25 +453,25 @@ class Server extends EventEmitter {
         });
 
         Async.series([
-            function (callback) {
-                self.knownWrite = true;
+            callback => {
+                this.knownWrite = true;
                 callback();
             },
-            function (callback) {
-                Fs.writeJson(self.configLocation, newObject, function (err) {
-                    if (!err) self.json = newObject;
+            callback => {
+                Fs.writeJson(this.configLocation, newObject, err => {
+                    if (!err) this.json = newObject;
                     return callback(err);
                 });
             },
-            function (callback) {
+            callback => {
                 if (!_.isUndefined(object.build) && _.isEmpty(checkForRebuild)) {
-                    self.updateCGroups(callback);
+                    this.updateCGroups(callback);
                 } else {
                     return callback();
                 }
             },
-        ], function (err) {
-            if (err) self.knownWrite = false;
+        ], err => {
+            if (err) this.knownWrite = false;
             return next(err);
         });
     }
@@ -495,110 +479,89 @@ class Server extends EventEmitter {
     updateCGroups(next) {
         this.log.debug('Updating some build parameters without triggering a container rebuild.');
         this.emit('console', '\n[Daemon] Your server has had some resource use limits modified, you may need to restart to apply them.\n');
-        this.docker.update(function (err) {
-            return next(err);
-        });
+        this.docker.update(next);
     }
 
     rebuild(next) {
-        const self = this;
         // You shouldn't really be able to make it this far without this being set,
         // but for the sake of double checking...
         if (this.buildInProgress !== true) this.buildInProgress = true;
         Async.waterfall([
-            function (callback) {
-                self.log.debug('Running rebuild for server...');
-                self.docker.rebuild(function (err, data) {
-                    return callback(err, data);
+            callback => {
+                this.log.debug('Running rebuild for server...');
+                this.docker.rebuild((err, data) => {
+                    callback(err, data);
                 });
             },
-            function (data, callback) {
-                self.log.debug('New container created successfully, updating config...');
-                self.modifyConfig({
+            (data, callback) => {
+                this.log.debug('New container created successfully, updating config...');
+                this.modifyConfig({
                     rebuild: false,
                     container: {
                         id: data.id.substr(0, 12),
                         image: data.image,
                     },
-                }, function (err) {
-                    return callback(err);
-                });
+                }, callback);
             },
-            function (callback) {
+            callback => {
                 const InitializeHelper = rfr('src/helpers/initialize.js').Initialize;
                 const Initialize = new InitializeHelper();
-                Initialize.setup(self.json, function (err) {
+                Initialize.setup(this.json, err => {
                     if (err) return callback(err);
 
                     // If we don't do this we end up continuing to use the old server
                     // object for things which causes issues since not all the functions
                     // get updated.
                     const Servers = rfr('src/helpers/initialize.js').Servers;
-                    return callback(err, Servers[self.json.uuid]);
+                    return callback(err, Servers[this.json.uuid]);
                 });
             },
-            function (server, callback) {
-                self.buildInProgress = false;
+            (server, callback) => {
+                this.buildInProgress = false;
                 callback(null, server);
             },
-        ], function (err, server) {
-            return next(err, server);
+        ], (err, server) => {
+            next(err, server);
         });
     }
 
     setPassword(password, next) {
-        SFTP.password(this.json.user, password, function (err) {
-            return next(err);
-        });
+        SFTP.password(this.json.user, password, next);
     }
 
     suspend(next) {
-        const self = this;
         Async.parallel([
-            function setConfigToSuspended(callback) {
-                self.modifyConfig({
-                    suspended: 1,
-                }, function (err) {
-                    return callback(err);
-                });
+            callback => {
+                this.modifyConfig({ suspended: 1 }, callback);
             },
-            function killRunningServerProcess(callback) {
-                if (self.status !== Status.OFF) {
-                    return self.kill(callback);
+            callback => {
+                if (this.status !== Status.OFF) {
+                    return this.kill(callback);
                 }
                 return callback();
             },
-            function disableSFTPAccess(callback) {
-                SFTP.lock(self.json.user, function (err) {
-                    return callback(err);
-                });
+            callback => {
+                SFTP.lock(this.json.user, callback);
             },
-        ], function (err) {
+        ], err => {
             if (!err) {
-                self.log.warn('Server has been suspended.');
+                this.log.warn('Server has been suspended.');
             }
             return next(err);
         });
     }
 
     unsuspend(next) {
-        const self = this;
         Async.parallel([
-            function setConfigToUnsuspended(callback) {
-                self.modifyConfig({
-                    suspended: 0,
-                }, function (err) {
-                    return callback(err);
-                });
+            callback => {
+                this.modifyConfig({ suspended: 0 }, callback);
             },
-            function enableSFTPAccess(callback) {
-                SFTP.unlock(self.json.user, function (err) {
-                    return callback(err);
-                });
+            callback => {
+                SFTP.unlock(this.json.user, callback);
             },
-        ], function (err) {
+        ], err => {
             if (!err) {
-                self.log.info('Server has been unsuspended.');
+                this.log.info('Server has been unsuspended.');
             }
             return next(err);
         });

@@ -46,44 +46,43 @@ class Delete {
     }
 
     delete(next) {
-        const self = this;
         Async.series([
             // Clear the 'Servers' object of the specific server
-            function (callback) {
-                self.log.info('Clearing servers object...');
+            callback => {
+                this.log.info('Clearing servers object...');
                 const Servers = rfr('src/helpers/initialize.js').Servers;
 
                 // Prevent crash detection
-                Servers[self.json.uuid].setStatus(Status.OFF);
-                delete Servers[self.json.uuid];
+                Servers[this.json.uuid].setStatus(Status.OFF);
+                delete Servers[this.json.uuid];
                 return callback();
             },
             // Delete the container (kills if running)
-            function (callback) {
-                self.log.info('Attempting to remove container...');
-                const container = DockerController.getContainer(self.json.container.id);
-                container.remove({ v: true, force: true }, function (err) {
-                    if (!err) self.log.info('Removed container.');
+            callback => {
+                this.log.info('Attempting to remove container...');
+                const container = DockerController.getContainer(this.json.container.id);
+                container.remove({ v: true, force: true }, err => {
+                    if (!err) this.log.info('Removed container.');
                     return callback(err);
                 });
             },
             // Delete the SFTP user and files.
-            function (callback) {
-                self.log.info('Attempting to remove SFTP user...');
-                SFTP.delete(self.json.user, function (err) {
-                    if (!err) self.log.info('Removed SFTP user.');
+            callback => {
+                this.log.info('Attempting to remove SFTP user...');
+                SFTP.delete(this.json.user, err => {
+                    if (!err) this.log.info('Removed SFTP user.');
                     return callback(err);
                 });
             },
             // Delete the configuration files for this server
-            function (callback) {
-                self.log.info('Attempting to remove configuration files...');
-                Fs.remove(Path.join('./config/servers', self.json.uuid), function (err) {
-                    if (!err) self.log.info('Removed configuration folder.');
+            callback => {
+                this.log.info('Attempting to remove configuration files...');
+                Fs.remove(Path.join('./config/servers', this.json.uuid), err => {
+                    if (!err) this.log.info('Removed configuration folder.');
                     return callback(err);
                 });
             },
-        ], function (err) {
+        ], err => {
             if (err) Log.fatal(err);
             return next(err);
         });
