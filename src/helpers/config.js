@@ -26,6 +26,7 @@ const Async = require('async');
 const Fs = require('fs-extra');
 const Proc = require('child_process');
 const _ = require('lodash');
+const extendify = require('extendify');
 
 class Config {
 
@@ -65,6 +66,18 @@ class Config {
 
         Fs.writeJson('./config/core.json', json, function (err) {
             if (!err) self.configJson = json;
+            return next(err);
+        });
+    }
+
+    modify(object, next) {
+        if (!_.isObject(object)) return next(new Error('Function expects an object to be passed.'));
+
+        const deepExtend = extendify({
+            inPlace: false,
+            arrays: 'replace',
+        });
+        Fs.writeJson('./config/core.json', deepExtend(this._raw(), object), function (err) {
             return next(err);
         });
     }

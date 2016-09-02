@@ -23,10 +23,13 @@
  * SOFTWARE.
  */
 const rfr = require('rfr');
-
-const LoadConfig = rfr('src/helpers/config.js');
+const Util = require('util');
+const Async = require('async');
 const Dockerode = require('dockerode');
 const _ = require('lodash');
+
+const LoadConfig = rfr('src/helpers/config.js');
+const Log = rfr('src/helpers/logger.js');
 
 const Config = new LoadConfig();
 const DockerController = new Dockerode({
@@ -36,7 +39,66 @@ const DockerController = new Dockerode({
 // docker run -d --name sftp -v /srv/data:/sftp-root -v /srv/daemon/config/credentials:/creds -p 2022:22 quay.io/pterodactyl/scrappy
 class SFTP {
     constructor() {
-        this.container = DockerController.getContainer(Config.get('sftp.container'));
+        this.container = undefined;
+    }
+
+    buildContainer(next) {
+        Async.waterfall([
+            function createDockerContainer(callback) {
+                DockerController.createContainer({
+                    Image: 'quay.io/pterodactyl/scrappy:latest',
+                    Hostname: 'ptdlsftp',
+                    AttachStdin: true,
+                    AttachStdout: true,
+                    AttachStderr: true,
+                    OpenStdin: true,
+                    Tty: true,
+                    Mounts: [
+                        {
+                            Source: Config.get('sftp.path', '/srv/data'),
+                            Destination: '/sftp-root',
+                            RW: true,
+                        },
+                        {
+                            Source: '/srv/daemon/config/credentials',
+                            Destination: '/creds',
+                            RW: true,
+                        },
+                    ],
+                    ExposedPorts: {
+                        '22/tcp': {},
+                    },
+                    HostConfig: {
+                        Binds: [
+                            Util.format('%s:/sftp-root', Config.get('sftp.path', '/srv/data')),
+                            Util.format('%s:/creds', '/srv/daemon/config/credentials'),
+                        ],
+                        PortBindings: {
+                            '22/tcp': [
+                                {
+                                    'HostPort': Config.get('sftp.port', '2022').toString(),
+                                },
+                            ],
+                        },
+                        Dns: [
+                            '8.8.8.8',
+                            '8.8.4.4',
+                        ],
+                    },
+                }, function (err, container) {
+                    return callback(err, container);
+                });
+            },
+            function updateCoreConfig(containerInfo, callback) {
+                Config.modify({
+                    'sftp': {
+                        'container': containerInfo.id,
+                    },
+                }, callback);
+            },
+        ], function (err) {
+            return next(err);
+        });
     }
 
     /**
@@ -45,11 +107,47 @@ class SFTP {
      * @return {[type]}        [description]
      */
     startService(next) {
-        this.container.start(function sftpContainerStart(err) {
-            // Container is already running, we can just continue on and pretend we started it just now.
-            if (err && _.includes(err.message, 'HTTP code is 304 which indicates error: container already started')) {
-                return next();
-            }
+        const self = this;
+        Async.series([
+            function startServiceCheckContainer(callback) {
+                if (!_.isUndefined(Config.get('sftp.container'))) {
+                    DockerController.listContainers({ 'all': 1 }, function (err, containers) {
+                        if (err) return callback(err);
+                        const foundContainer = _.find(containers, function (values) {
+                            if (_.startsWith(values.Id, Config.get('sftp.container'))) return values.Id;
+                        });
+
+                        if (!_.isUndefined(foundContainer)) {
+                            self.container = DockerController.getContainer(foundContainer.Id);
+                        }
+                        return callback();
+                    });
+                } else {
+                    return callback();
+                }
+            },
+            function startServiceCreateContainer(callback) {
+                if (_.isUndefined(self.container)) {
+                    Log.warn('Unable to locate a suitable SFTP container in the configuration, creating one now.');
+                    self.buildContainer(function (err) {
+                        if (err) return callback(err);
+                        self.container = DockerController.getContainer(Config.get('sftp.container'));
+                        return callback();
+                    });
+                } else {
+                    return callback();
+                }
+            },
+            function startServiceStartContainer(callback) {
+                self.container.start(function sftpContainerStart(err) {
+                    // Container is already running, we can just continue on and pretend we started it just now.
+                    if (err && _.includes(err.message, 'HTTP code is 304 which indicates error: container already started')) {
+                        return callback();
+                    }
+                    return callback(err);
+                });
+            },
+        ], function (err) {
             return next(err);
         });
     }
