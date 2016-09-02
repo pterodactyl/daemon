@@ -26,8 +26,14 @@ const rfr = require('rfr');
 const Async = require('async');
 
 const Log = rfr('src/helpers/logger.js');
+const Package = rfr('package.json');
 
-Log.info('Starting Pterodactyl Daemon...');
+Log.info('+ ------------------------------------ +');
+Log.info(`| Running Pterodactyl Daemon v${Package.version}    |`);
+Log.info('|        https://pterodactyl.io        |');
+Log.info('|  Copyright 2015 - 2016 Dane Everitt  |');
+Log.info('+ ------------------------------------ +');
+Log.info('Loading modules, this could take a few seconds.');
 
 const Initializer = rfr('src/helpers/initialize.js').Initialize;
 const SFTPController = rfr('src/controllers/sftp.js');
@@ -41,6 +47,7 @@ const Config = new ConfigHelper();
 
 Async.series([
     callback => {
+        Log.info('Starting Pterodactyl Daemon...');
         if (!Config.get('docker.interface')) {
             Log.info('Checking docker0 interface and setting configuration values.');
             return Config.initDockerInterface(callback);
