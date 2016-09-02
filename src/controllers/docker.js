@@ -251,6 +251,36 @@ class Docker {
         });
     }
 
+    /**
+     * Updates usage liits without requiring a rebuild.
+     * @param  {Function} next
+     * @return {Callback}
+     */
+    update(next) {
+        // How Much Swap?
+        let swapSpace = 0;
+        if (this.server.json.build.swap < 0) {
+            swapSpace = -1;
+        } else if (this.server.json.build.swap > 0 && this.server.json.build.memory > 0) {
+            swapSpace = ((this.server.json.build.memory + this.server.json.build.swap) * 1000000);
+        }
+
+        this.container.update({
+            CpuQuota: (this.server.json.build.cpu > 0) ? (this.server.json.build.cpu * 1000) : -1,
+            CpuPeriod: (this.server.json.build.cpu > 0) ? 100000 : 0,
+            Memory: this.server.json.build.memory * 1000000,
+            MemorySwap: swapSpace,
+            BlkioWeight: this.server.json.build.io,
+        }, function (err) {
+            return next(err);
+        });
+    }
+
+    /**
+     * Rebuilds a given servers container.
+     * @param  {Function} next
+     * @return {Callback}
+     */
     rebuild(next) {
         const self = this;
         const config = this.server.json.build;
