@@ -33,6 +33,7 @@ const Path = require('path');
 const createOutputStream = require('create-output-stream');
 
 const Status = rfr('src/helpers/status.js');
+const FileParserHelper = rfr('src/helpers/fileparser.js');
 
 class Core {
     constructor(server, config) {
@@ -41,6 +42,8 @@ class Core {
         this.option = this.json.service.option;
         this.object = undefined;
         this.logStream = undefined;
+
+        this.parser = new FileParserHelper(this.server);
 
         // Find our data on initialization.
         _.forEach(config, element => {
@@ -79,39 +82,24 @@ class Core {
     // is opened, and then all of the lines are run at the same time.
     // Very quick function, surprisingly...
     onPreflight(next) {
-        const parsedLines = [];
         // Check each configuration file and set variables as needed.
-        Async.forEachOf(this.object.configs, (searches, file, callback) => {
-            // Read the file that we have looped to.
-            Fs.readFile(this.server.path(file), (err, data) => {
-                if (err) {
-                    // File doesn't exist
-                    // @TODO: handle restarting the server to see if the file appears
-                    // at which point we can write to it.
-                    if (_.includes(err.message.toString(), 'ENOENT: no such file or directory')) {
-                        return callback();
-                    }
-                    return callback(err);
-                }
-                // Loop through each line and set the new value if necessary.
-                parsedLines[file] = data.toString().split('\n');
-                Async.forEachOf(parsedLines[file], (line, index, eachCallback) => {
-                    // Check line aganist each possible search/replace set in the config array.
-                    Async.forEachOf(searches, (replaceString, find, searchCallback) => {
-                        // Positive Match
-                        if (line.startsWith(find)) {
-                            // Set the new line value.
-                            const newLineValue = replaceString.replace(/{{ (\S+) }}/g, ($0, $1) => { // eslint-disable-line
-                                return _.reduce(($1).split('.'), (o, i) => o[i], this.json);
-                            });
-                            parsedLines[file][index] = newLineValue;
-                        }
-                        searchCallback();
-                    }, eachCallback);
-                }, () => {
-                    Fs.writeFile(this.server.path(file), parsedLines[file].join('\n'), callback);
-                });
-            });
+        Async.forEachOf(this.object.configs, (data, file, callback) => {
+            switch (_.get(data, 'parser', 'file')) {
+            case 'file':
+                this.parser.file(file, _.get(data, 'find', {}), callback);
+                break;
+            case 'yaml':
+                this.parser.yaml(file, _.get(data, 'find', {}), callback);
+                break;
+            case 'properties':
+                this.parser.prop(file, _.get(data, 'find', {}), callback);
+                break;
+            case 'ini':
+                this.parser.ini(file, _.get(data, 'find', {}), callback);
+                break;
+            default:
+                return callback(new Error('Parser assigned to file is not valid.'));
+            }
         }, err => {
             if (err) return next(err);
             if (_.get(this.object, 'log.custom', false) === true) {

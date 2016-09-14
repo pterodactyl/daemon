@@ -12,9 +12,12 @@
         "stop": "end",
         "configs": {
             "config.yml": {
-                "  query_enabled:": "  query_enabled: true",
-                "  query_port:": "  query_port: {{ build.default.port }}",
-                "  host:": "  host: 0.0.0.0:{{ build.default.port }}"
+                "parser": "yaml",
+                "find": {
+                    "listeners[0].query_enabled": "true",
+                    "listeners[0].query_port": "{{ build.default.port }}",
+                    "listeners[0].host": "0.0.0.0:{{ build.default.port }}"
+                }
             }
         },
         "log": {
