@@ -8,6 +8,7 @@ Requires `Panel@0.4.0`
 * Server Suspension, immediately stops running processes and blocks SFTP and API access.
 * Automatic SFTP Container deployment when process is stated (previously required you manually add a container)
 * Updating a server's memory, swap, block io, or cpu quota no longer requires a container rebuild and will take effect immediately.
+* Better handling of preflight files. Allows using four different systems for parsing with find and replace capabilities (file, properties, ini, and yaml).
 
 ### Bug Fixes
 
