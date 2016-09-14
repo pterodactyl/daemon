@@ -434,7 +434,7 @@ class Server extends EventEmitter {
 
         // Do a quick determination of wether or not we need to process a rebuild request for this server.
         // If so, we need to append that action to the object that we're writing.
-        const checkForRebuild = _.without(object.build, 'cpu', 'swap', 'io', 'memory');
+        const checkForRebuild = _.omit(object.build, ['cpu', 'swap', 'io', 'memory', 'disk']);
         if (!_.isUndefined(object.build) && !_.isEmpty(checkForRebuild)) {
             this.log.info('New configiguration has changes to the server\'s build settings. Server has been queued for rebuild on next boot.');
             newObject.rebuild = true;
