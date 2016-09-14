@@ -357,7 +357,7 @@ class Docker {
                     callback(err, container);
                 });
             },
-        ], function (err, data) {
+        ], (err, data) => {
             if (err) {
                 return next(err);
             }

@@ -54,7 +54,7 @@ class DockerImage {
         DockerController.pull(image, (err, stream) => {
             if (err) return next(err);
             stream.setEncoding('utf8');
-            stream.on('data', _.noop());
+            stream.on('data', () => { _.noop(); });
             stream.on('end', next);
             stream.on('error', next);
         });
