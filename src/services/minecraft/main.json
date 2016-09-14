@@ -14,10 +14,19 @@
         "stop": "stop",
         "configs": {
             "server.properties": {
-                "server-ip=": "server-ip=0.0.0.0",
-                "enable-query=": "enable-query=true",
-                "server-port=": "server-port={{ build.default.port }}",
-                "query.port=": "query.port={{ build.default.port }}"
+                "parser": "properties",
+                "find": {
+                    "server-ip": "0.0.0.0",
+                    "enable-query": "true",
+                    "server-port": "{{ build.default.port }}",
+                    "query.port": "{{ build.default.port }}"
+                }
+            },
+            "spigot.yml": {
+                "parser": "yaml",
+                "find": {
+                    "settings.restart-on-crash": "false"
+                }
             }
         },
         "output": {
