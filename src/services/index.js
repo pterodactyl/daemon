@@ -31,6 +31,7 @@ const Gamedig = require('gamedig');
 const isStream = require('isstream');
 const Path = require('path');
 const createOutputStream = require('create-output-stream');
+const stripAnsi = require('strip-ansi');
 
 const Status = rfr('src/helpers/status.js');
 const FileParserHelper = rfr('src/helpers/fileparser.js');
@@ -189,7 +190,7 @@ class Core {
         if (!_.endsWith(newData, '\n')) {
             newData += '\n';
         }
-        return newData;
+        return stripAnsi(newData);
     }
 }
 

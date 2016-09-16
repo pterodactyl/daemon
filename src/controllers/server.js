@@ -193,6 +193,9 @@ class Server extends EventEmitter {
             callback => {
                 this.docker.attach(callback);
             },
+            callback => {
+                this.service.onStart(callback);
+            },
         ], (err, reboot) => {
             if (err) {
                 this.log.error(err);
