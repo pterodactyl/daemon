@@ -1,0 +1,28 @@
+{
+    "mumble": {
+        "tag": "^(mumble)$",
+        "startup": {
+            "done": "Server listening on",
+            "userInteraction": [
+                "Generating new tables..."
+            ]
+        },
+        "stop": "^C",
+        "configs": {
+            "murmur.ini": {
+                "parser": "ini",
+                "find": {
+                    "logfile": "murmur.log",
+                    "port": "{{ build.default.port }}",
+                    "host": "0.0.0.0",
+                    "users": "{{ build.env.MAX_USERS }}"
+                }
+            }
+        },
+        "log": {
+            "custom": true,
+            "location": "logs/murmur.log"
+        },
+        "query": "mumbleping"
+    }
+}

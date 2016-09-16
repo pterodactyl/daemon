@@ -170,6 +170,9 @@ class Docker {
      */
     write(command, next) {
         if (isStream.isWritable(this.stream)) {
+            if (command === '^C') {
+                return this.stop(next);
+            }
             this.stream.write(`${command}\n`);
             return next();
         }

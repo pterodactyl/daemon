@@ -116,7 +116,7 @@ class FileParser {
     ini(file, strings, next) {
         Async.waterfall([
             callback => {
-                Fs.readFile(this.server.path(file), (err, result) => {
+                Fs.readFile(this.server.path(file), 'utf8', (err, result) => {
                     if (err) {
                         if (_.startsWith(err.message, 'ENOENT: no such file or directory')) return next();
                         return next(err);
@@ -133,11 +133,11 @@ class FileParser {
                     _.set(data, key, Ini.safe(saveValue));
                     eachCallback();
                 }, () => {
-                    callback(data);
+                    callback(null, data);
                 });
             },
             (data, callback) => {
-                Fs.writeFile(this.server.path(file), Ini.encode(data), callback);
+                Fs.writeFile(this.server.path(file), Ini.encode(data), 'utf8', callback);
             },
         ], next);
     }

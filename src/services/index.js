@@ -127,6 +127,9 @@ class Core {
     onConsole(data) {
         Async.parallel([
             () => {
+                this.server.emit('console', data);
+            },
+            () => {
                 // Custom Log?
                 if (_.get(this.object, 'log.custom', false) === true) {
                     if (isStream.isWritable(this.logStream)) {
@@ -162,12 +165,12 @@ class Core {
                         if (_.includes(data, string)) {
                             this.server.log.info('Server detected as requiring user interaction, stopping now.');
                             this.server.setStatus(Status.STOPPING);
+                            this.server.command(this.object.stop, err => {
+                                if (err) this.server.log.warn(err);
+                            });
                         }
                     });
                 }
-            },
-            () => {
-                this.server.emit('console', data);
             },
         ]);
     }
