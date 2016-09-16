@@ -28,6 +28,7 @@ const isStream = require('isstream');
 const Async = require('async');
 const Util = require('util');
 const _ = require('lodash');
+const Carrier = require('carrier');
 
 const Log = rfr('src/helpers/logger.js');
 const Status = rfr('src/helpers/status.js');
@@ -147,10 +148,12 @@ class Docker {
             exec.start((execErr, stream) => {
                 if (!execErr && stream) {
                     stream.setEncoding('utf8');
-                    stream.on('data', data => {
-                        // Send data to the Server.output() function.
+
+                    // Sends data once EOL is reached.
+                    Carrier.carry(this.stream, data => {
                         this.server.output(data);
                     });
+
                     stream.on('end', this.server.streamClosed());
                 } else {
                     return next(execErr);
@@ -190,9 +193,12 @@ class Docker {
             if (err) return next(err);
             this.stream = stream;
             this.stream.setEncoding('utf8');
-            this.stream.on('data', data => {
+
+            // Sends data once EOL is reached.
+            Carrier.carry(this.stream, data => {
                 this.server.output(data);
             });
+
             this.stream.on('end', () => {
                 this.stream = undefined;
                 this.server.streamClosed();
@@ -213,16 +219,8 @@ class Docker {
             if (err) return next(err);
             this.procStream = stream;
             this.procStream.setEncoding('utf8');
-            this.procStream.on('data', data => {
-                try {
-                    this.procData = (_.isObject(data)) ? data : JSON.parse(data);
-                } catch (ex) {
-                    // We could log this, but for some reason the streams
-                    // like to return little bits and pieces of data rather
-                    // than the entire JSON object.
-                    // @TODO: look into fixing this.
-                    // this.server.log.warn(ex.stack);
-                }
+            Carrier.carry(this.procStream, data => {
+                this.procData = (_.isObject(data)) ? data : JSON.parse(data);
             });
             this.procStream.on('end', function dockerTopSteamEnd() {
                 this.procStream = undefined;

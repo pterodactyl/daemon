@@ -260,10 +260,6 @@ class Server extends EventEmitter {
      * Send output from server container to websocket.
      */
     output(output) {
-        if (output.replace(/[\x00-\x1F\x7F-\x9F]/g, '') === null || output.replace(/[\x00-\x1F\x7F-\x9F]/g, '') === '' || output.replace(/[\x00-\x1F\x7F-\x9F]/g, '') === ' ') { // eslint-disable-line
-            return;
-        }
-        // For now, log to console, and strip control characters from output.
         this.service.onConsole(output);
     }
 

@@ -11,7 +11,7 @@ Requires `Panel@0.4.0`
 * Better handling of preflight files. Allows using four different systems for parsing with find and replace capabilities (file, properties, ini, and yaml).
 
 ### Bug Fixes
-
+* Fixes bug that would display improper newlines with console data. Allows control characters and ANSI color codes to travel through.
 
 ### General
 * Updated ESLinter and with that updated code to reflect new standards for ES6

@@ -31,7 +31,6 @@ const Gamedig = require('gamedig');
 const isStream = require('isstream');
 const Path = require('path');
 const createOutputStream = require('create-output-stream');
-const stripAnsi = require('strip-ansi');
 
 const Status = rfr('src/helpers/status.js');
 const FileParserHelper = rfr('src/helpers/fileparser.js');
@@ -168,7 +167,7 @@ class Core {
                 }
             },
             () => {
-                this.server.emit('console', this.sanitizeSocketData(data));
+                this.server.emit('console', data);
             },
         ]);
     }
@@ -182,16 +181,6 @@ class Core {
         return next();
     }
 
-    sanitizeSocketData(data) {
-        let newData = data.replace(new RegExp(this.object.output.find || '\r\n', this.object.output.flags || 'gm'), this.object.output.replace || '\n');
-        if (_.startsWith(newData, '\n')) {
-            newData = newData.substr(1);
-        }
-        if (!_.endsWith(newData, '\n')) {
-            newData += '\n';
-        }
-        return stripAnsi(newData);
-    }
 }
 
 module.exports = Core;
