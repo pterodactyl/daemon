@@ -130,7 +130,7 @@ class Core {
                 // Custom Log?
                 if (_.get(this.object, 'log.custom', false) === true) {
                     if (isStream.isWritable(this.logStream)) {
-                        this.logStream.write(data);
+                        this.logStream.write(`${data}\n`);
                     } else {
                         const LogFile = this.server.path(_.get(this.object, 'log.location', 'logs/latest.log'));
                         Async.series([
