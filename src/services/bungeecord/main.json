@@ -24,11 +24,6 @@
             "custom": false,
             "location": "proxy.log.0"
         },
-        "output": {
-            "find": "(\r\n)",
-            "flags": "gm",
-            "replace": "\n"
-        },
         "query": "minecraftping"
     }
 }

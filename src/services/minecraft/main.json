@@ -29,11 +29,6 @@
                 }
             }
         },
-        "output": {
-            "find": "(\r\n)",
-            "flags": "gm",
-            "replace": "\n"
-        },
         "log": {
             "custom": false,
             "location": "logs/latest.log"

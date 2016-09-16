@@ -52,10 +52,6 @@ class Service extends Core {
         return super.doQuery(next);
     }
 
-    sanitizeSocketData(data) {
-        return super.sanitizeSocketData(data);
-    }
-
 }
 
 module.exports = Service;
