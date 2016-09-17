@@ -21,12 +21,6 @@
                     "server-port": "{{ build.default.port }}",
                     "query.port": "{{ build.default.port }}"
                 }
-            },
-            "spigot.yml": {
-                "parser": "yaml",
-                "find": {
-                    "settings.restart-on-crash": "false"
-                }
             }
         },
         "log": {
@@ -37,7 +31,15 @@
     },
     "spigot": {
         "tag": "^(spigot)$",
-        "symlink": "vanilla"
+        "symlink": "vanilla",
+        "configs": {
+            "spigot.yml": {
+                "parser": "yaml",
+                "find": {
+                    "settings.restart-on-crash": "false"
+                }
+            }
+        }
     },
     "bungeecord": {
         "tag": "^(bungeecord)$",
@@ -60,5 +62,14 @@
             "location": "proxy.log.0"
         },
         "query": "minecraftping"
+    },
+    "sponge": {
+        "tag": "^(sponge)$",
+        "symlink": "vanilla",
+        "startup": {
+            "userInteraction": [
+                "You need to agree to the EULA"
+            ]
+        }
     }
 }
