@@ -439,7 +439,6 @@ class Server extends EventEmitter {
         // If so, we need to append that action to the object that we're writing.
         const checkForRebuild = _.omit(object.build, ['cpu', 'swap', 'io', 'memory', 'disk']);
         if (!_.isUndefined(object.build) && !_.isEmpty(checkForRebuild)) {
-            this.log.info('New configiguration has changes to the server\'s build settings. Server has been queued for rebuild on next boot.');
             newObject.rebuild = true;
         }
 
@@ -473,6 +472,14 @@ class Server extends EventEmitter {
                     return callback();
                 }
             },
+            callback => {
+                if (newObject.rebuild && object.rebuild !== true) {
+                    this.log.info('Server has been queued for a container rebuild on next boot.');
+                } else if (newObject.rebuild && object.rebuild) {
+                    this.log.debug('Server is already queued for a rebuild on next boot.');
+                }
+                callback();
+            },
         ], err => {
             if (err) this.knownWrite = false;
             return next(err);
@@ -481,7 +488,7 @@ class Server extends EventEmitter {
 
     updateCGroups(next) {
         this.log.debug('Updating some build parameters without triggering a container rebuild.');
-        this.emit('console', `${Ansi.style.yellow}(Daemon) Your server has had some resource use limits modified, you may need to restart to apply them.\n`);
+        this.emit('console', `${Ansi.style.yellow}(Daemon) Your server has had some resource limits modified, you may need to restart to apply them.\n`);
         this.docker.update(next);
     }
 

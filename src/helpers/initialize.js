@@ -78,7 +78,7 @@ class Initialize {
      */
     setup(json, next) {
         Servers[json.uuid] = new Server(json, err => {
-            Log.info({ server: json.uuid }, 'Loaded configuration and initalized server.');
+            Log.debug({ server: json.uuid }, 'Loaded configuration and initalized server.');
             return next(err);
         });
     }

@@ -237,7 +237,6 @@ class RouteController {
     rebuildServer() {
         if (!Auth.allowed('g:server:rebuild')) return;
         Auth.server().modifyConfig({ rebuild: true }, false, err => {
-            Auth.server().log.info('Server has been queued for a container rebuild on next boot.');
             return Responses.generic204(err);
         });
     }

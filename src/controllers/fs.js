@@ -39,6 +39,7 @@ class FileSystem {
 
         Watcher.on('change', () => {
             if (this.server.knownWrite !== true) {
+                this.server.log.debug('Detected remote file change, updating JSON object correspondingly.');
                 Fs.readJson(this.server.configLocation, (err, object) => {
                     if (err) {
                         // Try to overwrite those changes with the old config.
@@ -52,7 +53,6 @@ class FileSystem {
                             }
                         });
                     } else {
-                        this.server.log.debug('Detected file change, updating JSON object correspondingly.');
                         this.server.json = object;
                     }
                 });
@@ -62,7 +62,15 @@ class FileSystem {
     }
 
     write(file, data, next) {
-        Fs.outputFile(this.server.path(file), data, next);
+        Async.series([
+            callback => {
+                this.server.knownWrite = true;
+                callback();
+            },
+            callback => {
+                Fs.outputFile(this.server.path(file), data, callback);
+            },
+        ], next);
     }
 
     read(file, next) {
