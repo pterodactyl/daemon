@@ -115,9 +115,6 @@ class FileParser {
                         return _.reduce(($1).split('.'), (o, i) => o[i], this.server.json);
                     });
                 } else { newValue = value; }
-                if (!_.isBoolean(newValue) && !_.isNaN(_.toNumber(newValue))) {
-                    newValue = _.toNumber(newValue);
-                }
 
                 Editor.set(key, newValue);
                 callback();
