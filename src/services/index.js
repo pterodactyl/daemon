@@ -70,6 +70,7 @@ class Core {
             type: this.object.query,
             host: this.json.build.default.ip,
             port: this.json.build.default.port,
+            port_query: this.json.build.default.port,
         }, response => {
             if (response.error) return next(new Error(`Server unresponsive to query attempt. (${response.error})`));
             return next(null, response);
