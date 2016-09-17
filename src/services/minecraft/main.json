@@ -38,5 +38,27 @@
     "spigot": {
         "tag": "^(spigot)$",
         "symlink": "vanilla"
+    },
+    "bungeecord": {
+        "tag": "^(bungeecord)$",
+        "startup": {
+            "done": "Listening on "
+        },
+        "stop": "end",
+        "configs": {
+            "config.yml": {
+                "parser": "yaml",
+                "find": {
+                    "listeners[0].query_enabled": "true",
+                    "listeners[0].query_port": "{{ build.default.port }}",
+                    "listeners[0].host": "0.0.0.0:{{ build.default.port }}"
+                }
+            }
+        },
+        "log": {
+            "custom": false,
+            "location": "proxy.log.0"
+        },
+        "query": "minecraftping"
     }
 }

@@ -113,6 +113,24 @@ class FileParser {
         });
     }
 
+    json(file, strings, next) {
+        Fs.readJson(this.server.path(file), (err, data) => {
+            if (err) {
+                if (_.startsWith(err.message, 'ENOENT: no such file or directory')) return next();
+                return next(err);
+            }
+            Async.forEachOf(strings, (value, key, callback) => {
+                const newValue = value.replace(/{{ (\S+) }}/g, ($0, $1) => { // eslint-disable-line
+                    return _.reduce(($1).split('.'), (o, i) => o[i], this.server.json);
+                });
+                _.set(data, key, newValue);
+                callback();
+            }, () => {
+                Fs.writeJson(this.server.path(file), data, next);
+            });
+        });
+    }
+
     ini(file, strings, next) {
         Async.waterfall([
             callback => {
