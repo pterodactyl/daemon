@@ -7,7 +7,7 @@
         },
         "stop": "exit",
         "configs": {
-            "config.json": {
+            "tshock/config.json": {
                 "parser": "json",
                 "find": {
                     "ServerPort": "{{ build.default.port }}",
