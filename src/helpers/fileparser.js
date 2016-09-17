@@ -82,10 +82,17 @@ class FileParser {
                 return next(err);
             }
             Async.forEachOf(strings, (value, key, callback) => {
-                const saveValue = value.replace(/{{ (\S+) }}/g, ($0, $1) => { // eslint-disable-line
-                    return _.reduce(($1).split('.'), (o, i) => o[i], this.server.json);
-                });
-                _.set(data, key, saveValue);
+                let newValue;
+                if (_.isString(value)) {
+                    newValue = value.replace(/{{ (\S+) }}/g, ($0, $1) => { // eslint-disable-line
+                        return _.reduce(($1).split('.'), (o, i) => o[i], this.server.json);
+                    });
+                } else { newValue = value; }
+                if (!_.isBoolean(newValue) && !_.isNaN(_.toNumber(newValue))) {
+                    newValue = _.toNumber(newValue);
+                }
+
+                _.set(data, key, newValue);
                 callback();
             }, () => {
                 Yaml.write(this.server.path(file), data, writeErr => {
@@ -102,10 +109,17 @@ class FileParser {
                 return next(err);
             }
             Async.forEachOf(strings, (value, key, callback) => {
-                const saveValue = value.replace(/{{ (\S+) }}/g, ($0, $1) => { // eslint-disable-line
-                    return _.reduce(($1).split('.'), (o, i) => o[i], this.server.json);
-                });
-                Editor.set(key, saveValue);
+                let newValue;
+                if (_.isString(value)) {
+                    newValue = value.replace(/{{ (\S+) }}/g, ($0, $1) => { // eslint-disable-line
+                        return _.reduce(($1).split('.'), (o, i) => o[i], this.server.json);
+                    });
+                } else { newValue = value; }
+                if (!_.isBoolean(newValue) && !_.isNaN(_.toNumber(newValue))) {
+                    newValue = _.toNumber(newValue);
+                }
+
+                Editor.set(key, newValue);
                 callback();
             }, () => {
                 Editor.save(this.server.path(file), next);
@@ -120,9 +134,16 @@ class FileParser {
                 return next(err);
             }
             Async.forEachOf(strings, (value, key, callback) => {
-                const newValue = value.replace(/{{ (\S+) }}/g, ($0, $1) => { // eslint-disable-line
-                    return _.reduce(($1).split('.'), (o, i) => o[i], this.server.json);
-                });
+                let newValue;
+                if (_.isString(value)) {
+                    newValue = value.replace(/{{ (\S+) }}/g, ($0, $1) => { // eslint-disable-line
+                        return _.reduce(($1).split('.'), (o, i) => o[i], this.server.json);
+                    });
+                } else { newValue = value; }
+                if (!_.isBoolean(newValue) && !_.isNaN(_.toNumber(newValue))) {
+                    newValue = _.toNumber(newValue);
+                }
+
                 _.set(data, key, newValue);
                 callback();
             }, () => {
@@ -145,10 +166,17 @@ class FileParser {
             (contents, callback) => {
                 const data = Ini.parse(contents);
                 Async.forEachOf(strings, (value, key, eachCallback) => {
-                    const saveValue = value.replace(/{{ (\S+) }}/g, ($0, $1) => { // eslint-disable-line
-                        return _.reduce(($1).split('.'), (o, i) => o[i], this.server.json);
-                    });
-                    _.set(data, key, Ini.safe(saveValue));
+                    let newValue;
+                    if (_.isString(value)) {
+                        newValue = value.replace(/{{ (\S+) }}/g, ($0, $1) => { // eslint-disable-line
+                            return _.reduce(($1).split('.'), (o, i) => o[i], this.server.json);
+                        });
+                    } else { newValue = value; }
+                    if (!_.isBoolean(newValue) && !_.isNaN(_.toNumber(newValue))) {
+                        newValue = _.toNumber(newValue);
+                    }
+
+                    _.set(data, key, Ini.safe(newValue));
                     eachCallback();
                 }, () => {
                     callback(null, data);

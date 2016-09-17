@@ -49,7 +49,7 @@
             "config.yml": {
                 "parser": "yaml",
                 "find": {
-                    "listeners[0].query_enabled": "true",
+                    "listeners[0].query_enabled": true,
                     "listeners[0].query_port": "{{ build.default.port }}",
                     "listeners[0].host": "0.0.0.0:{{ build.default.port }}"
                 }
