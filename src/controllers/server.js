@@ -32,6 +32,7 @@ const Path = require('path');
 const Fs = require('fs-extra');
 const extendify = require('extendify');
 const Util = require('util');
+const Ansi = require('ansi-escape-sequences');
 
 const Log = rfr('src/helpers/logger.js');
 const Docker = rfr('src/controllers/docker.js');
@@ -160,7 +161,7 @@ class Server extends EventEmitter {
                 Async.waterfall([
                     callback => {
                         this.buildInProgress = true;
-                        this.emit('console', '\n[Daemon] Your server is currently queued for a container rebuild. This should only take a few seconds, but could take a few minutes. You do not need to do anything else while this occurs. Your server will automatically continue with startup once this process is completed.');
+                        this.emit('console', `${Ansi.style.cyan}(Daemon) Your server is currently queued for a container rebuild. This should only take a few seconds, but could take a few minutes. You do not need to do anything else while this occurs. Your server will automatically continue with startup once this process is completed.`);
                         callback();
                     },
                     callback => {
@@ -171,13 +172,13 @@ class Server extends EventEmitter {
                     },
                 ], err => {
                     if (err) {
-                        this.emit('console', '\n[Daemon] An error was encountered while attempting to rebuild this container.');
+                        this.emit('console', `${Ansi.style.red}(Daemon) An error was encountered while attempting to rebuild this container.`);
                         this.buildInProgress = false;
                         Log.error(err);
                     }
                 });
             } else {
-                this.emit('console', '\n[Daemon] Please wait while your server is being rebuilt...');
+                this.emit('console', `${Ansi.style.cyan}(Daemon) Please wait while your server is being rebuilt.`);
             }
             return next(new Error('Server is currently queued for a container rebuild. Your request has been accepted and will be processed once the rebuild is complete.'));
         }
@@ -185,12 +186,15 @@ class Server extends EventEmitter {
         Async.series([
             callback => {
                 this.log.debug('Initializing for boot sequence, running preflight checks.');
+                this.emit('console', `${Ansi.style.green}(Daemon) Server detected as booting.`);
                 this.preflight(callback);
             },
             callback => {
+                this.emit('console', `${Ansi.style.green}(Daemon) Server container started.`);
                 this.docker.start(callback);
             },
             callback => {
+                this.emit('console', `${Ansi.style.green}(Daemon) Attached to server container.`);
                 this.docker.attach(callback);
             },
             callback => {
@@ -300,13 +304,13 @@ class Server extends EventEmitter {
             if (moment(this.lastCrash).add(60, 'seconds').isAfter(moment())) {
                 this.setCrashTime();
                 this.log.debug('Server detected as crashed but has crashed within the last 60 seconds, aborting reboot.');
-                this.emit('console', '\n[Daemon] Server detected as crashed! Unable to reboot due to crash within last 60 seconds.\n');
+                this.emit('console', `${Ansi.style.red}(Daemon) Server detected as crashed! Unable to reboot due to crash within last 60 seconds.`);
                 return;
             }
         }
 
         this.log.debug('Server detected as crashed... attempting reboot.');
-        this.emit('console', '\n[Daemon] Server detected as crashed! Attempting to reboot server now.\n');
+        this.emit('console', `${Ansi.style.red}(Daemon) Server detected as crashed! Attempting to reboot server now.`);
         this.setCrashTime();
 
         this.start(err => {
@@ -341,7 +345,7 @@ class Server extends EventEmitter {
             if (err) {
                 self.failedQueryCount++; // eslint-disable-line
                 self.log.warn(err.message);
-                self.service.onConsole(`[Daemon] ${err.message}\n`);
+                self.service.onConsole(`${Ansi.style.magenta}(Daemon) ${err.message}\n`);
                 if (self.failedQueryCount >= 3) {
                     self.docker.kill(killErr => {
                         if (killErr) return self.log.fatal(killErr);
@@ -477,7 +481,7 @@ class Server extends EventEmitter {
 
     updateCGroups(next) {
         this.log.debug('Updating some build parameters without triggering a container rebuild.');
-        this.emit('console', '\n[Daemon] Your server has had some resource use limits modified, you may need to restart to apply them.\n');
+        this.emit('console', `${Ansi.style.yellow}(Daemon) Your server has had some resource use limits modified, you may need to restart to apply them.\n`);
         this.docker.update(next);
     }
 

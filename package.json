@@ -32,6 +32,7 @@
     "eslint-plugin-react": "^6.1.1"
   },
   "dependencies": {
+    "ansi-escape-sequences": "^2.2.2",
     "async": "^2.0.1",
     "binaryjs": "^0.2.1",
     "bunyan": "^1.5.1",
