@@ -352,11 +352,11 @@ class Server extends EventEmitter {
 
             self.failedQueryCount = 0; // eslint-disable-line
             self.processData.query = { // eslint-disable-line
-                name: response.name,
-                map: response.map,
-                maxplayers: response.maxplayers,
-                players: response.players,
-                bots: response.bots,
+                name: response.name || null,
+                map: response.map || null,
+                maxplayers: response.maxplayers || null,
+                players: response.players || null,
+                bots: response.bots || null,
                 raw: response.raw || {},
             };
             self.emit('query', self.processData.query);

@@ -62,6 +62,10 @@ class Core {
     }
 
     doQuery(next) {
+        if (this.object.query === 'none') {
+            return next(null, {});
+        }
+
         Gamedig.query({
             type: this.object.query,
             host: this.json.build.default.ip,

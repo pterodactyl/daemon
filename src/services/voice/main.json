@@ -24,5 +24,29 @@
             "location": "logs/murmur.log"
         },
         "query": "mumbleping"
+    },
+    "teamspeak": {
+        "tag": "^(ts3)$",
+        "startup": {
+            "done": "listening on 0.0.0.0:",
+            "userInteraction": []
+        },
+        "stop": "^C",
+        "configs": {
+            "ts3server.ini": {
+                "parser": "ini",
+                "find": {
+                    "default_voice_port": "{{ build.default.port }}",
+                    "voice_ip": "0.0.0.0",
+                    "query_port": "{{ build.default.port }}",
+                    "query_ip": "0.0.0.0"
+                }
+            }
+        },
+        "log": {
+            "custom": true,
+            "location": "logs/ts3.log"
+        },
+        "query": "none"
     }
 }
