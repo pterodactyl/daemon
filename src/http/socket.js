@@ -96,6 +96,10 @@ class WebSocket {
             });
         });
 
+        this.server.on('crashed', () => {
+            this.websocket.emit('crashed');
+        });
+
         // Sends Installer Data to Admin Websocket.
         this.server.on('installer', output => {
             const data = output.toString();

@@ -292,24 +292,24 @@ class Server extends EventEmitter {
             return;
         }
 
-        if (this.json.container.crashDetection === false) {
+        if (!_.get(this.json, 'container.crashDetection', true)) {
             this.setStatus(Status.OFF);
             this.log.warn('Server detected as potentially crashed but crash detection has been disabled on this server.');
             return;
         }
 
+        this.emit('crashed');
         this.setStatus(Status.OFF);
-        this.emit('status', 'crashed');
         if (moment.isMoment(this.lastCrash)) {
             if (moment(this.lastCrash).add(60, 'seconds').isAfter(moment())) {
                 this.setCrashTime();
-                this.log.debug('Server detected as crashed but has crashed within the last 60 seconds, aborting reboot.');
+                this.log.warn('Server detected as crashed but has crashed within the last 60 seconds, aborting reboot.');
                 this.emit('console', `${Ansi.style.red}(Daemon) Server detected as crashed! Unable to reboot due to crash within last 60 seconds.`);
                 return;
             }
         }
 
-        this.log.debug('Server detected as crashed... attempting reboot.');
+        this.log.warn('Server detected as crashed! Attempting server reboot.');
         this.emit('console', `${Ansi.style.red}(Daemon) Server detected as crashed! Attempting to reboot server now.`);
         this.setCrashTime();
 
