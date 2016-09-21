@@ -81,7 +81,7 @@ class Docker {
     start(next) {
         this.container.start(err => {
             // Container is already running, we can just continue on and pretend we started it just now.
-            if (err && _.includes(err.message, 'HTTP code is 304 which indicates error: container already started')) {
+            if (err && _.includes(err.message, 'container already started')) {
                 this.server.setStatus(Status.ON);
                 return next();
             } else if (err) {
