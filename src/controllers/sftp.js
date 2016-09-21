@@ -30,6 +30,9 @@ const _ = require('lodash');
 
 const LoadConfig = rfr('src/helpers/config.js');
 const Log = rfr('src/helpers/logger.js');
+const ImageHelper = rfr('src/helpers/image.js');
+
+const SFTP_DOCKER_IMAGE = 'quay.io/pterodactyl/scrappy:latest';
 
 const Config = new LoadConfig();
 const DockerController = new Dockerode({
@@ -47,6 +50,18 @@ class SFTP {
 
     buildContainer(next) {
         Async.waterfall([
+            callback => {
+                if (Config.get('docker.autoupdate_images', false) === false) {
+                    ImageHelper.exists(SFTP_DOCKER_IMAGE, err => {
+                        if (!err) return callback();
+                        Log.info(`Pulling SFTP container image ${SFTP_DOCKER_IMAGE} because it doesn't exist on the system.`);
+                        ImageHelper.pull(SFTP_DOCKER_IMAGE, callback);
+                    });
+                } else {
+                    Log.info(`Checking if we need to update the SFTP container image ${SFTP_DOCKER_IMAGE}, if so it will happen now.`);
+                    ImageHelper.pull(SFTP_DOCKER_IMAGE, callback);
+                }
+            },
             callback => {
                 DockerController.createContainer({
                     Image: 'quay.io/pterodactyl/scrappy:latest',
