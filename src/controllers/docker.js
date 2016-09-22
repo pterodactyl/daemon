@@ -349,10 +349,10 @@ class Docker {
                         Memory: config.memory * 1000000,
                         MemorySwap: swapSpace,
                         BlkioWeight: config.io,
-                        Dns: [
+                        Dns: Config.get('docker.dns', [
                             '8.8.8.8',
                             '8.8.4.4',
-                        ],
+                        ]),
                         LogConfig: {
                             Type: 'none',
                         },
