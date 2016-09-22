@@ -361,6 +361,22 @@ class Docker {
                             Type: 'none',
                         },
                         ReadonlyRootfs: true,
+                        CapDrop: [
+                            'setpcap',
+                            'mknod',
+                            'audit_write',
+                            'chown',
+                            'net_raw',
+                            'dac_override',
+                            'fowner',
+                            'fsetid',
+                            'kill',
+                            'setgid',
+                            'setuid',
+                            'net_bind_service',
+                            'sys_chroot',
+                            'setfcap',
+                        ],
                     },
                 }, (err, container) => {
                     callback(err, container);

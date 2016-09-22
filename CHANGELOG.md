@@ -12,6 +12,7 @@ This file is a running track of new features and fixes to each version of the da
 ### Security
 * Root filesystem in containers is now entirely read-only. Container applications can only write to `/home/container` and `/tmp`.
 * Prevent logging server output through docker logging methods. Fixes a potential DoS attack vector (and also saves space).
+* Drops the following capabilities from containers: `setpcap`, `mknod`, `audit_write`, `chown`, `net_raw`, `dac_override`, `fowner`, `fsetid`, `kill`, `setgid`, `setuid`, `net_bind_service`, `sys_chroot`, `setfcap` in addition to default dropped capabilities.
 
 ## v0.2.0
 Requires `Panel@0.4.0`
