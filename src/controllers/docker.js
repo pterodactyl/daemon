@@ -309,6 +309,7 @@ class Docker {
 
                 const environment = [];
                 _.forEach(config.env, (value, index) => {
+                    if (_.isNull(value)) return;
                     environment.push(Util.format('%s=%s', index, value));
                 });
 

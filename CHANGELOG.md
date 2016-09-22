@@ -1,7 +1,16 @@
 # Changelog
 This file is a running track of new features and fixes to each version of the daemon released starting with `v0.2.0`.
 
-## v0.2.0 (release scheduled ~ Mid September)
+## v0.3.0
+
+### New Features
+* Configurable DNS servers in core configuration for docker containers.
+
+### Bug Fixes
+* If an environment variable is set to null don't even send it to the docker container. Fixes unset variable check bug for Spigot building.
+* Prevent logging server output through docker logging methods. Fixes a potential DoS attack vector (and also saves space).
+
+## v0.2.0
 Requires `Panel@0.4.0`
 
 ### New Features
