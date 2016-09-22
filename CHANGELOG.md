@@ -1,7 +1,7 @@
 # Changelog
 This file is a running track of new features and fixes to each version of the daemon released starting with `v0.2.0`.
 
-## v0.3.0
+## v0.2.1
 
 ### New Features
 * Configurable DNS servers in core configuration for docker containers.
