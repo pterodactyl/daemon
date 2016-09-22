@@ -353,6 +353,9 @@ class Docker {
                             '8.8.8.8',
                             '8.8.4.4',
                         ],
+                        LogConfig: {
+                            Type: 'none',
+                        },
                     },
                 }, (err, container) => {
                     callback(err, container);
