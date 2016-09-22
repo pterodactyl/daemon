@@ -343,6 +343,9 @@ class Docker {
                         Binds: [
                             Util.format('%s:/home/container', this.server.path()),
                         ],
+                        Tmpfs: {
+                            '/tmp': '',
+                        },
                         PortBindings: bindings,
                         OomKillDisable: config.oom_disabled || false,
                         CpuQuota: (config.cpu > 0) ? (config.cpu * 1000) : -1,
@@ -357,6 +360,7 @@ class Docker {
                         LogConfig: {
                             Type: 'none',
                         },
+                        ReadonlyRootfs: true,
                     },
                 }, (err, container) => {
                     callback(err, container);
