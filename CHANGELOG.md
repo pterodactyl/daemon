@@ -5,6 +5,7 @@ This file is a running track of new features and fixes to each version of the da
 
 ### New Features
 * Configurable DNS servers in core configuration for docker containers.
+* Bungeecord containers no longer spam up the console with ping information.
 
 ### Bug Fixes
 * If an environment variable is set to null don't even send it to the docker container. Fixes unset variable check bug for Spigot building.

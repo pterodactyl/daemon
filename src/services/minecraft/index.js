@@ -23,6 +23,7 @@
  * SOFTWARE.
  */
 const rfr = require('rfr');
+const _ = require('lodash');
 
 const Configuration = rfr('src/services/minecraft/main.json');
 const Core = rfr('src/services/index.js');
@@ -41,6 +42,8 @@ class Service extends Core {
     }
 
     onConsole(data) {
+        // Hide the output spam from Bungeecord getting pinged.
+        if (_.endsWith(data, '<-> InitialHandler has connected')) return;
         return super.onConsole(data);
     }
 
