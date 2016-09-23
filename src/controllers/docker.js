@@ -377,6 +377,7 @@ class Docker {
                             'sys_chroot',
                             'setfcap',
                         ],
+                        NetworkMode: 'pterodactyl_nw',
                     },
                 }, (err, container) => {
                     callback(err, container);

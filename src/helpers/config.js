@@ -79,9 +79,9 @@ class Config {
     initDockerInterface(next) {
         Async.waterfall([
             callback => {
-                Proc.exec('ifconfig docker0 | grep \'inet addr\' | cut -d: -f2 | awk \'{print $1}\'', (err, stdout) => {
+                Proc.exec('ifconfig pterodactyl0 | grep \'inet addr\' | cut -d: -f2 | awk \'{print $1}\'', (err, stdout) => {
                     if (err) return callback(err);
-                    if (!stdout) return callback(new Error('Unable to establish the current docker0 interface IP address.'));
+                    if (!stdout) return callback(new Error('Unable to establish the current pterodactyl0 interface IP address.'));
                     return callback(null, stdout);
                 });
             },
