@@ -357,6 +357,9 @@ class Docker {
                             '8.8.8.8',
                             '8.8.4.4',
                         ]),
+                        ExtraHosts: [
+                            `container:${Config.get('docker.interface')}`,
+                        ],
                         LogConfig: {
                             Type: 'none',
                         },
