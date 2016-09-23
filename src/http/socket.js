@@ -31,7 +31,6 @@ class WebSocket {
     constructor(server) {
         this.server = server;
         this.websocket = Socket.of(`/ws/${this.server.json.uuid}`);
-        this.installerSocket = Socket.of(`/ws-install/${this.server.json.uuid}`);
 
         // Standard Websocket Permissions
         this.websocket.use((params, next) => {
@@ -40,17 +39,6 @@ class WebSocket {
             }
             if (!this.server.hasPermission('s:console', params.handshake.query.token)) {
                 return next(new Error('You do not have permission to access this socket (ws).'));
-            }
-            return next();
-        });
-
-        // Installer Output Websocket Permissions
-        this.installerSocket.use((params, next) => {
-            if (!params.handshake.query.token) {
-                return next(new Error('You must pass the correct handshake values.'));
-            }
-            if (!this.server.hasPermission('g:socket:install', params.handshake.query.token)) {
-                return next(new Error('You do not have permission to access this socket (ws-install).'));
             }
             return next();
         });
@@ -98,17 +86,6 @@ class WebSocket {
 
         this.server.on('crashed', () => {
             this.websocket.emit('crashed');
-        });
-
-        // Sends Installer Data to Admin Websocket.
-        this.server.on('installer', output => {
-            const data = output.toString();
-            // Is this data even worth dealing with?
-            if ((data.replace(/\s+/g, '')).length > 1) {
-                this.installerSocket.emit('console', {
-                    'line': data,
-                });
-            }
         });
     }
 }

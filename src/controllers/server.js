@@ -117,7 +117,7 @@ class Server extends EventEmitter {
         }
 
         // Handle Internal Tracking
-        if (status !== Status.OFF) {
+        if (status === Status.ON) {
             // If an interval has not been started, start one now.
             if (this.intervals.process === null) {
                 this.intervals.process = setInterval(this.process, 2000, this);
@@ -125,8 +125,8 @@ class Server extends EventEmitter {
             if (this.intervals.query === null) {
                 this.intervals.query = setInterval(this.query, 10000, this);
             }
-        } else {
-            // Server has been stopped, lets clear the interval as well as any stored
+        } else if (!_.isNull(this.intervals.query) || !_.isNull(this.intervals.query)) {
+            // Server is not running yet, lets clear the interval as well as any stored
             // information about the process or query. Lets also detach the stats stream.
             clearInterval(this.intervals.process);
             clearInterval(this.intervals.query);
@@ -194,6 +194,7 @@ class Server extends EventEmitter {
                 this.docker.start(callback);
             },
             callback => {
+                this.setStatus(Status.STARTING);
                 this.emit('console', `${Ansi.style.green}(Daemon) Attached to server container.`);
                 this.docker.attach(callback);
             },

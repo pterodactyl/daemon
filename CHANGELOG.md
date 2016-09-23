@@ -9,6 +9,7 @@ This file is a running track of new features and fixes to each version of the da
 
 ### Bug Fixes
 * If an environment variable is set to null don't even send it to the docker container. Fixes unset variable check bug for Spigot building.
+* Fixed startup sequence to actually mark status as starting as well as prevent querying server until completely started.
 
 ### Security
 * Root filesystem in containers is now entirely read-only. Container applications can only write to `/home/container` and `/tmp`.
