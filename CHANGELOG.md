@@ -1,6 +1,19 @@
 # Changelog
 This file is a running track of new features and fixes to each version of the daemon released starting with `v0.2.0`.
 
+## [Unreleased]
+
+### Changed
+* Servers now report core stats when starting and wait for performing query.
+* Query failures no longer spam log, and can be configured to kill servers after a set number of
+consecutive failures (or just keep on trucking).
+
+### Added
+### Fixed
+### Deprecated
+### Removed
+### Security
+
 ## v0.2.1
 
 ### New Features

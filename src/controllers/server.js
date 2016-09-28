@@ -118,23 +118,31 @@ class Server extends EventEmitter {
 
         // Handle Internal Tracking
         if (status === Status.ON) {
-            // If an interval has not been started, start one now.
-            if (this.intervals.process === null) {
-                this.intervals.process = setInterval(this.process, 2000, this);
-            }
-            if (this.intervals.query === null) {
+            if (_.isNull(this.intervals.query)) {
                 this.intervals.query = setInterval(this.query, 10000, this);
             }
-        } else if (!_.isNull(this.intervals.query) || !_.isNull(this.intervals.query)) {
-            // Server is not running yet, lets clear the interval as well as any stored
-            // information about the process or query. Lets also detach the stats stream.
-            clearInterval(this.intervals.process);
-            clearInterval(this.intervals.query);
-            this.intervals.process = null;
-            this.intervals.query = null;
-            this.failedQueryCount = 0;
-            this.processData.process = {};
-            this.processData.query = {};
+        } else if (status === Status.STARTING) {
+            if (_.isNull(this.intervals.process)) {
+                this.intervals.process = setInterval(this.process, 2000, this);
+            }
+
+            if (!_.isNull(this.intervals.query)) {
+                clearInterval(this.intervals.query);
+                this.intervals.query = null;
+                this.processData.query = {};
+            }
+        } else if (status === Status.STOPPING || status === Status.OFF) {
+            if (!_.isNull(this.intervals.query) || !_.isNull(this.intervals.process)) {
+                // Server is stopping or stopped, lets clear the interval as well as any stored
+                // information about the process or query. Lets also detach the stats stream.
+                clearInterval(this.intervals.process);
+                clearInterval(this.intervals.query);
+                this.intervals.process = null;
+                this.intervals.query = null;
+                this.failedQueryCount = 0;
+                this.processData.process = {};
+                this.processData.query = {};
+            }
         }
 
         this.log.info(`Server status has been changed to ${inverted[status]}`);
@@ -344,25 +352,32 @@ class Server extends EventEmitter {
 
         self.service.doQuery((err, response) => {
             if (err) {
+                // Only report error once, otherwise don't spam up the display.
+                if (self.failedQueryCount === 0) {
+                    self.log.warn(`${err.message} -- Additional query errors will not display unless there is a successful query.`);
+                    self.service.onConsole(`${Ansi.style.magenta}(Daemon) ${err.message} -- Additional query errors will not display unless there is a successful query.\n`);
+                }
+
                 self.failedQueryCount++; // eslint-disable-line
-                self.log.warn(err.message);
-                self.service.onConsole(`${Ansi.style.magenta}(Daemon) ${err.message}\n`);
-                if (self.failedQueryCount >= 3) {
+                if (Config.get('query.kill_on_fail', false) && self.failedQueryCount > Config.get('query.fail_limit', 3)) {
+                    self.service.onConsole(`${Ansi.style.magenta}(Daemon) Server has reached maximum consecutive query failure limit (n = ${Config.get('query.fail_limit', 3)}) and has been marked as crashed.\n`);
                     self.docker.kill(killErr => {
                         if (killErr) return self.log.fatal(killErr);
                     });
+                    self.failedQueryCount = 0; // eslint-disable-line
                 }
-                return;
+            } else {
+                self.failedQueryCount = 0; // eslint-disable-line
             }
 
-            self.failedQueryCount = 0; // eslint-disable-line
             self.processData.query = { // eslint-disable-line
-                name: response.name || null,
-                map: response.map || null,
-                maxplayers: response.maxplayers || null,
-                players: response.players || null,
-                bots: response.bots || null,
-                raw: response.raw || {},
+                name: _.get(response, 'name', null),
+                map: _.get(response, 'map', null),
+                maxplayers: _.get(response, 'maxplayers', null),
+                players: _.get(response, 'players', null),
+                bots: _.get(response, 'bots', null),
+                raw: _.get(response, 'raw', {}),
+                error: _.get(err, 'message', false),
             };
             self.emit('query', self.processData.query);
         });
