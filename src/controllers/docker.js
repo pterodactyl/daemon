@@ -268,7 +268,7 @@ class Docker {
         Async.series([
             callback => {
                 // The default is to not automatically update images.
-                if (Config.get('docker.autoupdate_images', false) === false) {
+                if (!Config.get('docker.autoupdate_images', true)) {
                     ImageHelper.exists(config.image, err => {
                         if (!err) return callback();
                         Log.info(Util.format('Pulling image %s because it doesn\'t exist on the system.', config.image));

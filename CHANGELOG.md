@@ -7,6 +7,7 @@ This file is a running track of new features and fixes to each version of the da
 * Servers now report core stats when starting and wait for performing query.
 * Query failures no longer spam log, and can be configured to kill servers after a set number of
 consecutive failures (or just keep on trucking).
+* Daemon now defaults to checking for updated docker images unless specifically configured otherwise.
 
 ### Added
 ### Fixed
