@@ -121,6 +121,9 @@ class Server extends EventEmitter {
             if (_.isNull(this.intervals.query)) {
                 this.intervals.query = setInterval(this.query, 10000, this);
             }
+            if (_.isNull(this.intervals.process)) {
+                this.intervals.process = setInterval(this.process, 2000, this);
+            }
         } else if (status === Status.STARTING) {
             if (_.isNull(this.intervals.process)) {
                 this.intervals.process = setInterval(this.process, 2000, this);
