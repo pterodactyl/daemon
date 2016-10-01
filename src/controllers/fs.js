@@ -27,6 +27,9 @@ const Async = require('async');
 const Path = require('path');
 const Chokidar = require('chokidar');
 const _ = require('lodash');
+const Mmm = require('mmmagic');
+
+const Magic = Mmm.Magic;
 
 class FileSystem {
     constructor(server) {
@@ -142,7 +145,8 @@ class FileSystem {
     rename(initial, ending, next) {
         if (!_.isArray(initial) && !_.isArray(ending)) {
             Fs.move(this.server.path(initial), this.server.path(ending), { clobber: false }, err => {
-                next(err);
+                if (err && !_.startsWith(err.message, 'EEXIST:')) return next(err);
+                next();
             });
         } else if (!_.isArray(initial) || !_.isArray(ending)) {
             return next(new Error('Values passed to rename function must be of the same type (string, string) or (array, array).'));
@@ -151,7 +155,10 @@ class FileSystem {
                 if (_.isUndefined(ending[key])) {
                     return callback(new Error('The number of starting values does not match the number of ending values.'));
                 }
-                Fs.move(this.server.path(value), this.server.path(ending[key]), { clobber: false }, callback);
+                Fs.move(this.server.path(value), this.server.path(ending[key]), { clobber: false }, err => {
+                    if (err && !_.startsWith(err.message, 'EEXIST:')) return callback(err);
+                    return callback();
+                });
             }, next);
         }
     }
@@ -172,19 +179,25 @@ class FileSystem {
                 Fs.readdir(this.server.path(path), (err, contents) => {
                     Async.each(contents, (item, eachCallback) => {
                         // Lets limit the callback hell
-                        const stat = Fs.statSync(Path.join(this.server.path(path), item));
-                        files.push({
-                            'name': item,
-                            'created': stat.ctime,
-                            'modified': stat.mtime,
-                            'size': stat.size,
-                            'directory': stat.isDirectory(),
-                            'file': stat.isFile(),
-                            'symlink': stat.isSymbolicLink(),
+                        const Mime = new Magic(Mmm.MAGIC_MIME_TYPE);
+                        Fs.stat(Path.join(this.server.path(path), item), (statErr, stat) => {
+                            if (statErr) eachCallback(statErr);
+                            Mime.detectFile(Path.join(this.server.path(path), item), (mimeErr, result) => {
+                                files.push({
+                                    'name': item,
+                                    'created': stat.ctime,
+                                    'modified': stat.mtime,
+                                    'size': stat.size,
+                                    'directory': stat.isDirectory(),
+                                    'file': stat.isFile(),
+                                    'symlink': stat.isSymbolicLink(),
+                                    'mime': result || 'unknown',
+                                });
+                                eachCallback(mimeErr);
+                            });
                         });
-                        eachCallback();
                     }, () => {
-                        callback(null, files);
+                        callback(null, _.sortBy(files, ['name']));
                     });
                 });
             },
