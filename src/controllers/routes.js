@@ -213,6 +213,13 @@ class RouteController {
         });
     }
 
+    postFilesRename() {
+        if (!Auth.allowed('s:files:rename')) return;
+        Auth.server().fs.rename(this.req.params.from, this.req.params.to, err => {
+            Responses.generic204(err);
+        });
+    }
+
     postServerFile() {
         if (!Auth.allowed('s:files:post')) return;
         Auth.server().fs.write(this.req.params[0], this.req.params.content, err => {
@@ -237,7 +244,7 @@ class RouteController {
     rebuildServer() {
         if (!Auth.allowed('g:server:rebuild')) return;
         Auth.server().modifyConfig({ rebuild: true }, false, err => {
-            return Responses.generic204(err);
+            Responses.generic204(err);
         });
     }
 

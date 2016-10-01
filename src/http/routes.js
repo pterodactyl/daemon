@@ -141,6 +141,11 @@ RestServer.get('/server/log', (req, res, next) => {
     return next();
 });
 
+RestServer.post('/server/files/rename', (req, res, next) => {
+    Routes.postFilesRename();
+    return next();
+});
+
 RestServer.get(/^\/server\/directory\/?(.+)*/, (req, res, next) => {
     Routes.getServerDirectory();
     return next();

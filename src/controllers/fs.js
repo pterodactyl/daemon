@@ -137,6 +137,25 @@ class FileSystem {
         }, next);
     }
 
+    // Bulk Rename Files
+    // Accepts a string or array for initial and ending
+    rename(initial, ending, next) {
+        if (!_.isArray(initial) && !_.isArray(ending)) {
+            Fs.move(this.server.path(initial), this.server.path(ending), { clobber: false }, err => {
+                next(err);
+            });
+        } else if (!_.isArray(initial) || !_.isArray(ending)) {
+            return next(new Error('Values passed to rename function must be of the same type (string, string) or (array, array).'));
+        } else {
+            Async.eachOfLimit(initial, 5, (value, key, callback) => {
+                if (_.isUndefined(ending[key])) {
+                    return callback(new Error('The number of starting values does not match the number of ending values.'));
+                }
+                Fs.move(this.server.path(value), this.server.path(ending[key]), { clobber: false }, callback);
+            }, next);
+        }
+    }
+
     directory(path, next) {
         const files = [];
         Async.series([
