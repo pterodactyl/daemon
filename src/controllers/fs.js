@@ -140,9 +140,28 @@ class FileSystem {
         }, next);
     }
 
+    stat(file, next) {
+        const Mime = new Magic(Mmm.MAGIC_MIME_TYPE);
+        Fs.stat(this.server.path(file), (err, stat) => {
+            if (err) next(err);
+            Mime.detectFile(this.server.path(file), (mimeErr, result) => {
+                next(null, {
+                    'name': (Path.parse(this.server.path(file))).base,
+                    'created': stat.ctime,
+                    'modified': stat.mtime,
+                    'size': stat.size,
+                    'directory': stat.isDirectory(),
+                    'file': stat.isFile(),
+                    'symlink': stat.isSymbolicLink(),
+                    'mime': result || 'unknown',
+                });
+            });
+        });
+    }
+
     // Bulk Rename Files
     // Accepts a string or array for initial and ending
-    rename(initial, ending, next) {
+    bulkMove(initial, ending, next) {
         if (!_.isArray(initial) && !_.isArray(ending)) {
             Fs.move(this.server.path(initial), this.server.path(ending), { clobber: false }, err => {
                 if (err && !_.startsWith(err.message, 'EEXIST:')) return next(err);

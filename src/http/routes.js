@@ -146,6 +146,11 @@ RestServer.post('/server/files/rename', (req, res, next) => {
     return next();
 });
 
+RestServer.get(/^\/server\/files\/stat\/(.+)/, (req, res, next) => {
+    Routes.getServerFileStat();
+    return next();
+});
+
 RestServer.get(/^\/server\/directory\/?(.+)*/, (req, res, next) => {
     Routes.getServerDirectory();
     return next();
