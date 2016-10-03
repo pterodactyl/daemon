@@ -64,6 +64,22 @@ class FileSystem {
         });
     }
 
+    isSelf(moveTo, moveFrom) {
+        const target = this.server.path(moveTo);
+        const source = this.server.path(moveFrom);
+
+        if (!_.startsWith(target, source)) {
+            return false;
+        }
+
+        const end = target.slice(source.length);
+        if (!end) {
+            return true;
+        }
+
+        return _.startsWith(end, '/');
+    }
+
     write(file, data, next) {
         Async.series([
             callback => {
@@ -163,6 +179,9 @@ class FileSystem {
     // Accepts a string or array for initial and ending
     bulkMove(initial, ending, next) {
         if (!_.isArray(initial) && !_.isArray(ending)) {
+            if (this.isSelf(ending, initial)) {
+                return next(new Error('You cannot move a folder into itself.'));
+            }
             Fs.move(this.server.path(initial), this.server.path(ending), { clobber: false }, err => {
                 if (err && !_.startsWith(err.message, 'EEXIST:')) return next(err);
                 next();
@@ -173,6 +192,10 @@ class FileSystem {
             Async.eachOfLimit(initial, 5, (value, key, callback) => {
                 if (_.isUndefined(ending[key])) {
                     return callback(new Error('The number of starting values does not match the number of ending values.'));
+                }
+
+                if (this.isSelf(ending, initial)) {
+                    return next(new Error('You cannot move a folder into itself.'));
                 }
                 Fs.move(this.server.path(value), this.server.path(ending[key]), { clobber: false }, err => {
                     if (err && !_.startsWith(err.message, 'EEXIST:')) return callback(err);

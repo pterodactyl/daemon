@@ -141,8 +141,13 @@ RestServer.get('/server/log', (req, res, next) => {
     return next();
 });
 
-RestServer.post('/server/files/rename', (req, res, next) => {
+RestServer.post('/server/files/copy', (req, res, next) => {
     Routes.postFilesRename();
+    return next();
+});
+
+RestServer.post(/^\/server\/files\/(move|rename)/, (req, res, next) => {
+    Routes.postFilesMove();
     return next();
 });
 

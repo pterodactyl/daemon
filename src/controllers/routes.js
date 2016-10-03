@@ -223,8 +223,12 @@ class RouteController {
         });
     }
 
-    postFilesRename() {
-        if (!Auth.allowed('s:files:rename')) return;
+    postFilesCopy() {
+
+    }
+
+    postFilesMove() {
+        if (!Auth.allowed('s:files:move')) return;
         Auth.server().fs.bulkMove(this.req.params.from, this.req.params.to, err => {
             Responses.generic204(err);
         });
