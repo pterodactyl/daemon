@@ -142,6 +142,9 @@ class FileSystem {
     }
 
     move(path, newpath, next) {
+        if (this.isSelf(newpath, path)) {
+            return next(new Error('You cannot move a file or folder into itself.'));
+        }
         Fs.move(this.server.path(path), this.server.path(newpath), next);
     }
 
@@ -180,7 +183,7 @@ class FileSystem {
     bulkMove(initial, ending, next) {
         if (!_.isArray(initial) && !_.isArray(ending)) {
             if (this.isSelf(ending, initial)) {
-                return next(new Error('You cannot move a folder into itself.'));
+                return next(new Error('You cannot move a file or folder into itself.'));
             }
             Fs.move(this.server.path(initial), this.server.path(ending), { clobber: false }, err => {
                 if (err && !_.startsWith(err.message, 'EEXIST:')) return next(err);
@@ -195,7 +198,7 @@ class FileSystem {
                 }
 
                 if (this.isSelf(ending, initial)) {
-                    return next(new Error('You cannot move a folder into itself.'));
+                    return next(new Error('You cannot move a file or folder into itself.'));
                 }
                 Fs.move(this.server.path(value), this.server.path(ending[key]), { clobber: false }, err => {
                     if (err && !_.startsWith(err.message, 'EEXIST:')) return callback(err);
