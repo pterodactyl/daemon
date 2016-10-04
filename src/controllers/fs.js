@@ -30,6 +30,7 @@ const _ = require('lodash');
 const Mmm = require('mmmagic');
 
 const Magic = Mmm.Magic;
+const Mime = new Magic(Mmm.MAGIC_MIME_TYPE);
 
 class FileSystem {
     constructor(server) {
@@ -160,7 +161,6 @@ class FileSystem {
     }
 
     stat(file, next) {
-        const Mime = new Magic(Mmm.MAGIC_MIME_TYPE);
         Fs.stat(this.server.path(file), (err, stat) => {
             if (err) next(err);
             Mime.detectFile(this.server.path(file), (mimeErr, result) => {
@@ -209,8 +209,8 @@ class FileSystem {
     }
 
     directory(path, next) {
-        const files = [];
-        Async.series([
+        const responseFiles = [];
+        Async.waterfall([
             callback => {
                 Fs.stat(this.server.path(path), (err, s) => {
                     if (err) return callback(err);
@@ -221,33 +221,39 @@ class FileSystem {
                 });
             },
             callback => {
-                Fs.readdir(this.server.path(path), (err, contents) => {
-                    Async.each(contents, (item, eachCallback) => {
-                        // Lets limit the callback hell
-                        const Mime = new Magic(Mmm.MAGIC_MIME_TYPE);
-                        Fs.stat(Path.join(this.server.path(path), item), (statErr, stat) => {
-                            if (statErr) eachCallback(statErr);
-                            Mime.detectFile(Path.join(this.server.path(path), item), (mimeErr, result) => {
-                                files.push({
-                                    'name': item,
-                                    'created': stat.ctime,
-                                    'modified': stat.mtime,
-                                    'size': stat.size,
-                                    'directory': stat.isDirectory(),
-                                    'file': stat.isFile(),
-                                    'symlink': stat.isSymbolicLink(),
-                                    'mime': result || 'unknown',
-                                });
-                                eachCallback(mimeErr);
-                            });
-                        });
-                    }, () => {
-                        callback(null, _.sortBy(files, ['name']));
-                    });
-                });
+                Fs.readdir(this.server.path(path), callback);
             },
-        ], (err, data) => {
-            next(err, data[1]);
+            (files, callback) => {
+                Async.each(files, (item, eachCallback) => {
+                    Async.auto({
+                        do_stat: aCallback => {
+                            Fs.stat(Path.join(this.server.path(path), item), (statErr, stat) => {
+                                aCallback(statErr, stat);
+                            });
+                        },
+                        do_mime: aCallback => {
+                            Mime.detectFile(Path.join(this.server.path(path), item), (mimeErr, result) => {
+                                aCallback(mimeErr, result);
+                            });
+                        },
+                        do_push: ['do_stat', 'do_mime', (results, aCallback) => {
+                            responseFiles.push({
+                                'name': item,
+                                'created': results.do_stat.birthtime,
+                                'modified': results.do_stat.mtime,
+                                'size': results.do_stat.size,
+                                'directory': results.do_stat.isDirectory(),
+                                'file': results.do_stat.isFile(),
+                                'symlink': results.do_stat.isSymbolicLink(),
+                                'mime': results.do_mime || 'unknown',
+                            });
+                            aCallback();
+                        }],
+                    }, eachCallback);
+                }, callback);
+            },
+        ], (err) => {
+            next(err, responseFiles);
         });
     }
 }
