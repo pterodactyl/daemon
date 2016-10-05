@@ -8,6 +8,11 @@ This file is a running track of new features and fixes to each version of the da
 * Query failures no longer spam log, and can be configured to kill servers after a set number of
 consecutive failures (or just keep on trucking).
 * Daemon now defaults to checking for updated docker images unless specifically configured otherwise.
+* **The following API Endpoints have been modified**:
+  * `GET /server/file/<file path>` -> `GET /server/file/f/<file path>`
+  * `POST /server/file/<file path>` -> `POST /server/file/save` with `path`: `/path/to/saveas.txt` and `contents`: `file contents`
+  * `DELETE /server/file/<file path>` -> `DELETE /server/file/f/<file path>`
+  * `GET /server/download/<token>` -> `GET /server/file/download/<token>`
 
 ### Added
 ### Fixed

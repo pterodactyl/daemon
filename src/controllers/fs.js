@@ -28,6 +28,9 @@ const Path = require('path');
 const Chokidar = require('chokidar');
 const _ = require('lodash');
 const Mmm = require('mmmagic');
+const decompressEngine = require('decompress');
+const Tar = require('tar-fs');
+const RandomString = require('randomstring');
 
 const Magic = Mmm.Magic;
 const Mime = new Magic(Mmm.MAGIC_MIME_TYPE);
@@ -142,13 +145,6 @@ class FileSystem {
         Fs.remove(this.server.path(path), next);
     }
 
-    move(path, newpath, next) {
-        if (this.isSelf(newpath, path)) {
-            return next(new Error('You cannot move a file or folder into itself.'));
-        }
-        Fs.move(this.server.path(path), this.server.path(newpath), next);
-    }
-
     copy(path, newpath, opts, next) {
         if (_.isFunction(opts)) {
             next = opts; // eslint-disable-line
@@ -178,9 +174,7 @@ class FileSystem {
         });
     }
 
-    // Bulk Rename Files
-    // Accepts a string or array for initial and ending
-    bulkMove(initial, ending, next) {
+    move(initial, ending, next) {
         if (!_.isArray(initial) && !_.isArray(ending)) {
             if (this.isSelf(ending, initial)) {
                 return next(new Error('You cannot move a file or folder into itself.'));
@@ -190,7 +184,7 @@ class FileSystem {
                 next();
             });
         } else if (!_.isArray(initial) || !_.isArray(ending)) {
-            return next(new Error('Values passed to rename function must be of the same type (string, string) or (array, array).'));
+            return next(new Error('Values passed to move function must be of the same type (string, string) or (array, array).'));
         } else {
             Async.eachOfLimit(initial, 5, (value, key, callback) => {
                 if (_.isUndefined(ending[key])) {
@@ -205,6 +199,83 @@ class FileSystem {
                     return callback();
                 });
             }, next);
+        }
+    }
+
+    decompress(files, next) {
+        if (!_.isArray(files)) {
+            const fromFile = this.server.path(files);
+            const toDir = fromFile.substring(0, _.lastIndexOf(fromFile, '/'));
+            decompressEngine(fromFile, toDir, {
+                strip: 1,
+            }).then(() => {
+                next();
+            }).catch(next);
+        } else if (_.isArray(files)) {
+            Async.eachLimit(files, 5, (file, callback) => {
+                const fromFile = this.server.path(file);
+                const toDir = fromFile.substring(0, _.lastIndexOf(fromFile, '/'));
+                decompressEngine(fromFile, toDir, {
+                    strip: 1,
+                }).then(() => {
+                    next();
+                }).catch(callback);
+            }, next);
+        } else {
+            return next(new Error('Invalid datatype passed to decompression function.'));
+        }
+    }
+
+    // Unlike other functions, if multiple files and folders are passed
+    // they will all be combined into a single archive.
+    compress(files, to, next) {
+        if (!_.isString(to)) {
+            return next(new Error('The to field must be a string for the folder in which the file should be saved.'));
+        }
+
+        const SaveAsName = `ptdlfm.${RandomString.generate(8)}.tar`;
+        if (!_.isArray(files)) {
+            if (this.isSelf(to, files)) {
+                return next(new Error('Unable to compress folder into itself.'));
+            }
+
+            const Stream = Fs.createWriteStream(Path.join(this.server.path(to), SaveAsName));
+            Tar.pack(this.server.path(files)).pipe(Stream);
+            Stream.on('error', next);
+            Stream.on('close', () => {
+                next(null, SaveAsName);
+            });
+        } else if (_.isArray(files)) {
+            const FileEntries = [];
+            Async.series([
+                callback => {
+                    Async.eachLimit(files, 5, (file, eachCallback) => {
+                        // If it is going to be inside itself, skip and move on.
+                        if (this.isSelf(to, file)) {
+                            return eachCallback();
+                        }
+
+                        FileEntries.push(_.replace(this.server.path(file), this.server.path(), ''));
+                        eachCallback();
+                    }, callback);
+                },
+                callback => {
+                    if (_.isEmpty(FileEntries)) {
+                        return next(new Error('None of the files passed to the command were valid.'));
+                    }
+
+                    const Stream = Fs.createWriteStream(Path.join(this.server.path(to), SaveAsName));
+                    Tar.pack(this.server.path(), {
+                        entries: FileEntries,
+                    }).pipe(Stream);
+                    Stream.on('error', callback);
+                    Stream.on('close', callback);
+                },
+            ], err => {
+                next(err, SaveAsName);
+            });
+        } else {
+            return next(new Error('Invalid datatype passed to decompression function.'));
         }
     }
 
@@ -253,7 +324,7 @@ class FileSystem {
                 }, callback);
             },
         ], (err) => {
-            next(err, responseFiles);
+            next(err, _.sortBy(responseFiles, [(o) => { return _.lowerCase(o.name); }, 'created'])); // eslint-disable-line
         });
     }
 }

@@ -223,20 +223,43 @@ class RouteController {
         });
     }
 
-    postFilesCopy() {
+    postFileCopy() {
 
     }
 
-    postFilesMove() {
+    postFileMove() {
         if (!Auth.allowed('s:files:move')) return;
-        Auth.server().fs.bulkMove(this.req.params.from, this.req.params.to, err => {
+        Auth.server().fs.move(this.req.params.from, this.req.params.to, err => {
             Responses.generic204(err);
+        });
+    }
+
+    postFileDelete() {
+        if (!Auth.allowed('s:files:delete')) return;
+    }
+
+    postFileDecompress() {
+        if (!Auth.allowed('s:files:decompress')) return;
+        Auth.server().fs.decompress(this.req.params.files, err => {
+            Responses.generic204(err);
+        });
+    }
+
+    postFileCompress() {
+        if (!Auth.allowed('s:files:compress')) return;
+        Auth.server().fs.compress(this.req.params.files, this.req.params.to, (err, filename) => {
+            if (err) {
+                return Responses.generic500(err);
+            }
+            return this.res.send({
+                saved_as: filename,
+            });
         });
     }
 
     postServerFile() {
         if (!Auth.allowed('s:files:post')) return;
-        Auth.server().fs.write(this.req.params[0], this.req.params.content, err => {
+        Auth.server().fs.write(this.req.params.path, this.req.params.content, err => {
             Responses.generic204(err);
         });
     }
