@@ -91,7 +91,7 @@ class Server extends EventEmitter {
     hasPermission(perm, token) {
         if (typeof perm !== 'undefined' && typeof token !== 'undefined') {
             if (!_.isUndefined(this.json.keys) && token in this.json.keys) {
-                if (_.includes(this.json.keys[token], perm)) {
+                if (_.includes(this.json.keys[token], perm) || _.includes(this.json.keys[token], 's:*')) {
                     // Check Suspension Status
                     if (_.get(this.json, 'suspended', 0) === 0) {
                         return true;

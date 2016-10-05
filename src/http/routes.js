@@ -146,22 +146,52 @@ RestServer.get(/^\/server\/directory\/?(.+)*/, (req, res, next) => {
     return next();
 });
 
-RestServer.get(/^\/server\/file\/(.+)/, (req, res, next) => {
+RestServer.post('/server/file/copy', (req, res, next) => {
+    Routes.postFileRename();
+    return next();
+});
+
+RestServer.post(/^\/server\/file\/(move|rename)/, (req, res, next) => {
+    Routes.postFileMove();
+    return next();
+});
+
+RestServer.post('/server/fil/delete', (req, res, next) => {
+    Routes.postFileDelete();
+    return next();
+});
+
+RestServer.post('/server/file/compress', (req, res, next) => {
+    Routes.postFileCompress();
+    return next();
+});
+
+RestServer.post('/server/file/decompress', (req, res, next) => {
+    Routes.postFileDecompress();
+    return next();
+});
+
+RestServer.get(/^\/server\/file\/stat\/(.+)/, (req, res, next) => {
+    Routes.getServerFileStat();
+    return next();
+});
+
+RestServer.get(/^\/server\/file\/f\/(.+)/, (req, res, next) => {
     Routes.getServerFile();
     return next();
 });
 
-RestServer.post(/^\/server\/file\/(.+)/, (req, res, next) => {
+RestServer.post('/server/file/save', (req, res, next) => {
     Routes.postServerFile();
     return next();
 });
 
-RestServer.del(/^\/server\/file\/(.+)/, (req, res, next) => {
+RestServer.del(/^\/server\/file\/f\/(.+)/, (req, res, next) => {
     Routes.deleteServerFile();
     return next();
 });
 
-RestServer.get(/^\/server\/download\/([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})/, (req, res, next) => {
+RestServer.get(/^\/server\/file\/download\/([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})/, (req, res, next) => {
     Routes.downloadServerFile();
     return next();
 });

@@ -213,9 +213,53 @@ class RouteController {
         });
     }
 
+    getServerFileStat() {
+        if (!Auth.allowed('s:files:read')) return;
+        Auth.server().fs.stat(this.req.params[0], (err, data) => {
+            if (err) {
+                return Responses.generic500(err);
+            }
+            return this.res.send(data);
+        });
+    }
+
+    postFileCopy() {
+
+    }
+
+    postFileMove() {
+        if (!Auth.allowed('s:files:move')) return;
+        Auth.server().fs.move(this.req.params.from, this.req.params.to, err => {
+            Responses.generic204(err);
+        });
+    }
+
+    postFileDelete() {
+        if (!Auth.allowed('s:files:delete')) return;
+    }
+
+    postFileDecompress() {
+        if (!Auth.allowed('s:files:decompress')) return;
+        Auth.server().fs.decompress(this.req.params.files, err => {
+            Responses.generic204(err);
+        });
+    }
+
+    postFileCompress() {
+        if (!Auth.allowed('s:files:compress')) return;
+        Auth.server().fs.compress(this.req.params.files, this.req.params.to, (err, filename) => {
+            if (err) {
+                return Responses.generic500(err);
+            }
+            return this.res.send({
+                saved_as: filename,
+            });
+        });
+    }
+
     postServerFile() {
         if (!Auth.allowed('s:files:post')) return;
-        Auth.server().fs.write(this.req.params[0], this.req.params.content, err => {
+        Auth.server().fs.write(this.req.params.path, this.req.params.content, err => {
             Responses.generic204(err);
         });
     }
@@ -237,7 +281,7 @@ class RouteController {
     rebuildServer() {
         if (!Auth.allowed('g:server:rebuild')) return;
         Auth.server().modifyConfig({ rebuild: true }, false, err => {
-            return Responses.generic204(err);
+            Responses.generic204(err);
         });
     }
 
