@@ -224,7 +224,10 @@ class RouteController {
     }
 
     postFileCopy() {
-
+        if (!Auth.allowed('s:files:copy')) return;
+        Auth.server().fs.copy(this.req.params.from, this.req.params.to, err => {
+            Responses.generic204(err);
+        });
     }
 
     postFileMove() {

@@ -31,6 +31,7 @@ const Mmm = require('mmmagic');
 const decompressEngine = require('decompress');
 const Tar = require('tar-fs');
 const RandomString = require('randomstring');
+const chownr = require('chownr');
 
 const Magic = Mmm.Magic;
 const Mime = new Magic(Mmm.MAGIC_MIME_TYPE);
@@ -68,6 +69,15 @@ class FileSystem {
         });
     }
 
+    chown(file, next) {
+        let chownTarget = file;
+        if (!_.startsWith(this.server.path(), chownTarget)) {
+            chownTarget = this.server.path(file);
+        }
+
+        chownr(chownTarget, this.server.json.build.user, this.server.json.build.user, next);
+    }
+
     isSelf(moveTo, moveFrom) {
         const target = this.server.path(moveTo);
         const source = this.server.path(moveFrom);
@@ -92,6 +102,9 @@ class FileSystem {
             },
             callback => {
                 Fs.outputFile(this.server.path(file), data, callback);
+            },
+            callback => {
+                this.chown(file, callback);
             },
         ], next);
     }
@@ -145,15 +158,47 @@ class FileSystem {
         Fs.remove(this.server.path(path), next);
     }
 
-    copy(path, newpath, opts, next) {
+    copy(initial, ending, opts, next) {
         if (_.isFunction(opts)) {
             next = opts; // eslint-disable-line
             opts = {}; // eslint-disable-line
         }
-        Fs.copy(this.server.path(path), this.server.path(newpath), {
-            clobber: opts.clobber || false,
-            preserveTimestamps: opts.timestamps || false,
-        }, next);
+
+        if (!_.isArray(initial) && !_.isArray(ending)) {
+            if (this.isSelf(ending, initial)) {
+                return next(new Error('You cannot copy a folder into itself.'));
+            }
+            Async.series([
+                callback => {
+                    Fs.copy(this.server.path(initial), this.server.path(ending), {
+                        clobber: opts.clobber || true,
+                        preserveTimestamps: opts.timestamps || false,
+                    }, callback);
+                },
+                callback => {
+                    this.chown(ending, callback);
+                },
+            ], next);
+        } else if (!_.isArray(initial) || !_.isArray(ending)) {
+            return next(new Error('Values passed to copy function must be of the same type (string, string) or (array, array).'));
+        } else {
+            Async.eachOfLimit(initial, 5, (value, key, callback) => {
+                if (_.isUndefined(ending[key])) {
+                    return callback(new Error('The number of starting values does not match the number of ending values.'));
+                }
+
+                if (this.isSelf(ending[key], value)) {
+                    return next(new Error('You cannot copy a folder into itself.'));
+                }
+                Fs.copy(this.server.path(value), this.server.path(ending[key]), {
+                    clobber: _.get(opts, 'clobber', true),
+                    preserveTimestamps: _.get(opts, 'timestamps', false),
+                }, err => {
+                    if (err) return callback(err);
+                    this.chown(ending[key], callback);
+                });
+            }, next);
+        }
     }
 
     stat(file, next) {
@@ -181,7 +226,7 @@ class FileSystem {
             }
             Fs.move(this.server.path(initial), this.server.path(ending), { clobber: false }, err => {
                 if (err && !_.startsWith(err.message, 'EEXIST:')) return next(err);
-                next();
+                this.chown(ending, next);
             });
         } else if (!_.isArray(initial) || !_.isArray(ending)) {
             return next(new Error('Values passed to move function must be of the same type (string, string) or (array, array).'));
@@ -191,12 +236,12 @@ class FileSystem {
                     return callback(new Error('The number of starting values does not match the number of ending values.'));
                 }
 
-                if (this.isSelf(ending, initial)) {
+                if (this.isSelf(ending[key], value)) {
                     return next(new Error('You cannot move a file or folder into itself.'));
                 }
                 Fs.move(this.server.path(value), this.server.path(ending[key]), { clobber: false }, err => {
                     if (err && !_.startsWith(err.message, 'EEXIST:')) return callback(err);
-                    return callback();
+                    this.chown(ending[key], callback);
                 });
             }, next);
         }

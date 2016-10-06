@@ -1,7 +1,19 @@
 # Changelog
 This file is a running track of new features and fixes to each version of the daemon released starting with `v0.2.0`.
 
-## [Unreleased]
+## v0.3.0-pre.2 [Unreleased]
+
+### Changed
+
+### Fixed
+* Fixed bug preventing copy, rename, move of arrays of files.
+* Fixed chown bug preventing files from being owned by the container running the server.
+
+### Added
+* Added support for file copying.
+
+
+## v0.3.0-pre.1
 
 ### Changed
 * Servers now report core stats when starting and wait for performing query.
@@ -13,12 +25,6 @@ consecutive failures (or just keep on trucking).
   * `POST /server/file/<file path>` -> `POST /server/file/save` with `path`: `/path/to/saveas.txt` and `contents`: `file contents`
   * `DELETE /server/file/<file path>` -> `DELETE /server/file/f/<file path>`
   * `GET /server/download/<token>` -> `GET /server/file/download/<token>`
-
-### Added
-### Fixed
-### Deprecated
-### Removed
-### Security
 
 ## v0.2.1
 
