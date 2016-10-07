@@ -4,6 +4,7 @@ This file is a running track of new features and fixes to each version of the da
 ## v0.3.0-pre.2 [Unreleased]
 
 ### Changed
+* Dependencies are now hard-coded to prevent potential issues with the panel or version changes breaking features.
 
 ### Fixed
 * Fixed bug preventing copy, rename, move of arrays of files.
