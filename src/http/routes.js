@@ -146,6 +146,11 @@ RestServer.get(/^\/server\/directory\/?(.+)*/, (req, res, next) => {
     return next();
 });
 
+RestServer.post('/server/file/folder', (req, res, next) => {
+    Routes.postFileFolder();
+    return next();
+});
+
 RestServer.post('/server/file/copy', (req, res, next) => {
     Routes.postFileCopy();
     return next();

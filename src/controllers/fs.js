@@ -150,6 +150,22 @@ class FileSystem {
         });
     }
 
+    mkdir(path, next) {
+        if (!_.isArray(path)) {
+            Fs.ensureDir(this.server.path(path), err => {
+                if (err) return next(err);
+                this.chown(path, next);
+            });
+        } else {
+            Async.eachOfLimit(path, 5, (value, key, callback) => {
+                Fs.ensureDir(this.server.path(value), err => {
+                    if (err) return callback(err);
+                    this.chown(value, callback);
+                });
+            }, next);
+        }
+    }
+
     delete(path, next) {
         // Safety - prevent deleting the main folder.
         if (Path.resolve(this.server.path(path)) === this.server.path()) {

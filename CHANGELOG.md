@@ -11,6 +11,7 @@ This file is a running track of new features and fixes to each version of the da
 
 ### Added
 * Added support for file copying.
+* Added support for creating empty folders though the API.
 
 
 ## v0.3.0-pre.1

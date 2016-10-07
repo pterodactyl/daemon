@@ -223,6 +223,13 @@ class RouteController {
         });
     }
 
+    postFileFolder() {
+        if (!Auth.allowed('s:files:create')) return;
+        Auth.server().fs.mkdir(this.req.params.path, err => {
+            Responses.generic204(err);
+        });
+    }
+
     postFileCopy() {
         if (!Auth.allowed('s:files:copy')) return;
         Auth.server().fs.copy(this.req.params.from, this.req.params.to, err => {
@@ -235,10 +242,6 @@ class RouteController {
         Auth.server().fs.move(this.req.params.from, this.req.params.to, err => {
             Responses.generic204(err);
         });
-    }
-
-    postFileDelete() {
-        if (!Auth.allowed('s:files:delete')) return;
     }
 
     postFileDecompress() {
