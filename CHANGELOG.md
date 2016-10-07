@@ -1,7 +1,7 @@
 # Changelog
 This file is a running track of new features and fixes to each version of the daemon released starting with `v0.2.0`.
 
-## v0.3.0-pre.2 [Unreleased]
+## v0.3.0-pre.2
 
 ### Changed
 * Dependencies are now hard-coded to prevent potential issues with the panel or version changes breaking features.
