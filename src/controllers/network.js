@@ -77,6 +77,25 @@ class Network {
             return next();
         });
     }
+
+    interface(next) {
+        Log.info('Checking gateway for pterodactyl0');
+        const DockerNetwork = DockerController.getNetwork('pterodactyl_nw');
+        DockerNetwork.inspect((err, data) => {
+            if (err) return next(err);
+
+            if (!_.get(data, 'IPAM.Config[0].Gateway', false)) {
+                return next(new Error('No gateway could be found for pterodactyl0.'));
+            }
+
+            Log.info(`Gateway detected as ${_.get(data, 'IPAM.Config[0].Gateway')} for pterodactyl0.`);
+            Config.modify({
+                docker: {
+                    interface: _.get(data, 'IPAM.Config[0].Gateway'),
+                },
+            }, next);
+        });
+    }
 }
 
 module.exports = Network;

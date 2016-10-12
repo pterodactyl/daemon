@@ -39,13 +39,11 @@ const NetworkController = rfr('src/controllers/network.js');
 const Initializer = rfr('src/helpers/initialize.js').Initialize;
 const SFTPController = rfr('src/controllers/sftp.js');
 const LiveStats = rfr('src/http/stats.js');
-const ConfigHelper = rfr('src/helpers/config.js');
 
 const Network = new NetworkController();
 const Initialize = new Initializer();
 const SFTP = new SFTPController(true);
 const Stats = new LiveStats();
-const Config = new ConfigHelper();
 
 Async.series([
     callback => {
@@ -55,7 +53,7 @@ Async.series([
     },
     callback => {
         Log.info('Checking pterodactyl0 interface and setting configuration values.');
-        return Config.initDockerInterface(callback);
+        Network.interface(callback);
     },
     callback => {
         Log.info('Attempting to start SFTP service container...');

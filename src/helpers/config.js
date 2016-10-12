@@ -22,9 +22,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-const Async = require('async');
 const Fs = require('fs-extra');
-const Proc = require('child_process');
 const _ = require('lodash');
 const extendify = require('extendify');
 
@@ -75,24 +73,6 @@ class Config {
         });
         Fs.writeJson('./config/core.json', deepExtend(this.raw(), object), next);
     }
-
-    initDockerInterface(next) {
-        Async.waterfall([
-            callback => {
-                Proc.exec('ifconfig pterodactyl0 | grep \'inet addr\' | cut -d: -f2 | awk \'{print $1}\'', (err, stdout) => {
-                    if (err) return callback(err);
-                    if (!stdout) return callback(new Error('Unable to establish the current pterodactyl0 interface IP address.'));
-                    return callback(null, stdout);
-                });
-            },
-            (ip, callback) => {
-                const config = this.raw();
-                config.docker.interface = ip.replace(/(\n|\r)+$/, '');
-                Fs.writeJson('./config/core.json', config, callback);
-            },
-        ], next);
-    }
-
 }
 
 module.exports = Config;
