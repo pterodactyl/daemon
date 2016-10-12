@@ -50,6 +50,7 @@ class Server extends EventEmitter {
 
     constructor(json, next) {
         super();
+
         this.status = Status.OFF;
         this.json = json;
         this.uuid = this.json.uuid;
@@ -72,9 +73,9 @@ class Server extends EventEmitter {
         this.failedQueryCount = 0;
 
         // @TODO: If container doesn't exist attempt to create a new container and then try again.
-        // If that faisl it truly is a fatal error and we should exit.
+        // If that fails it truly is a fatal error and we should exit.
         this.docker = new Docker(this, (err, status) => {
-            if (status === true) {
+            if (status) {
                 this.log.info('Daemon detected that the server container is currently running, re-attaching to it now!');
             }
             return next(err);
@@ -350,7 +351,7 @@ class Server extends EventEmitter {
     }
 
     // Still using self here because of intervals.
-    query(self) {
+    query(self) { // eslint-disable-line
         if (self.status !== Status.ON) return;
 
         self.service.doQuery((err, response) => {
@@ -386,7 +387,7 @@ class Server extends EventEmitter {
         });
     }
 
-    process(self) {
+    process(self) { // eslint-disable-line
         if (self.status === Status.OFF) return;
 
         // When the server is started a stream of process data is begun
