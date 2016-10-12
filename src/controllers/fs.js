@@ -384,7 +384,7 @@ class FileSystem {
                     }, eachCallback);
                 }, callback);
             },
-        ], (err) => {
+        ], err => {
             next(err, _.sortBy(responseFiles, [(o) => { return _.lowerCase(o.name); }, 'created'])); // eslint-disable-line
         });
     }
