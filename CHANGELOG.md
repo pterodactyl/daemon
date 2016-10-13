@@ -5,6 +5,7 @@ This file is a running track of new features and fixes to each version of the da
 
 ### Changed
 * Daemon now uses internal Docker API to determine the container interface to use. Better support for non-linux environments.
+* Fallback to `minecraftping` method for all Minecraft servers to mitigate some Gamedig issues.
 
 ## v0.3.0-pre.2
 
