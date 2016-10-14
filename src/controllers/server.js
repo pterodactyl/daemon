@@ -340,7 +340,7 @@ class Server extends EventEmitter {
         let returnPath = dataPath;
 
         if (typeof location !== 'undefined' && location.replace(/\s+/g, '').length > 0) {
-            returnPath = Path.join(dataPath, Path.normalize(Querystring.unescape(location.replace(/\s+/g, ''))));
+            returnPath = Path.join(dataPath, Path.normalize(Querystring.unescape(location)));
         }
 
         // Path is good, return it.

@@ -7,6 +7,8 @@ This file is a running track of new features and fixes to each version of the da
 * Daemon now uses internal Docker API to determine the container interface to use. Better support for non-linux environments.
 * Fallback to `minecraftping` method for all Minecraft servers to mitigate some Gamedig issues.
 
+### Fixed
+* Files with spaces in their name would break the `path()` function, this has been fixed.
 ## v0.3.0-pre.2
 
 ### Changed
