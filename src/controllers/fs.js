@@ -71,7 +71,7 @@ class FileSystem {
 
     chown(file, next) {
         let chownTarget = file;
-        if (!_.startsWith(this.server.path(), chownTarget)) {
+        if (!_.startsWith(chownTarget, this.server.path())) {
             chownTarget = this.server.path(file);
         }
 
