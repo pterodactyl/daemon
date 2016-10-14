@@ -39,7 +39,7 @@ const Docker = rfr('src/controllers/docker.js');
 const Status = rfr('src/helpers/status.js');
 const ConfigHelper = rfr('src/helpers/config.js');
 const Websocket = rfr('src/http/socket.js').ServerSockets;
-const UploadServer = rfr('src/http/upload.js');
+const UploadSocket = rfr('src/http/upload.js');
 const FileSystem = rfr('src/controllers/fs.js');
 const SFTPController = rfr('src/controllers/sftp.js');
 
@@ -85,7 +85,7 @@ class Server extends EventEmitter {
         this.service = new Service(this);
 
         this.socketIO = new Websocket(this).init();
-        this.uploadSocket = new UploadServer(this).init();
+        this.uploadSocket = new UploadSocket(this).init();
         this.fs = new FileSystem(this);
     }
 
