@@ -219,6 +219,16 @@ class Server extends EventEmitter {
             },
         ], (err, reboot) => {
             if (err) {
+                if (err.statusCode === 404) { // container not found
+                    this.log.error('The container for this server could not be found. Trying to rebuild it.');
+                    this.emit('console', `${Ansi.style.red}(Daemon) The container of this server could not be found and has to be rebuilt.`);
+                    this.modifyConfig({ rebuild: true }, false, modifyError => {
+                        if (modifyError) return this.log.error('Could not modify config.');
+                        this.start(_.noop); // Ignore the callback as there is nowhere to send the errors to.
+                    });
+                    return next(new Error('Server container was not found and needs to be rebuilt. Your request has been accepted and will be processed once the rebuild is complete.'));
+                }
+
                 this.log.error(err);
                 return next(err);
             }

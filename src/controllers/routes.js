@@ -126,7 +126,7 @@ class RouteController {
         if (this.req.params.action === 'start') {
             if (!Auth.allowed('s:power:start')) return;
             Auth.server().start(err => {
-                if (err && _.includes(err.message, 'Server is currently queued for a container rebuild')) {
+                if (err && (_.includes(err.message, 'Server is currently queued for a container rebuild') || _.includes(err.message, 'Server container was not found and needs to be rebuilt.'))) {
                     return this.res.send(202, { 'message': err.message });
                 }
                 Responses.generic204(err);
@@ -139,7 +139,7 @@ class RouteController {
         } else if (this.req.params.action === 'restart') {
             if (!Auth.allowed('s:power:restart')) return;
             Auth.server().restart(err => {
-                if (err && _.includes(err.message, 'Server is currently queued for a container rebuild')) {
+                if (err && (_.includes(err.message, 'Server is currently queued for a container rebuild') || _.includes(err.message, 'Server container was not found and needs to be rebuilt.'))) {
                     return this.res.send(202, { 'message': err.message });
                 }
                 Responses.generic204(err);
