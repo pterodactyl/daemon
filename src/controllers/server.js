@@ -72,13 +72,17 @@ class Server extends EventEmitter {
         this.lastCrash = undefined;
         this.failedQueryCount = 0;
 
-        // @TODO: If container doesn't exist attempt to create a new container and then try again.
-        // If that fails it truly is a fatal error and we should exit.
         this.docker = new Docker(this, (err, status) => {
             if (status) {
                 this.log.info('Daemon detected that the server container is currently running, re-attaching to it now!');
             }
-            return next(err);
+            if (err && err.statusCode === 404) { // no such container
+                this.log.info('Container was not found. Attempting to recreate it.');
+                next(); // Continue normal initialization
+                this.rebuild(() => {
+                    this.log.fatal('Could not recreate container.');
+                });
+            } else return next(err);
         });
 
         const Service = rfr(Util.format('src/services/%s/index.js', this.json.service.type));
