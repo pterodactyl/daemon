@@ -79,10 +79,12 @@ class Server extends EventEmitter {
             if (err && err.statusCode === 404) { // no such container
                 this.log.info('Container was not found. Attempting to recreate it.');
                 next(); // Continue normal initialization
-                this.rebuild(() => {
-                    this.log.fatal('Could not recreate container.');
+                this.rebuild((rebuildErr) => {
+                    if (rebuildErr) this.log.fatal('Could not recreate container.');
                 });
-            } else return next(err);
+            } else {
+                return next(err);
+            }
         });
 
         const Service = rfr(Util.format('src/services/%s/index.js', this.json.service.type));
@@ -221,7 +223,7 @@ class Server extends EventEmitter {
             if (err) {
                 if (err.statusCode === 404) { // container not found
                     this.log.error('The container for this server could not be found. Trying to rebuild it.');
-                    this.emit('console', `${Ansi.style.red}(Daemon) The container of this server could not be found and has to be rebuilt.`);
+                    this.emit('console', `${Ansi.style.cyan}(Daemon) The container of this server could not be found and needs to be rebuilt.`);
                     this.modifyConfig({ rebuild: true }, false, modifyError => {
                         if (modifyError) return this.log.error('Could not modify config.');
                         this.start(_.noop); // Ignore the callback as there is nowhere to send the errors to.
