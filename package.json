@@ -8,7 +8,7 @@
   },
   "scripts": {
     "start": "node src/index.js | node_modules/bunyan/bin/bunyan -o short",
-    "test": "./node_modules/eslint/bin/eslint.js --config /srv/daemon/.eslintrc src/*"
+    "test": "./node_modules/eslint/bin/eslint.js --config .eslintrc src/*"
   },
   "repository": {
     "type": "git",
