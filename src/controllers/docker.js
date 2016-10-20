@@ -391,8 +391,6 @@ class Docker {
                 return next(err);
             }
             this.server.log.debug('Removing old server container...');
-            // @TODO: logic here to determine if this failed, if so we need to
-            // remove the newly created server probably.
 
             const newContainerInfo = {
                 id: data[2].id,
@@ -408,7 +406,7 @@ class Docker {
                 // if it doesn't we'll just skip removal
                 } else {
                     this.server.log.debug('Old container not found, skipping.');
-                    next(false, newContainerInfo);
+                    next(null, newContainerInfo);
                 }
             });
         });
