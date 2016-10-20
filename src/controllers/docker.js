@@ -393,11 +393,23 @@ class Docker {
             this.server.log.debug('Removing old server container...');
             // @TODO: logic here to determine if this failed, if so we need to
             // remove the newly created server probably.
-            this.container.remove(removeError => {
-                next(removeError, {
-                    id: data[2].id,
-                    image: config.image,
-                });
+
+            const newContainerInfo = {
+                id: data[2].id,
+                image: config.image,
+            };
+
+            this.container.inspect(inspectErr => {
+                // if the inspection does not fail, the container exists
+                if (!inspectErr) {
+                    this.container.remove(removeError => {
+                        next(removeError, newContainerInfo);
+                    });
+                // if it doesn't we'll just skip removal
+                } else {
+                    this.server.log.debug('Old container not found, skipping.');
+                    next(false, newContainerInfo);
+                }
             });
         });
     }
