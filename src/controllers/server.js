@@ -79,7 +79,7 @@ class Server extends EventEmitter {
             if (err && err.statusCode === 404) { // no such container
                 this.log.info('Container was not found. Attempting to recreate it.');
                 next(); // Continue normal initialization
-                this.rebuild((rebuildErr) => {
+                this.rebuild(rebuildErr => {
                     if (rebuildErr) this.log.fatal('Could not recreate container.');
                 });
             } else {
@@ -179,7 +179,7 @@ class Server extends EventEmitter {
                 Async.waterfall([
                     callback => {
                         this.buildInProgress = true;
-                        this.emit('console', `${Ansi.style.cyan}(Daemon) Your server is currently queued for a container rebuild. This should only take a few seconds, but could take a few minutes. You do not need to do anything else while this occurs. Your server will automatically continue with startup once this process is completed.`);
+                        this.emit('console', `${Ansi.style.cyan}(Daemon) Your server container needs to be rebuilt. This should only take a few seconds, but could take a few minutes. You do not need to do anything else while this occurs. Your server will automatically continue with startup once this process is completed.`);
                         callback();
                     },
                     callback => {
@@ -223,7 +223,6 @@ class Server extends EventEmitter {
             if (err) {
                 if (err.statusCode === 404) { // container not found
                     this.log.error('The container for this server could not be found. Trying to rebuild it.');
-                    this.emit('console', `${Ansi.style.cyan}(Daemon) The container of this server could not be found and needs to be rebuilt.`);
                     this.modifyConfig({ rebuild: true }, false, modifyError => {
                         if (modifyError) return this.log.error('Could not modify config.');
                         this.start(_.noop); // Ignore the callback as there is nowhere to send the errors to.
