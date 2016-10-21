@@ -336,12 +336,18 @@ class Docker {
                             Destination: '/home/container',
                             RW: true,
                         },
+                        {
+                            Source: '/etc/timezone',
+                            Destination: '/etc/timezone',
+                            RW: false,
+                        },
                     ],
                     Env: environment,
                     ExposedPorts: exposed,
                     HostConfig: {
                         Binds: [
                             Util.format('%s:/home/container', this.server.path()),
+                            '/etc/timezone:/etc/timezone:ro',
                         ],
                         Tmpfs: {
                             '/tmp': '',

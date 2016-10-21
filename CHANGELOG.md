@@ -13,6 +13,7 @@ This file is a running track of new features and fixes to each version of the da
 ### Fixed
 * Chown function was checking paths incorrectly which could lead to issues if a safe path is already passed (redundant pathing basically, not a security risk, jut causes a File not Found error).
 * Files with spaces in their name would break the `path()` function, this has been fixed.
+* Timezone was improperly set inside server containers.
 
 ### Removed
 * BinaryJS has been removed due to it being abandoned and buggy.
