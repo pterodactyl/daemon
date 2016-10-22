@@ -1,6 +1,6 @@
 {
   "name": "pterodactyl-daemon",
-  "version": "0.2.1",
+  "version": "0.3.0-pre.3",
   "description": "Server management wrapper built for Pterodactyl Panel.",
   "main": "index.js",
   "directories": {
@@ -22,7 +22,7 @@
   "author": "Dane Everitt <dane@daneeveritt.com>",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/Pterodactyl/Daemon/issues"
+    "url": "https://github.com/Pterodactyl/Panel/issues"
   },
   "homepage": "https://github.com/Pterodactyl/Daemon#readme",
   "devDependencies": {
