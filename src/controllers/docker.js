@@ -393,6 +393,10 @@ class Docker {
                         LogConfig: {
                             Type: 'none',
                         },
+                        PidsLimit: 32,
+                        SecurityOpt: [
+                            'no-new-privileges',
+                        ],
                         ReadonlyRootfs: true,
                         CapDrop: [
                             'setpcap',
