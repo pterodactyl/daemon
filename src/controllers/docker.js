@@ -40,6 +40,18 @@ const DockerController = new Dockerode({
     socketPath: Config.get('docker.socket', '/var/run/docker.sock'),
 });
 
+/**
+ * These constants define the amount of additional memory
+ * to allocate to the container to prevent OOM errors
+ * when using {SERVER_MEMORY} in the startup line.
+ */
+const CONST_LOWMEM_PCT = Config.get('docker.memory.low.percent', 0.085);
+const CONST_STDMEM_PCT = Config.get('docker.memory.std.percent', 0.048);
+const CONST_HIGHMEM_PCT = Config.get('docker.memory.high.percent', 0.014);
+
+const CONST_LOWMEM = Config.get('docker.memory.low.value', 1024);
+const CONST_STDMEM = Config.get('docker.memory.std.value', 10240);
+
 class Docker {
     constructor(server, next) {
         this.server = server;
@@ -51,6 +63,17 @@ class Docker {
 
         // Check status and attach if server is running currently.
         this.reattach(next);
+    }
+
+    hardlimit(memory) {
+        if (memory < CONST_LOWMEM) {
+            return memory + (memory * CONST_LOWMEM_PCT);
+        } else if (memory >= CONST_LOWMEM && memory < CONST_STDMEM) {
+            return memory + (memory * CONST_STDMEM_PCT);
+        } else if (memory >= CONST_STDMEM) {
+            return memory + (memory * CONST_HIGHMEM_PCT);
+        }
+        return memory;
     }
 
     reattach(next) {
@@ -356,7 +379,8 @@ class Docker {
                         OomKillDisable: config.oom_disabled || false,
                         CpuQuota: (config.cpu > 0) ? (config.cpu * 1000) : -1,
                         CpuPeriod: (config.cpu > 0) ? 100000 : 0,
-                        Memory: config.memory * 1000000,
+                        Memory: this.hardlimit(config.memory) * 1000000,
+                        MemoryReservation: config.memory * 1000000,
                         MemorySwap: swapSpace,
                         BlkioWeight: config.io,
                         Dns: Config.get('docker.dns', [
