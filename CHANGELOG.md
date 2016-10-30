@@ -2,6 +2,7 @@
 This file is a running track of new features and fixes to each version of the daemon released starting with `v0.2.0`.
 
 ## v0.3.0-pre.4
+**Known Issue**: Decompressing large files through the file manager throws a `EMFILE: too many open files` error.
 
 ### Added
 * Added method to handle assigning a percent extra memory to containers based on the current allocated. Should help with Minecraft servers hitting OOM when java attempts to allocate a bit over the hard limit.
@@ -13,6 +14,7 @@ This file is a running track of new features and fixes to each version of the da
 
 ### Fixed
 * Properly call `onStop`, `onStarting`, and `onStart` when server actions occur.
+* Fix decompressing files setting the wrong permissions on extractions.
 
 ## v0.3.0-pre.3
 

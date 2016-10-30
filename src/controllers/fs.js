@@ -269,17 +269,25 @@ class FileSystem {
             const toDir = fromFile.substring(0, _.lastIndexOf(fromFile, '/'));
             decompressEngine(fromFile, toDir, {
                 strip: 1,
-            }).then(() => {
-                next();
+            }).then(out => {
+                Async.eachOfLimit(out, 10, (v, k, eachCallback) => {
+                    Fs.chown(Path.join(toDir, v.path), this.server.json.build.user, this.server.json.build.user, eachCallback);
+                }, err => {
+                    next(err);
+                });
             }).catch(next);
         } else if (_.isArray(files)) {
-            Async.eachLimit(files, 5, (file, callback) => {
+            Async.eachLimit(files, 1, (file, callback) => {
                 const fromFile = this.server.path(file);
                 const toDir = fromFile.substring(0, _.lastIndexOf(fromFile, '/'));
                 decompressEngine(fromFile, toDir, {
                     strip: 1,
-                }).then(() => {
-                    next();
+                }).then(out => {
+                    Async.eachOfLimit(out, 10, (v, k, eachCallback) => {
+                        Fs.chown(this.server.path(Path.join(toDir, v.path)), this.server.json.build.user, this.server.json.build.user, eachCallback);
+                    }, err => {
+                        next(err);
+                    });
                 }).catch(callback);
             }, next);
         } else {
