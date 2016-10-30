@@ -217,7 +217,7 @@ class Server extends EventEmitter {
                 this.docker.attach(callback);
             },
             callback => {
-                this.service.onStart(callback);
+                this.service.onAttached(callback);
             },
         ], (err, reboot) => {
             if (err) {
@@ -317,32 +317,46 @@ class Server extends EventEmitter {
     streamClosed() {
         if (this.status === Status.OFF || this.status === Status.STOPPING) {
             this.setStatus(Status.OFF);
+            this.service.onStop();
             return;
         }
 
-        if (!_.get(this.json, 'container.crashDetection', true)) {
-            this.setStatus(Status.OFF);
-            this.log.warn('Server detected as potentially crashed but crash detection has been disabled on this server.');
-            return;
-        }
-
-        this.emit('crashed');
-        this.setStatus(Status.OFF);
-        if (moment.isMoment(this.lastCrash)) {
-            if (moment(this.lastCrash).add(60, 'seconds').isAfter(moment())) {
-                this.setCrashTime();
-                this.log.warn('Server detected as crashed but has crashed within the last 60 seconds, aborting reboot.');
-                this.emit('console', `${Ansi.style.red}(Daemon) Server detected as crashed! Unable to reboot due to crash within last 60 seconds.`);
+        Async.series([
+            callback => {
+                this.service.onStop(callback);
+            },
+            callback => {
+                if (!_.get(this.json, 'container.crashDetection', true)) {
+                    this.setStatus(Status.OFF);
+                    this.log.warn('Server detected as potentially crashed but crash detection has been disabled on this server.');
+                    return;
+                }
+                callback();
+            },
+        ], err => {
+            if (err) {
+                this.log.fatal(err);
                 return;
             }
-        }
 
-        this.log.warn('Server detected as crashed! Attempting server reboot.');
-        this.emit('console', `${Ansi.style.red}(Daemon) Server detected as crashed! Attempting to reboot server now.`);
-        this.setCrashTime();
+            this.emit('crashed');
+            this.setStatus(Status.OFF);
+            if (moment.isMoment(this.lastCrash)) {
+                if (moment(this.lastCrash).add(60, 'seconds').isAfter(moment())) {
+                    this.setCrashTime();
+                    this.log.warn('Server detected as crashed but has crashed within the last 60 seconds, aborting reboot.');
+                    this.emit('console', `${Ansi.style.red}(Daemon) Server detected as crashed! Unable to reboot due to crash within last 60 seconds.`);
+                    return;
+                }
+            }
 
-        this.start(err => {
-            if (err) this.log.fatal(err);
+            this.log.warn('Server detected as crashed! Attempting server reboot.');
+            this.emit('console', `${Ansi.style.red}(Daemon) Server detected as crashed! Attempting to reboot server now.`);
+            this.setCrashTime();
+
+            this.start(startError => {
+                if (startError) this.log.fatal(startError);
+            });
         });
     }
 

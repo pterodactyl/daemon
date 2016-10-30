@@ -12,5 +12,14 @@
             "location": "logs/latest.log"
         },
         "query": "protocol-valve"
+    },
+    "ark": {
+        "tag": "^(ark)$",
+        "symlink": "srcds",
+        "startup": {
+            "done": "Setting breakpad minidump AppID"
+        },
+        "stop": "^C",
+        "query": "none"
     }
 }

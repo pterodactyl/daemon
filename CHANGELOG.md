@@ -1,6 +1,19 @@
 # Changelog
 This file is a running track of new features and fixes to each version of the daemon released starting with `v0.2.0`.
 
+## v0.3.0-pre.4
+
+### Added
+* Added method to handle assigning a percent extra memory to containers based on the current allocated. Should help with Minecraft servers hitting OOM when java attempts to allocate a bit over the hard limit.
+* Support for ARK Servers.
+
+### Changed
+* Changed some docker container creation options to prevent fork-bombing as well as prevent additional routes for privilege escalation in containers.
+* Changed server startup async pathway to call `onStarting` not `onStart`. `onStart` is now called when server is marked as started.
+
+### Fixed
+* Properly call `onStop`, `onStarting`, and `onStart` when server actions occur.
+
 ## v0.3.0-pre.3
 
 ### Added

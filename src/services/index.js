@@ -31,6 +31,7 @@ const Gamedig = require('gamedig');
 const isStream = require('isstream');
 const Path = require('path');
 const createOutputStream = require('create-output-stream');
+const Ansi = require('ansi-escape-sequences');
 
 const Status = rfr('src/helpers/status.js');
 const FileParserHelper = rfr('src/helpers/fileparser.js');
@@ -128,8 +129,17 @@ class Core {
         });
     }
 
+    onAttached(next) {
+        if (_.isFunction(next)) {
+            return next();
+        }
+    }
+
     onStart(next) {
-        return next();
+        this.onConsole(`${Ansi.style.green}(Daemon) Server detected as started.`);
+        if (_.isFunction(next)) {
+            return next();
+        }
     }
 
     onConsole(data) {
@@ -164,7 +174,15 @@ class Core {
             () => {
                 // Started
                 if (_.includes(data, this.object.startup.done)) {
-                    this.server.setStatus(Status.ON);
+                    Async.series([
+                        callback => {
+                            this.onStart(callback);
+                        },
+                        callback => {
+                            this.server.setStatus(Status.ON);
+                            callback();
+                        },
+                    ]);
                 }
 
                 // Stopped; Don't trigger crash
@@ -184,12 +202,26 @@ class Core {
     }
 
     onStop(next) {
-        if (isStream.isWritable(this.logStream)) {
-            this.logStream.end(() => {
-                this.logStream = false;
-            });
-        }
-        return next();
+        Async.series([
+            callback => {
+                this.onConsole(`${Ansi.style.green}(Daemon) Server detected as stopped.`);
+                callback();
+            },
+            callback => {
+                if (isStream.isWritable(this.logStream)) {
+                    this.logStream.end(() => {
+                        this.logStream = false;
+                        callback();
+                    });
+                } else {
+                    callback();
+                }
+            },
+        ], err => {
+            if (_.isFunction(next)) {
+                return next(err);
+            }
+        });
     }
 
 }
