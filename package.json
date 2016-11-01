@@ -1,6 +1,6 @@
 {
   "name": "pterodactyl-daemon",
-  "version": "0.2.1",
+  "version": "0.3.0-rc.2",
   "description": "Server management wrapper built for Pterodactyl Panel.",
   "main": "index.js",
   "directories": {
