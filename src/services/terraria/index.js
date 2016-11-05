@@ -24,7 +24,7 @@
  */
 const rfr = require('rfr');
 
-const Configuration = rfr('src/services/srcds/main.json');
+const Configuration = rfr('src/services/terraria/main.json');
 const Core = rfr('src/services/index.js');
 
 class Service extends Core {

@@ -22,69 +22,57 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-const Async = require('async');
 const Fs = require('fs-extra');
-const Proc = require('child_process');
+const _ = require('lodash');
+const extendify = require('extendify');
 
 class Config {
 
     constructor() {
-        this.configJson = this._raw();
+        this.configJson = this.raw();
         this.docker0 = null;
     }
 
-    _raw() {
+    raw() {
         return Fs.readJsonSync('./config/core.json');
     }
 
     get(key, defaultResponse) {
         let getObject;
         try {
-            this.configJson = this._raw(); // Without this things don't ever end up updated...
-            getObject = key.split('.').reduce((o, i) => o[i], this.configJson);
+            this.configJson = this.raw(); // Without this things don't ever end up updated...
+            getObject = _.reduce(key.split('.'), (o, i) => o[i], this.configJson);
         } catch (ex) {
             //
         }
 
-        if (typeof getObject !== 'undefined') {
+        if (!_.isUndefined(getObject)) {
             return getObject;
         }
 
-        return (typeof defaultResponse !== 'undefined') ? defaultResponse : undefined;
+        return (!_.isUndefined(defaultResponse)) ? defaultResponse : undefined;
     }
 
     save(json, next) {
-        const self = this;
-        if (!json || typeof json !== 'object' || json === null || !Object.keys(json).length) {
+        if (!json || !_.isObject(json) || _.isNull(json) || !_.keys(json).length) {
             throw new Error('Invalid JSON was passed to Builder.');
         }
 
-        Fs.writeJson('./config/core.json', json, function (err) {
-            if (!err) self.configJson = json;
+        Fs.writeJson('./config/core.json', json, err => {
+            if (!err) this.configJson = json;
             return next(err);
         });
     }
 
-    initDockerInterface(next) {
-        const self = this;
-        Async.waterfall([
-            function configDockerInterfaceGetIp(callback) {
-                Proc.exec('ifconfig docker0 | grep \'inet addr\' | cut -d: -f2 | awk \'{print $1}\'', function (err, stdout) {
-                    if (err) return callback(err);
-                    if (!stdout) return callback(new Error('Unable to establish the current docker0 interface IP address.'));
-                    return callback(null, stdout);
-                });
-            },
-            function configDockerInterfaceSetIp(ip, callback) {
-                const config = self._raw();
-                config.docker.interface = ip.replace(/(\n|\r)+$/, '');
-                Fs.writeJson('./config/core.json', config, callback);
-            },
-        ], function (err) {
-            return next(err);
-        });
-    }
+    modify(object, next) {
+        if (!_.isObject(object)) return next(new Error('Function expects an object to be passed.'));
 
+        const deepExtend = extendify({
+            inPlace: false,
+            arrays: 'replace',
+        });
+        Fs.writeJson('./config/core.json', deepExtend(this.raw(), object), next);
+    }
 }
 
 module.exports = Config;

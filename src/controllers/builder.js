@@ -29,7 +29,7 @@ const Path = require('path');
 const Dockerode = require('dockerode');
 const Util = require('util');
 const RandomString = require('randomstring');
-const _ = require('underscore');
+const _ = require('lodash');
 
 const Log = rfr('src/helpers/logger.js');
 const ImageHelper = rfr('src/helpers/image.js');
@@ -47,7 +47,7 @@ const DockerController = new Dockerode({
 class Builder {
 
     constructor(json) {
-        if (!json || typeof json !== 'object' || json === null || !Object.keys(json).length) {
+        if (!json || !_.isObject(json) || json === null || !_.keys(json).length) {
             throw new Error('Invalid JSON was passed to Builder.');
         }
         this.json = json;
@@ -55,159 +55,140 @@ class Builder {
     }
 
     init(next) {
-        const self = this;
         // @TODO: validate everything needed is here in the JSON.
         Async.series([
-            function initAsyncUpdateJson(callback) {
-                self.log.info('Updating passed JSON to route correct interfaces.');
+            callback => {
+                this.log.info('Updating passed JSON to route correct interfaces.');
                 // Update 127.0.0.1 to point to the docker0 interface.
-                if (self.json.build.default.ip === '127.0.0.1') {
-                    self.json.build.default.ip = Config.get('docker.interface');
+                if (this.json.build.default.ip === '127.0.0.1') {
+                    this.json.build.default.ip = Config.get('docker.interface');
                 }
-                Async.forEachOf(self.json.build.ports, function (ports, ip, asyncCallback) {
+                Async.forEachOf(this.json.build.ports, (ports, ip, asyncCallback) => {
                     if (ip === '127.0.0.1') {
-                        self.json.build.ports[Config.get('docker.interface')] = ports;
-                        delete self.json.build.ports[ip];
+                        this.json.build.ports[Config.get('docker.interface')] = ports;
+                        delete this.json.build.ports[ip];
                         return asyncCallback();
                     }
                     return asyncCallback();
-                }, function () {
-                    return callback();
-                });
+                }, callback);
             },
-            function initAsyncSetupSFTP(callback) {
-                self.log.info('Creating SFTP user on the system...');
-                SFTP.create(self.json.user, RandomString.generate(), function (err) {
-                    return callback(err);
-                });
+            callback => {
+                this.log.info('Creating SFTP user on the system...');
+                SFTP.create(this.json.user, RandomString.generate(), callback);
             },
-            function initAsyncGetUser(callback) {
-                self.log.info('Retrieving the user\'s ID...');
-                SFTP.uid(self.json.user, function (err, uid) {
+            callback => {
+                this.log.info('Retrieving the user\'s ID...');
+                SFTP.uid(this.json.user, (err, uid) => {
                     if (err || uid === null) {
-                        SFTP.delete(self.json.user, function (delErr) {
+                        SFTP.delete(this.json.user, delErr => {
                             if (delErr) Log.fatal(delErr);
                             Log.warn('Cleaned up after failed server creation.');
                         });
                         return (err !== null) ? callback(err) : callback(new Error('Unable to retrieve the user ID.'));
                     }
-                    self.log.info('User ID is: ' + uid);
-                    self.json.build.user = parseInt(uid, 10);
+                    this.log.info(`User ID is: ${uid}`);
+                    this.json.build.user = parseInt(uid, 10);
                     return callback();
                 });
             },
-            function initAsyncBuildContainer(callback) {
-                self.log.info('Building container for server');
-                self.buildContainer(self.json.uuid, function (err, data) {
+            callback => {
+                this.log.info('Building container for server');
+                this.buildContainer(this.json.uuid, (err, data) => {
                     if (err) {
-                        SFTP.delete(self.json.user, function (delErr) {
+                        SFTP.delete(this.json.user, delErr => {
                             if (delErr) Log.fatal(delErr);
                             Log.warn('Cleaned up after failed server creation.');
                         });
                         return callback(err);
                     }
-                    self.json.container = {};
-                    self.json.container.id = data.id.substr(0, 12);
-                    self.json.container.image = data.image;
+                    this.json.container = {};
+                    this.json.container.id = data.id.substr(0, 12);
+                    this.json.container.image = data.image;
                     return callback();
                 });
             },
-            function initAsyncWriteConfig(callback) {
-                self.log.info('Writing configuration to disk...');
-                self.writeConfigToDisk(function (err) {
+            callback => {
+                this.log.info('Writing configuration to disk...');
+                this.writeConfigToDisk(err => {
                     if (err) {
                         Async.parallel([
-                            function (parallelCallback) {
-                                SFTP.delete(self.json.user, function (asyncErr) {
-                                    if (asyncErr) Log.fatal(err);
-                                    return parallelCallback();
-                                });
+                            parallelCallback => {
+                                SFTP.delete(this.json.user, parallelCallback);
                             },
-                            function (parallelCallback) {
-                                const container = DockerController.getContainer(self.json.container.id);
-                                container.remove(function (asyncErr) {
-                                    if (asyncErr) Log.fatal(asyncErr);
-                                    return parallelCallback();
-                                });
+                            parallelCallback => {
+                                const container = DockerController.getContainer(this.json.container.id);
+                                container.remove(parallelCallback);
                             },
-                        ], function () {
-                            Log.warn('Cleaned up after failed server creation.');
+                        ], asyncErr => {
+                            if (asyncErr) {
+                                Log.fatal(asyncErr);
+                            } else {
+                                Log.warn('Cleaned up after failed server creation.');
+                            }
                         });
                     }
                     return callback(err);
                 });
             },
-            function initAsyncInitialize(callback) {
-                ServerInitializer.setup(self.json, function (err) {
+            callback => {
+                ServerInitializer.setup(this.json, err => {
                     if (err) {
                         Async.parallel([
-                            function (parallelCallback) {
-                                SFTP.delete(self.json.user, function (asyncErr) {
-                                    if (asyncErr) Log.fatal(err);
-                                    return parallelCallback();
-                                });
+                            parallelCallback => {
+                                SFTP.delete(this.json.user, parallelCallback);
                             },
-                            function (parallelCallback) {
-                                const container = DockerController.getContainer(self.json.container.id);
-                                container.remove(function (asyncErr) {
-                                    if (asyncErr) Log.fatal(asyncErr);
-                                    return parallelCallback();
-                                });
+                            parallelCallback => {
+                                const container = DockerController.getContainer(this.json.container.id);
+                                container.remove(parallelCallback);
                             },
-                            function (parallelCallback) {
-                                Fs.remove(Path.join('./config/servers', this.json.uuid, '/server.json'), function (asyncErr) {
-                                    if (asyncErr) Log.fatal(asyncErr);
-                                    return parallelCallback();
-                                });
+                            parallelCallback => {
+                                Fs.remove(Path.join('./config/servers', this.json.uuid, '/server.json'), parallelCallback);
                             },
-                        ], function () {
-                            Log.warn('Cleaned up after failed server creation.');
+                        ], asyncErr => {
+                            if (asyncErr) {
+                                Log.fatal(asyncErr);
+                            } else {
+                                Log.warn('Cleaned up after failed server creation.');
+                            }
                         });
                     }
                     return callback(err);
                 });
             },
-        ], function initAsyncCallback(err) {
-            return next(err, self.json);
+        ], err => {
+            next(err, this.json);
         });
     }
 
     writeConfigToDisk(next) {
-        if (typeof this.json.uuid === 'undefined') {
+        if (_.isUndefined(this.json.uuid)) {
             return next(new Error('No UUID was passed properly in the JSON recieved.'));
         }
         // Attempt to write to disk, return error if failed, otherwise return nothing.
-        Fs.outputJson(Path.join('./config/servers', this.json.uuid, '/server.json'), this.json, function writeConfigWrite(err) {
-            return next(err);
-        });
+        Fs.outputJson(Path.join('./config/servers', this.json.uuid, '/server.json'), this.json, next);
     }
 
     buildContainer(json, next) {
-        const self = this;
         const config = this.json.build;
         const bindings = {};
         const exposed = {};
         Async.series([
-            function (callback) {
+            callback => {
                 // The default is to not automatically update images.
                 if (Config.get('docker.autoupdate_images', false) === false) {
-                    ImageHelper.exists(config.image, function (err) {
+                    ImageHelper.exists(config.image, err => {
                         if (!err) return callback();
                         Log.info(Util.format('Pulling image %s because it doesn\'t exist on the system.', config.image));
-                        ImageHelper.pull(config.image, function (pullErr) {
-                            return callback(pullErr);
-                        });
+                        ImageHelper.pull(config.image, callback);
                     });
                 } else {
-                    ImageHelper.pull(config.image, function (err) {
-                        return callback(err);
-                    });
+                    ImageHelper.pull(config.image, callback);
                 }
             },
-            function (callback) {
+            callback => {
                 // Build the port bindings
-                Async.forEachOf(config.ports, function (ports, ip, eachCallback) {
-                    Async.each(ports, function (port, portCallback) {
+                Async.forEachOf(config.ports, (ports, ip, eachCallback) => {
+                    Async.each(ports, (port, portCallback) => {
                         bindings[Util.format('%s/tcp', port)] = [{
                             'HostIp': ip,
                             'HostPort': port.toString(),
@@ -219,21 +200,17 @@ class Builder {
                         exposed[Util.format('%s/tcp', port)] = {};
                         exposed[Util.format('%s/udp', port)] = {};
                         portCallback();
-                    }, function () {
-                        eachCallback();
-                    });
-                }, function () {
-                    return callback();
-                });
+                    }, eachCallback);
+                }, callback);
             },
-            function (callback) {
+            callback => {
                 // Add some additional environment variables
                 config.env.SERVER_MEMORY = config.memory;
                 config.env.SERVER_IP = config.default.ip;
                 config.env.SERVER_PORT = config.default.port;
 
                 const environment = [];
-                _.each(config.env, function (value, index) {
+                _.forEach(config.env, (value, index) => {
                     environment.push(Util.format('%s=%s', index, value));
                 });
 
@@ -256,7 +233,7 @@ class Builder {
                     Tty: true,
                     Mounts: [
                         {
-                            Source: Path.join(Config.get('sftp.path', '/srv/data'), self.json.user, '/data'),
+                            Source: Path.join(Config.get('sftp.path', '/srv/data'), this.json.user, '/data'),
                             Destination: '/home/container',
                             RW: true,
                         },
@@ -265,7 +242,7 @@ class Builder {
                     ExposedPorts: exposed,
                     HostConfig: {
                         Binds: [
-                            Util.format('%s:/home/container', Path.join(Config.get('sftp.path', '/srv/data'), self.json.user, '/data')),
+                            Util.format('%s:/home/container', Path.join(Config.get('sftp.path', '/srv/data'), this.json.user, '/data')),
                         ],
                         PortBindings: bindings,
                         OomKillDisable: config.oom_disabled || false,
@@ -279,11 +256,11 @@ class Builder {
                             '8.8.4.4',
                         ],
                     },
-                }, function (err, container) {
-                    return callback(err, container);
+                }, (err, container) => {
+                    callback(err, container);
                 });
             },
-        ], function (err, data) {
+        ], (err, data) => {
             if (err) return next(err);
             return next(null, {
                 id: data[2].id,

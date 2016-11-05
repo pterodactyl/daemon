@@ -30,6 +30,7 @@ const Fs = require('fs-extra');
 const Mime = require('mime');
 const Path = require('path');
 const Crypto = require('crypto');
+const _ = require('lodash');
 
 const ConfigHelper = rfr('src/helpers/config.js');
 const ResponseHelper = rfr('src/helpers/responses.js');
@@ -57,7 +58,7 @@ class RouteController {
     // Saves Daemon Configuration to Disk
     putConfig() {
         if (!Auth.allowed('c:config')) return;
-        Config.save(this.req.params, function (err) {
+        Config.save(this.req.params, err => {
             if (err) return this.res.send(500, { 'error': err.message });
             return this.res.send(204);
         });
@@ -71,7 +72,7 @@ class RouteController {
         // We sent a HTTP 202 since this might take awhile.
         // We do need to monitor for errors and negatiate with
         // the panel if they do occur.
-        Builder.init(function (err, data) {
+        Builder.init((err, data) => {
             if (err) Log.error(err);
 
             const HMAC = Crypto.createHmac('sha256', Config.get('keys.0'));
@@ -85,7 +86,7 @@ class RouteController {
                 },
                 followAllRedirects: true,
                 timeout: 5000,
-            }, function (requestErr, response, body) {
+            }, (requestErr, response, body) => {
                 if (requestErr || response.statusCode !== 200) {
                     Log.warn(requestErr, 'An error occured while attempting to alert the panel of server install status.', { code: (typeof response !== 'undefined') ? response.statusCode : null, responseBody: body });
                 } else {
@@ -98,8 +99,7 @@ class RouteController {
     getAllServers() {
         if (!Auth.allowed('c:list')) return;
         const responseData = {};
-        const self = this;
-        Async.each(Auth.allServers(), function (server, callback) {
+        Async.each(Auth.allServers(), (server, callback) => {
             responseData[server.json.uuid] = {
                 container: server.json.container,
                 service: server.json.service,
@@ -108,47 +108,46 @@ class RouteController {
                 proc: server.processData.process,
             };
             callback();
-        }, function () {
-            return self.res.send(responseData);
+        }, () => {
+            this.res.send(responseData);
         });
     }
 
     deleteServer() {
         if (!Auth.allowed('g:server:delete')) return;
         const Delete = new DeleteController(Auth.server().json);
-        Delete.delete(function (err) {
-            return Responses.generic204(err);
+        Delete.delete(err => {
+            Responses.generic204(err);
         });
     }
 
     // Handles server power
     putServerPower() {
-        const self = this;
         if (this.req.params.action === 'start') {
             if (!Auth.allowed('s:power:start')) return;
-            Auth.server().start(function (err) {
-                if (err && err.message.indexOf('Server is currently queued for a container rebuild') > -1) {
-                    return self.res.send(202, { 'message': err.message });
+            Auth.server().start(err => {
+                if (err && (_.includes(err.message, 'Server is currently queued for a container rebuild') || _.includes(err.message, 'Server container was not found and needs to be rebuilt.'))) {
+                    return this.res.send(202, { 'message': err.message });
                 }
                 Responses.generic204(err);
             });
         } else if (this.req.params.action === 'stop') {
             if (!Auth.allowed('s:power:stop')) return;
-            Auth.server().stop(function (err) {
-                return Responses.generic204(err);
+            Auth.server().stop(err => {
+                Responses.generic204(err);
             });
         } else if (this.req.params.action === 'restart') {
             if (!Auth.allowed('s:power:restart')) return;
-            Auth.server().restart(function (err) {
-                if (err && err.message.indexOf('Server is currently queued for a container rebuild') > -1) {
-                    return self.res.send(202, { 'message': err.message });
+            Auth.server().restart(err => {
+                if (err && (_.includes(err.message, 'Server is currently queued for a container rebuild') || _.includes(err.message, 'Server container was not found and needs to be rebuilt.'))) {
+                    return this.res.send(202, { 'message': err.message });
                 }
                 Responses.generic204(err);
             });
         } else if (this.req.params.action === 'kill') {
             if (!Auth.allowed('s:power:kill')) return;
-            Auth.server().kill(function (err) {
-                return Responses.generic204(err);
+            Auth.server().kill(err => {
+                Responses.generic204(err);
             });
         } else {
             this.res.send(404, { 'error': 'Unknown power action recieved.' });
@@ -169,12 +168,12 @@ class RouteController {
     // Sends command to server
     postServerCommand() {
         if (!Auth.allowed('s:command')) return;
-        if (typeof this.req.params.command !== 'undefined') {
+        if (!_.isUndefined(this.req.params.command)) {
             if (this.req.params.command.trim().replace(/^\/*/, '').startsWith(Auth.server().service.object.stop)) {
                 if (!Auth.allowed('s:power:stop')) return;
             }
-            Auth.server().command(this.req.params.command, function (err) {
-                return Responses.generic204(err);
+            Auth.server().command(this.req.params.command, err => {
+                Responses.generic204(err);
             });
         } else {
             this.res.send(500, { 'error': 'Missing command in request.' });
@@ -183,73 +182,133 @@ class RouteController {
 
     // Returns listing of server files.
     getServerDirectory() {
-        const self = this;
         if (!Auth.allowed('s:files:get')) return;
         if (!this.req.params[0]) this.req.params[0] = '.';
-        Auth.server().fs.directory(this.req.params[0], function getServerDirectoryListDirectory(err, data) {
+        Auth.server().fs.directory(this.req.params[0], (err, data) => {
             if (err) {
                 return Responses.generic500(err);
             }
-            return self.res.send(data);
+            return this.res.send(data);
         });
     }
 
     // Return file contents
     getServerFile() {
-        const self = this;
         if (!Auth.allowed('s:files:read')) return;
-        Auth.server().fs.read(this.req.params[0], function getServerFileRead(err, data) {
+        Auth.server().fs.read(this.req.params[0], (err, data) => {
             if (err) {
                 return Responses.generic500(err);
             }
-            return self.res.send({ content: data });
+            return this.res.send({ content: data });
         });
     }
 
     getServerLog() {
-        const self = this;
         if (!Auth.allowed('s:console')) return;
-        Auth.server().fs.readEnd(Auth.server().service.object.log.location, function getServerLogReadEnd(err, data) {
+        Auth.server().fs.readEnd(Auth.server().service.object.log.location, (err, data) => {
             if (err) {
                 return Responses.generic500(err);
             }
-            return self.res.send(data);
+            return this.res.send(data);
+        });
+    }
+
+    getServerFileStat() {
+        if (!Auth.allowed('s:files:read')) return;
+        Auth.server().fs.stat(this.req.params[0], (err, data) => {
+            if (err) {
+                return Responses.generic500(err);
+            }
+            return this.res.send(data);
+        });
+    }
+
+    postFileFolder() {
+        if (!Auth.allowed('s:files:create')) return;
+        Auth.server().fs.mkdir(this.req.params.path, err => {
+            Responses.generic204(err);
+        });
+    }
+
+    postFileCopy() {
+        if (!Auth.allowed('s:files:copy')) return;
+        Auth.server().fs.copy(this.req.params.from, this.req.params.to, err => {
+            Responses.generic204(err);
+        });
+    }
+
+    postFileMove() {
+        if (!Auth.allowed('s:files:move')) return;
+        Auth.server().fs.move(this.req.params.from, this.req.params.to, err => {
+            Responses.generic204(err);
+        });
+    }
+
+    postFileDecompress() {
+        if (!Auth.allowed('s:files:decompress')) return;
+        Auth.server().fs.decompress(this.req.params.files, err => {
+            Responses.generic204(err);
+        });
+    }
+
+    postFileCompress() {
+        if (!Auth.allowed('s:files:compress')) return;
+        Auth.server().fs.compress(this.req.params.files, this.req.params.to, (err, filename) => {
+            if (err) {
+                return Responses.generic500(err);
+            }
+            return this.res.send({
+                saved_as: filename,
+            });
         });
     }
 
     postServerFile() {
         if (!Auth.allowed('s:files:post')) return;
-        Auth.server().fs.write(this.req.params[0], this.req.params.content, function postServerFileWrite(err) {
-            return Responses.generic204(err);
+        Auth.server().fs.write(this.req.params.path, this.req.params.content, err => {
+            Responses.generic204(err);
         });
     }
 
     deleteServerFile() {
         if (!Auth.allowed('s:files:delete')) return;
-        Auth.server().fs.delete(this.req.params[0], function deleteServerFileDelete(err) {
-            return Responses.generic204(err);
+        Auth.server().fs.delete(this.req.params[0], err => {
+            Responses.generic204(err);
         });
     }
 
     updateServerConfig() {
         if (!Auth.allowed('g:server:patch')) return;
-        Auth.server().modifyConfig(this.req.params, (this.req.method === 'PUT'), function updateServerConfigModifyConfig(err) {
-            return Responses.generic204(err);
+        Auth.server().modifyConfig(this.req.params, (this.req.method === 'PUT'), err => {
+            Responses.generic204(err);
         });
     }
 
     rebuildServer() {
         if (!Auth.allowed('g:server:rebuild')) return;
-        Auth.server().modifyConfig({ rebuild: true }, false, function rebuildServerModifyConfig(err) {
-            Auth.server().log.info('Server has been queued for a container rebuild on next boot.');
-            return Responses.generic204(err);
+        Auth.server().modifyConfig({ rebuild: true }, false, err => {
+            Responses.generic204(err);
         });
     }
 
     setSFTPPassword() {
         if (!Auth.allowed('s:set-password')) return;
-        Auth.server().setPassword(this.req.params.password, function (err) {
-            return Responses.generic204(err);
+        Auth.server().setPassword(this.req.params.password, err => {
+            Responses.generic204(err);
+        });
+    }
+
+    postServerSuspend() {
+        if (!Auth.allowed('g:server:suspend')) return;
+        Auth.server().suspend(err => {
+            Responses.generic204(err);
+        });
+    }
+
+    postServerUnsuspend() {
+        if (!Auth.allowed('g:server:unsuspend')) return;
+        Auth.server().unsuspend(err => {
+            Responses.generic204(err);
         });
     }
 
@@ -258,16 +317,15 @@ class RouteController {
             return this.res.send(501, { 'error': 'This action has not been properly configured on the daemon.' });
         }
 
-        const self = this;
         Request.post(Config.get('remote.download'), {
             form: {
                 token: this.req.params[0],
             },
             timeout: 5000,
-        }, function (err, response, body) {
+        }, (err, response, body) => {
             if (err) {
                 Log.warn(err, 'Download action failed due to an error with the request.');
-                return self.res.send(500, { 'error': 'An error occured while attempting to perform this request.' });
+                return this.res.send(500, { 'error': 'An error occured while attempting to perform this request.' });
             }
 
             if (response.statusCode === 200) {
@@ -276,8 +334,8 @@ class RouteController {
                     if (typeof json !== 'undefined' && json.path) {
                         const Server = Auth.allServers();
                         // Does the server even exist?
-                        if (typeof Server[json.server] === 'undefined') {
-                            return self.res.send(404, { 'error': 'No server found for the specified resource.' });
+                        if (_.isUndefined(Server[json.server])) {
+                            return this.res.send(404, { 'error': 'No server found for the specified resource.' });
                         }
 
                         // Get necessary information for the download.
@@ -285,22 +343,22 @@ class RouteController {
                         const Mimetype = Mime.lookup(json.path);
                         const File = Server[json.server].path(json.path);
                         const Stat = Fs.statSync(File);
-                        self.res.writeHead(200, {
+                        this.res.writeHead(200, {
                             'Content-Type': Mimetype,
                             'Content-Length': Stat.size,
                             'Content-Disposition': Util.format('attachment; filename=%s', Filename),
                         });
                         const Filestream = Fs.createReadStream(File);
-                        Filestream.pipe(self.res);
+                        Filestream.pipe(this.res);
                     } else {
-                        return self.res.send(424, { 'error': 'The upstream response did not include a valid download path.' });
+                        return this.res.send(424, { 'error': 'The upstream response did not include a valid download path.' });
                     }
                 } catch (ex) {
                     Log.error(ex);
-                    return self.res.send(500, { 'error': 'An unexpected error occured while attempting to process this request.' });
+                    return this.res.send(500, { 'error': 'An unexpected error occured while attempting to process this request.' });
                 }
             } else {
-                return self.res.send(502, { 'error': 'An error occured while attempting to authenticate with an upstream provider.', res_code: response.statusCode });
+                return this.res.send(502, { 'error': 'An error occured while attempting to authenticate with an upstream provider.', res_code: response.statusCode });
             }
         });
     }

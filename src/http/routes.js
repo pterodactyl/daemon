@@ -40,7 +40,7 @@ let Routes;
 RestServer.use(Restify.jsonBodyParser());
 RestServer.use(Restify.CORS()); // eslint-disable-line
 
-RestServer.opts(/.*/, function (req, res, next) {
+RestServer.opts(/.*/, (req, res, next) => {
     res.header('Access-Control-Allow-Origin', '*');
     res.header('Access-Control-Allow-Methods', req.header('Access-Control-Request-Method'));
     res.header('Access-Control-Allow-Headers', req.header('Access-Control-Request-Headers'));
@@ -48,16 +48,16 @@ RestServer.opts(/.*/, function (req, res, next) {
     return next();
 });
 
-RestServer.use(function (req, res, next) {
+RestServer.use((req, res, next) => {
     // Do Authentication
     Auth = new AuthorizationMiddleware(req.headers['X-Access-Token'], req.headers['X-Access-Server'], res);
-    Auth.init(function authInit() {
+    Auth.init(() => {
         Routes = new RouteController(Auth, req, res);
         return next();
     });
 });
 
-RestServer.on('uncaughtException', function restifyUncaughtExceptionHandler(req, res, route, err) {
+RestServer.on('uncaughtException', (req, res, route, err) => {
     Log.fatal({ path: route.spec.path, method: route.spec.method, msg: err.message }, err.stack);
     try {
         return res.send(503, { 'error': 'An unhandled exception occured while attempting to process this request.' });
@@ -67,7 +67,7 @@ RestServer.on('uncaughtException', function restifyUncaughtExceptionHandler(req,
     }
 });
 
-RestServer.get('/', function routeGetIndex(req, res, next) {
+RestServer.get('/', (req, res, next) => {
     Routes.getIndex();
     return next();
 });
@@ -75,7 +75,7 @@ RestServer.get('/', function routeGetIndex(req, res, next) {
 /**
  * Save New Configuration for Daemon; also updates the config across the program for immediate changes.
  */
-RestServer.put('/config', function routePutConfig(req, res, next) {
+RestServer.put('/config', (req, res, next) => {
     Routes.putConfig();
     return next();
 });
@@ -83,17 +83,17 @@ RestServer.put('/config', function routePutConfig(req, res, next) {
 /**
  * Big Picture Actions
  */
-RestServer.get('/servers', function routeGetServers(req, res, next) {
+RestServer.get('/servers', (req, res, next) => {
     Routes.getAllServers();
     return next();
 });
 
-RestServer.post('/servers', function routePostServers(req, res, next) {
+RestServer.post('/servers', (req, res, next) => {
     Routes.postNewServer();
     return next();
 });
 
-RestServer.del('/servers', function routeDeleteServer(req, res, next) {
+RestServer.del('/servers', (req, res, next) => {
     Routes.deleteServer();
     return next();
 });
@@ -101,72 +101,117 @@ RestServer.del('/servers', function routeDeleteServer(req, res, next) {
 /**
  * Server Actions
  */
-RestServer.get('/server', function routeGetServer(req, res, next) {
+RestServer.get('/server', (req, res, next) => {
     Routes.getServer();
     return next();
 });
 
-RestServer.patch('/server', function routePatchServer(req, res, next) {
+RestServer.patch('/server', (req, res, next) => {
     Routes.updateServerConfig();
     return next();
 });
 
-RestServer.put('/server', function routePutServer(req, res, next) {
+RestServer.put('/server', (req, res, next) => {
     Routes.updateServerConfig();
     return next();
 });
 
-RestServer.post('/server/password', function routePostServerPassword(req, res, next) {
+RestServer.post('/server/password', (req, res, next) => {
     Routes.setSFTPPassword();
     return next();
 });
 
-RestServer.post('/server/rebuild', function routePostServerRebuild(req, res, next) {
+RestServer.post('/server/rebuild', (req, res, next) => {
     Routes.rebuildServer();
     return next();
 });
 
-RestServer.put('/server/power', function routePutServerPower(req, res, next) {
+RestServer.put('/server/power', (req, res, next) => {
     Routes.putServerPower();
     return next();
 });
 
-RestServer.post('/server/command', function routeGetServerCommand(req, res, next) {
+RestServer.post('/server/command', (req, res, next) => {
     Routes.postServerCommand();
     return next();
 });
 
-RestServer.get('/server/log', function routeGetServerLog(req, res, next) {
+RestServer.get('/server/log', (req, res, next) => {
     Routes.getServerLog();
     return next();
 });
 
-RestServer.get(/^\/server\/directory\/?(.+)*/, function routeGetServerDirectory(req, res, next) {
+RestServer.get(/^\/server\/directory\/?(.+)*/, (req, res, next) => {
     Routes.getServerDirectory();
     return next();
 });
 
-RestServer.get(/^\/server\/file\/(.+)/, function routeGetServerFile(req, res, next) {
+RestServer.post('/server/file/folder', (req, res, next) => {
+    Routes.postFileFolder();
+    return next();
+});
+
+RestServer.post('/server/file/copy', (req, res, next) => {
+    Routes.postFileCopy();
+    return next();
+});
+
+RestServer.post(/^\/server\/file\/(move|rename)/, (req, res, next) => {
+    Routes.postFileMove();
+    return next();
+});
+
+RestServer.post('/server/fil/delete', (req, res, next) => {
+    Routes.postFileDelete();
+    return next();
+});
+
+RestServer.post('/server/file/compress', (req, res, next) => {
+    Routes.postFileCompress();
+    return next();
+});
+
+RestServer.post('/server/file/decompress', (req, res, next) => {
+    Routes.postFileDecompress();
+    return next();
+});
+
+RestServer.get(/^\/server\/file\/stat\/(.+)/, (req, res, next) => {
+    Routes.getServerFileStat();
+    return next();
+});
+
+RestServer.get(/^\/server\/file\/f\/(.+)/, (req, res, next) => {
     Routes.getServerFile();
     return next();
 });
 
-RestServer.post(/^\/server\/file\/(.+)/, function routePostServerFile(req, res, next) {
+RestServer.post('/server/file/save', (req, res, next) => {
     Routes.postServerFile();
     return next();
 });
 
-RestServer.del(/^\/server\/file\/(.+)/, function routePostServerFile(req, res, next) {
+RestServer.del(/^\/server\/file\/f\/(.+)/, (req, res, next) => {
     Routes.deleteServerFile();
     return next();
 });
 
-RestServer.get(/^\/server\/download\/([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})/, function routeGetServerDownload(req, res, next) {
+RestServer.get(/^\/server\/file\/download\/([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})/, (req, res, next) => {
     Routes.downloadServerFile();
     return next();
 });
 
-RestServer.listen(Config.get('web.listen', 8080), Config.get('web.host', '0.0.0.0'), function listen() {
+RestServer.post('/server/suspend', (req, res, next) => {
+    Routes.postServerSuspend();
+    return next();
+});
+
+RestServer.post('/server/unsuspend', (req, res, next) => {
+    Routes.postServerUnsuspend();
+    return next();
+});
+
+RestServer.listen(Config.get('web.listen', 8080), Config.get('web.host', '0.0.0.0'), () => {
     Log.info(Util.format('Pterodactyl Daemon is now listening for %s connections on %s:%s',
         (Config.get('web.ssl.enabled') === true) ? 'secure' : 'insecure',
         Config.get('web.host', '0.0.0.0'),

@@ -36,11 +36,11 @@ const Config = new ConfigHelper();
 class Stats {
     constructor() {
         this.statSocket = Socket.of('/stats/');
-        this.statSocket.use(function socketConstructor(params, next) {
+        this.statSocket.use((params, next) => {
             if (!params.handshake.query.token) {
                 return next(new Error('You must pass the correct handshake values.'));
             }
-            if (typeof Config.get('keys') !== 'object' || Config.get('keys').indexOf(params.handshake.query.token) < 0) {
+            if (!_.isObject(Config.get('keys')) || !_.includes(Config.get('keys'), params.handshake.query.token)) {
                 return next(new Error('Invalid handshake value passed.'));
             }
             return next();
@@ -48,21 +48,19 @@ class Stats {
     }
 
     init() {
-        const self = this;
-        setInterval(function () {
-            self.send();
+        setInterval(() => {
+            this.send();
         }, 2000);
     }
 
     send() {
-        const self = this;
         const responseData = {};
         const statData = {
             memory: 0,
             cpu: 0,
             players: 0,
         };
-        Async.each(Servers, function (server, callback) {
+        Async.each(Servers, (server, callback) => {
             responseData[server.json.uuid] = {
                 container: server.json.container,
                 service: server.json.service,
@@ -71,13 +69,13 @@ class Stats {
                 proc: server.processData.process,
             };
             if (server.status !== Status.OFF) {
-                statData.memory = statData.memory + _.get(server.processData, 'process.memory.total', 0);
-                statData.cpu = statData.cpu + _.get(server.processData, 'process.cpu.total', 0);
-                statData.players = statData.players + _.get(server.processData, 'query.players.length', 0);
+                statData.memory += _.get(server.processData, 'process.memory.total', 0);
+                statData.cpu += _.get(server.processData, 'process.cpu.total', 0);
+                statData.players += _.get(server.processData, 'query.players.length', 0);
             }
             return callback();
-        }, function () {
-            self.statSocket.emit('live-stats', {
+        }, () => {
+            this.statSocket.emit('live-stats', {
                 'servers': responseData,
                 'stats': statData,
             });

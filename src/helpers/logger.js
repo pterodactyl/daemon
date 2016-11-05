@@ -25,11 +25,12 @@
 const rfr = require('rfr');
 const Bunyan = require('bunyan');
 const Path = require('path');
+
 const LoadConfig = rfr('src/helpers/config.js');
 const Config = new LoadConfig();
 
 const Log = Bunyan.createLogger({
-    name: 'pterodactyl.daemon',
+    name: 'wings',
     src: Config.get('logger.src', false),
     serializers: Bunyan.stdSerializers,
     streams: [

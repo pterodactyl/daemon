@@ -23,45 +23,53 @@
  * SOFTWARE.
  */
 const rfr = require('rfr');
-const Log = rfr('src/helpers/logger.js');
-
-Log.info('Starting Pterodactyl Daemon...');
-
 const Async = require('async');
+
+const Log = rfr('src/helpers/logger.js');
+const Package = rfr('package.json');
+
+Log.info('+ ------------------------------------ +');
+Log.info(`| Running Pterodactyl Daemon v${Package.version}    |`);
+Log.info('|        https://pterodactyl.io        |');
+Log.info('|  Copyright 2015 - 2016 Dane Everitt  |');
+Log.info('+ ------------------------------------ +');
+Log.info('Loading modules, this could take a few seconds.');
+
+const NetworkController = rfr('src/controllers/network.js');
 const Initializer = rfr('src/helpers/initialize.js').Initialize;
 const SFTPController = rfr('src/controllers/sftp.js');
 const LiveStats = rfr('src/http/stats.js');
-const ConfigHelper = rfr('src/helpers/config.js');
 
+const Network = new NetworkController();
 const Initialize = new Initializer();
-const SFTP = new SFTPController();
+const SFTP = new SFTPController(true);
 const Stats = new LiveStats();
-const Config = new ConfigHelper();
 
 Async.series([
-    function indexAsyncConfigureDockerInterface(callback) {
-        if (!Config.get('docker.interface')) {
-            Log.info('Checking docker0 interface and setting configuration values.');
-            return Config.initDockerInterface(callback);
-        }
-        Log.info('Docker interface detected as ' + Config.get('docker.interface'));
-        return callback();
+    callback => {
+        Log.info('Starting Pterodactyl Daemon...');
+        Log.info('Checking container networking environment...');
+        Network.init(callback);
     },
-    function indexAsyncStartSFTP(callback) {
+    callback => {
+        Log.info('Checking pterodactyl0 interface and setting configuration values.');
+        Network.interface(callback);
+    },
+    callback => {
         Log.info('Attempting to start SFTP service container...');
         SFTP.startService(callback);
-        Log.info('SFTP service container booted!');
     },
-    function indexAsyncInitialize(callback) {
+    callback => {
+        Log.info('SFTP service container booted!');
         Log.info('Attempting to load servers and initialize daemon...');
         Initialize.init(callback);
     },
-    function indexAsyncStartsSocket(callback) {
+    callback => {
         Log.info('Configuring websocket for daemon stats...');
         Stats.init();
         return callback();
     },
-], function indexAsyncCallback(err) {
+], err => {
     if (err) {
         // Log a fatal error and exit.
         // We need this to initialize successfully without any errors.
@@ -72,10 +80,10 @@ Async.series([
     Log.info('Initialization Successful!');
 });
 
-process.on('uncaughtException', function processUncaughtException(err) {
+process.on('uncaughtException', err => {
     Log.fatal(err, 'A fatal error occured during an operation.');
 });
 
-process.on('SIGUSR2', function processSIGUSR2() {
+process.on('SIGUSR2', () => {
     Log.reopenFileStreams();
 });

@@ -27,15 +27,14 @@ const Async = require('async');
 const Path = require('path');
 const Util = require('util');
 const Fs = require('fs-extra');
+const _ = require('lodash');
+
 const Log = rfr('src/helpers/logger.js');
 
 const Server = rfr('src/controllers/server.js');
 const Servers = {};
 
 class Initialize {
-    constructor() {
-        //
-    }
 
     /**
      * Initializes all servers on the system and loads them into memory for NodeJS.
@@ -43,34 +42,31 @@ class Initialize {
      * @return {[type]}        [description]
      */
     init(next) {
-        const self = this;
-        this._folders = [];
-        Fs.walk('./config/servers/').on('data', function (data) {
-            self._folders.push(data.path);
-        }).on('end', function () {
-            Async.each(self._folders, function (file, callback) {
+        this.folders = [];
+        Fs.walk('./config/servers/').on('data', data => {
+            this.folders.push(data.path);
+        }).on('end', () => {
+            Async.each(this.folders, (file, callback) => {
                 if (Path.extname(file) === '.json') {
-                    Fs.readJson(file, function (errJson, json) {
+                    Fs.readJson(file, (errJson, json) => {
                         if (errJson) {
                             Log.warn(errJson, Util.format('Unable to parse JSON in %s due to an error, skipping...', file));
                             return;
                         }
 
                         // Is this JSON valid enough?
-                        if (typeof json.uuid === 'undefined') {
+                        if (_.isUndefined(json.uuid)) {
                             Log.warn(Util.format('Detected valid JSON, but server was missing a UUID in %s, skipping...', file));
                             return;
                         }
 
                         // Initalize the Server
-                        self.setup(json, callback);
+                        this.setup(json, callback);
                     });
                 } else {
                     return callback();
                 }
-            }, function (errAsync) {
-                return next(errAsync);
-            });
+            }, next);
         });
     }
 
@@ -81,8 +77,8 @@ class Initialize {
      * @return {[type]}        [description]
      */
     setup(json, next) {
-        Servers[json.uuid] = new Server(json, function setupCallback(err) {
-            Log.info({ server: json.uuid }, 'Loaded configuration and initalized server.');
+        Servers[json.uuid] = new Server(json, err => {
+            Log.debug({ server: json.uuid }, 'Loaded configuration and initalized server.');
             return next(err);
         });
     }

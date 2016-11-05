@@ -23,19 +23,98 @@
  * SOFTWARE.
  */
 const rfr = require('rfr');
+const Util = require('util');
+const Async = require('async');
+const Dockerode = require('dockerode');
+const _ = require('lodash');
 
 const LoadConfig = rfr('src/helpers/config.js');
-const Dockerode = require('dockerode');
+const Log = rfr('src/helpers/logger.js');
+const ImageHelper = rfr('src/helpers/image.js');
+
+const SFTP_DOCKER_IMAGE = 'quay.io/pterodactyl/scrappy:latest';
 
 const Config = new LoadConfig();
 const DockerController = new Dockerode({
     socketPath: Config.get('docker.socket', '/var/run/docker.sock'),
 });
 
-// docker run -d --name sftp -v /srv/data:/sftp-root -v /srv/daemon/config/credentials:/creds -p 2022:22 quay.io/pterodactyl/scrappy
 class SFTP {
-    constructor() {
-        this.container = DockerController.getContainer(Config.get('sftp.container'));
+    constructor(init) {
+        if (_.isUndefined(init)) {
+            this.container = DockerController.getContainer(Config.get('sftp.container'));
+        } else {
+            this.container = undefined;
+        }
+    }
+
+    buildContainer(next) {
+        Async.waterfall([
+            callback => {
+                if (Config.get('docker.autoupdate_images', false) === false) {
+                    ImageHelper.exists(SFTP_DOCKER_IMAGE, err => {
+                        if (!err) return callback();
+                        Log.info(`Pulling SFTP container image ${SFTP_DOCKER_IMAGE} because it doesn't exist on the system.`);
+                        ImageHelper.pull(SFTP_DOCKER_IMAGE, callback);
+                    });
+                } else {
+                    Log.info(`Checking if we need to update the SFTP container image ${SFTP_DOCKER_IMAGE}, if so it will happen now.`);
+                    ImageHelper.pull(SFTP_DOCKER_IMAGE, callback);
+                }
+            },
+            callback => {
+                DockerController.createContainer({
+                    Image: 'quay.io/pterodactyl/scrappy:latest',
+                    Hostname: 'ptdlsftp',
+                    AttachStdin: true,
+                    AttachStdout: true,
+                    AttachStderr: true,
+                    OpenStdin: true,
+                    Tty: true,
+                    Mounts: [
+                        {
+                            Source: Config.get('sftp.path', '/srv/data'),
+                            Destination: '/sftp-root',
+                            RW: true,
+                        },
+                        {
+                            Source: '/srv/daemon/config/credentials',
+                            Destination: '/creds',
+                            RW: true,
+                        },
+                    ],
+                    ExposedPorts: {
+                        '22/tcp': {},
+                    },
+                    HostConfig: {
+                        Binds: [
+                            Util.format('%s:/sftp-root', Config.get('sftp.path', '/srv/data')),
+                            Util.format('%s:/creds', '/srv/daemon/config/credentials'),
+                        ],
+                        PortBindings: {
+                            '22/tcp': [
+                                {
+                                    'HostPort': Config.get('sftp.port', '2022').toString(),
+                                },
+                            ],
+                        },
+                        Dns: [
+                            '8.8.8.8',
+                            '8.8.4.4',
+                        ],
+                    },
+                }, (err, container) => {
+                    callback(err, container);
+                });
+            },
+            (containerInfo, callback) => {
+                Config.modify({
+                    'sftp': {
+                        'container': containerInfo.id,
+                    },
+                }, callback);
+            },
+        ], next);
     }
 
     /**
@@ -44,13 +123,46 @@ class SFTP {
      * @return {[type]}        [description]
      */
     startService(next) {
-        this.container.start(function sftpContainerStart(err) {
-            // Container is already running, we can just continue on and pretend we started it just now.
-            if (err && err.message.indexOf('HTTP code is 304 which indicates error: container already started') > -1) {
-                return next();
-            }
-            return next(err);
-        });
+        Async.series([
+            callback => {
+                if (!_.isUndefined(Config.get('sftp.container'))) {
+                    DockerController.listContainers({ 'all': 1 }, (err, containers) => {
+                        if (err) return callback(err);
+                        const foundContainer = _.find(containers, values => {
+                            if (_.startsWith(values.Id, Config.get('sftp.container'))) return values.Id;
+                        });
+
+                        if (!_.isUndefined(foundContainer)) {
+                            this.container = DockerController.getContainer(foundContainer.Id);
+                        }
+                        return callback();
+                    });
+                } else {
+                    return callback();
+                }
+            },
+            callback => {
+                if (_.isUndefined(this.container)) {
+                    Log.warn('Unable to locate a suitable SFTP container in the configuration, creating one now.');
+                    this.buildContainer(err => {
+                        if (err) return callback(err);
+                        this.container = DockerController.getContainer(Config.get('sftp.container'));
+                        return callback();
+                    });
+                } else {
+                    return callback();
+                }
+            },
+            callback => {
+                this.container.start(err => {
+                    // Container is already running, we can just continue on and pretend we started it just now.
+                    if (err && _.includes(err.message, 'container already started')) {
+                        return callback();
+                    }
+                    return callback(err);
+                });
+            },
+        ], next);
     }
 
     /**
@@ -61,9 +173,7 @@ class SFTP {
      * @return {Callback}
      */
     create(username, password, next) {
-        this._doExec(['scrappyuser', '-u', username, '-p', password], function (err) {
-            return next(err);
-        });
+        this.doExec(['scrappyuser', '-u', username, '-p', password], next);
     }
 
     /**
@@ -74,9 +184,7 @@ class SFTP {
      * @return {Callback}
      */
     password(username, password, next) {
-        this._doExec(['scrappypwd', '-u', username, '-p', password], function (err) {
-            return next(err);
-        });
+        this.doExec(['scrappypwd', '-u', username, '-p', password], next);
     }
 
     /**
@@ -86,8 +194,8 @@ class SFTP {
      * @return {[type]}]
      */
     uid(username, next) {
-        this._doExec(['id', '-u', username], function (err, userid) {
-            return next(err, userid);
+        this.doExec(['id', '-u', username], (err, userid) => {
+            next(err, userid);
         });
     }
 
@@ -98,9 +206,27 @@ class SFTP {
      * @return {[type]}]
      */
     delete(username, next) {
-        this._doExec(['scrappydel', '-u', username], function (err) {
-            return next(err);
-        });
+        this.doExec(['scrappydel', '-u', username], next);
+    }
+
+    /**
+     * Locks an account to prevent SFTP access. Used for server suspension.
+     * @param   string    username
+     * @param   {Function} next
+     * @return  void
+     */
+    lock(username, next) {
+        this.doExec(['passwd', '-l', username], next);
+    }
+
+    /**
+     * Unlocks an account to allow SFTP access. Used for server unsuspension.
+     * @param   string    username
+     * @param   {Function} next
+     * @return  void
+     */
+    unlock(username, next) {
+        this.doExec(['passwd', '-u', username], next);
     }
 
     /**
@@ -109,25 +235,25 @@ class SFTP {
      * @param  {Function} next
      * @return {Callback}
      */
-    _doExec(command, next) {
+    doExec(command, next) {
         let uidResponse = null;
         this.container.exec({
             Cmd: command,
             AttachStdin: true,
             AttachStdout: true,
             Tty: true,
-        }, function sftpExec(err, exec) {
+        }, (err, exec) => {
             if (err) return next(err);
-            exec.start(function sftpExecStreamStart(execErr, stream) {
+            exec.start((execErr, stream) => {
                 if (!execErr && stream) {
                     stream.setEncoding('utf8');
-                    stream.on('data', function sftpExecStreamData(data) {
-                        if (/^(\d{5})$/.test(data.replace(/[\x00-\x1F\x7F-\x9F]/g, ''))) {
-                            uidResponse = data.replace(/[\x00-\x1F\x7F-\x9F]/g, '');
+                    stream.on('data', data => {
+                        if (/^(\d{5})$/.test(data.replace(/[\x00-\x1F\x7F-\x9F]/g, ''))) { // eslint-disable-line
+                            uidResponse = data.replace(/[\x00-\x1F\x7F-\x9F]/g, ''); //eslint-disable-line
                         }
                     });
-                    stream.on('end', function sftpExecStreamEnd() {
-                        exec.inspect(function sftpExecInspect(inspectErr, data) {
+                    stream.on('end', () => {
+                        exec.inspect((inspectErr, data) => {
                             if (inspectErr) return next(inspectErr);
                             if (data.ExitCode !== 0) {
                                 return next(new Error('Docker returned a non-zero exit code when attempting to execute a SFTP command.'));

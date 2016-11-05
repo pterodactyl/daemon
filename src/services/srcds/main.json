@@ -7,15 +7,19 @@
         },
         "stop": "quit",
         "configs": {},
-        "output": {
-            "find": "(\r\n)",
-            "flags": "gm",
-            "replace": "\n"
-        },
         "log": {
             "custom": true,
             "location": "logs/latest.log"
         },
         "query": "protocol-valve"
+    },
+    "ark": {
+        "tag": "^(ark)$",
+        "symlink": "srcds",
+        "startup": {
+            "done": "Setting breakpad minidump AppID"
+        },
+        "stop": "^C",
+        "query": "none"
     }
 }

@@ -1,6 +1,6 @@
 {
   "name": "pterodactyl-daemon",
-  "version": "0.1.2",
+  "version": "0.3.0",
   "description": "Server management wrapper built for Pterodactyl Panel.",
   "main": "index.js",
   "directories": {
@@ -8,7 +8,7 @@
   },
   "scripts": {
     "start": "node src/index.js | node_modules/bunyan/bin/bunyan -o short",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "./node_modules/eslint/bin/eslint.js --config .eslintrc src/*"
   },
   "repository": {
     "type": "git",
@@ -26,31 +26,41 @@
   },
   "homepage": "https://github.com/Pterodactyl/Daemon#readme",
   "devDependencies": {
-    "eslint": "^3.3.1",
-    "eslint-config-airbnb": "^10.0.1",
-    "eslint-plugin-react": "^6.1.1"
+    "eslint": "3.7.1",
+    "eslint-config-airbnb": "12.0.0",
+    "eslint-plugin-import": "1.16.0",
+    "eslint-plugin-jsx-a11y": "2.2.2",
+    "eslint-plugin-lodash": "1.10.3",
+    "eslint-plugin-react": "6.3.0"
   },
   "dependencies": {
-    "async": "^2.0.1",
-    "binaryjs": "^0.2.1",
-    "bunyan": "^1.5.1",
-    "chokidar": "^1.4.2",
+    "ansi-escape-sequences": "3.0.0",
+    "async": "2.0.1",
+    "bunyan": "1.8.1",
+    "carrier": "0.3.0",
+    "chokidar": "1.6.0",
+    "chownr": "1.0.1",
     "create-output-stream": "0.0.1",
-    "dockerode": "^2.2.7",
-    "extendify": "^1.0.0",
-    "fs-extra": "^0.30.0",
-    "gamedig": "^0.2.24",
-    "is-json": "^2.0.0",
-    "isstream": "^0.1.2",
-    "lodash": "^4.15.0",
-    "mime": "^1.3.4",
-    "moment": "^2.10.6",
-    "path": "^0.12.7",
-    "randomstring": "^1.1.3",
-    "request": "^2.67.0",
-    "restify": "^4.0.3",
-    "rfr": "^1.2.3",
-    "socket.io": "^1.3.7",
-    "underscore": "^1.8.3"
+    "decompress": "4.0.0",
+    "dockerode": "2.3.1",
+    "extendify": "1.0.0",
+    "fs-extra": "0.30.0",
+    "gamedig": "0.2.25",
+    "ini": "1.3.4",
+    "is-json": "2.0.1",
+    "isstream": "0.1.2",
+    "lodash": "4.16.4",
+    "mime": "1.3.4",
+    "mmmagic": "0.4.5",
+    "moment": "2.15.1",
+    "node-yaml": "3.0.2",
+    "properties-parser": "0.3.1",
+    "randomstring": "1.1.3",
+    "request": "2.75.0",
+    "restify": "4.1.1",
+    "rfr": "1.2.3",
+    "socket.io": "1.5.0",
+    "socketio-file-upload": "0.5.0",
+    "tar-fs": "1.13.2"
   }
 }

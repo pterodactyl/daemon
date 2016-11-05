@@ -24,50 +24,56 @@
  */
 const rfr = require('rfr');
 const Async = require('async');
-const _ = require('underscore');
-const _l = require('lodash');
+const _ = require('lodash');
 const Fs = require('fs-extra');
 const extendify = require('extendify');
 const Gamedig = require('gamedig');
 const isStream = require('isstream');
 const Path = require('path');
 const createOutputStream = require('create-output-stream');
+const Ansi = require('ansi-escape-sequences');
 
 const Status = rfr('src/helpers/status.js');
+const FileParserHelper = rfr('src/helpers/fileparser.js');
 
 class Core {
     constructor(server, config) {
-        const self = this;
         this.server = server;
         this.json = server.json;
         this.option = this.json.service.option;
         this.object = undefined;
         this.logStream = undefined;
 
+        this.parser = new FileParserHelper(this.server);
+
         // Find our data on initialization.
-        _.each(config, function coreOnConstructorLoop(element) {
-            if (self.option.match(element.tag)) {
+        _.forEach(config, element => {
+            if (this.option.match(element.tag)) {
                 // Handle "symlink" in the configuration for plugins...
-                self.object = element;
+                this.object = element;
                 const deepExtend = extendify({
                     inPlace: false,
                     arrays: 'replace',
                 });
-                if (typeof element.symlink !== 'undefined' && typeof config[element.symlink] !== 'undefined') {
-                    self.object = deepExtend(config[element.symlink], element);
+                if (!_.isUndefined(element.symlink) && !_.isUndefined(config[element.symlink])) {
+                    this.object = deepExtend(config[element.symlink], element);
                 }
             }
         });
     }
 
     doQuery(next) {
-        const self = this;
+        if (this.object.query === 'none') {
+            return next(null, {});
+        }
+
         Gamedig.query({
-            type: self.object.query,
-            host: self.json.build.default.ip,
-            port: self.json.build.default.port,
-        }, function (response) {
-            if (response.error) return next(new Error('Server unresponsive to query attempt. (' + response.error + ')'));
+            type: this.object.query,
+            host: this.json.build.default.ip,
+            port: this.json.build.default.port,
+            port_query: this.json.build.default.port,
+        }, response => {
+            if (response.error) return next(new Error(`Server unresponsive to query attempt. (${response.error})`));
             return next(null, response);
         });
     }
@@ -82,54 +88,37 @@ class Core {
     // is opened, and then all of the lines are run at the same time.
     // Very quick function, surprisingly...
     onPreflight(next) {
-        const self = this;
-        const parsedLines = [];
         // Check each configuration file and set variables as needed.
-        Async.forEachOf(this.object.configs, function coreOnPreflightFileLoop(searches, file, callback) {
-            // Read the file that we have looped to.
-            Fs.readFile(self.server.path(file), function (err, data) {
-                if (err) {
-                    // File doesn't exist
-                    // @TODO: handle restarting the server to see if the file appears
-                    // at which point we can write to it.
-                    if (err.message.toString().indexOf('ENOENT: no such file or directory') > -1) {
-                        return callback();
-                    }
-                    return callback(err);
-                }
-                // Loop through each line and set the new value if necessary.
-                parsedLines[file] = data.toString().split('\n');
-                Async.forEachOf(parsedLines[file], function (line, index, eachCallback) {
-                    // Check line aganist each possible search/replace set in the config array.
-                    Async.forEachOf(searches, function (replaceString, find, searchCallback) {
-                        // Positive Match
-                        if (line.startsWith(find)) {
-                            // Set the new line value.
-                            const newLineValue = replaceString.replace(/{{ (\S+) }}/g, function ($0, $1) {
-                                return ($1).split('.').reduce((o, i) => o[i], self.json);
-                            });
-                            parsedLines[file][index] = newLineValue;
-                        }
-                        searchCallback();
-                    }, function () {
-                        eachCallback();
-                    });
-                }, function () {
-                    Fs.writeFile(self.server.path(file), parsedLines[file].join('\n'), function (writeErr) {
-                        return callback(writeErr);
-                    });
-                });
-            });
-        }, function (err) {
+        Async.forEachOf(this.object.configs, (data, file, callback) => {
+            switch (_.get(data, 'parser', 'file')) {
+            case 'file':
+                this.parser.file(file, _.get(data, 'find', {}), callback);
+                break;
+            case 'yaml':
+                this.parser.yaml(file, _.get(data, 'find', {}), callback);
+                break;
+            case 'properties':
+                this.parser.prop(file, _.get(data, 'find', {}), callback);
+                break;
+            case 'ini':
+                this.parser.ini(file, _.get(data, 'find', {}), callback);
+                break;
+            case 'json':
+                this.parser.json(file, _.get(data, 'find', {}), callback);
+                break;
+            default:
+                return callback(new Error('Parser assigned to file is not valid.'));
+            }
+        }, err => {
             if (err) return next(err);
-            if (_l.get(self.object, 'log.custom', false) === true) {
-                if (isStream.isWritable(self.logStream)) {
-                    self.logStream.end(function () {
-                        self.logStream = false;
+            if (_.get(this.object, 'log.custom', false) === true) {
+                if (isStream.isWritable(this.logStream)) {
+                    this.logStream.end(() => {
+                        this.logStream = false;
                     });
                 }
-                Fs.remove(self.server.path(_l.get(self.object, 'log.location', 'logs/latest.log')), function (removeErr) {
-                    if (removeErr && removeErr.message.indexOf('ENOENT: no such file or directory') < 0) {
+                Fs.remove(this.server.path(_.get(this.object, 'log.location', 'logs/latest.log')), removeErr => {
+                    if (removeErr && !_.includes(removeErr.message, 'ENOENT: no such file or directory')) {
                         return next(removeErr);
                     }
                     return next();
@@ -140,79 +129,101 @@ class Core {
         });
     }
 
+    onAttached(next) {
+        if (_.isFunction(next)) {
+            return next();
+        }
+    }
+
     onStart(next) {
-        return next();
+        this.onConsole(`${Ansi.style.green}(Daemon) Server detected as started.`);
+        if (_.isFunction(next)) {
+            return next();
+        }
     }
 
     onConsole(data) {
-        const self = this;
-
         Async.parallel([
-            function handleCustomLog() {
+            () => {
+                this.server.emit('console', data);
+            },
+            () => {
                 // Custom Log?
-                if (_l.get(self.object, 'log.custom', false) === true) {
-                    if (isStream.isWritable(self.logStream)) {
-                        self.logStream.write(data);
+                if (_.get(this.object, 'log.custom', false) === true) {
+                    if (isStream.isWritable(this.logStream)) {
+                        this.logStream.write(`${data}\n`);
                     } else {
-                        const LogFile = self.server.path(_l.get(self.object, 'log.location', 'logs/latest.log'));
+                        const LogFile = this.server.path(_.get(this.object, 'log.location', 'logs/latest.log'));
                         Async.series([
-                            function (callback) {
-                                self.logStream = createOutputStream(LogFile, {
+                            callback => {
+                                this.logStream = createOutputStream(LogFile, {
                                     mode: '0755',
                                     defaultEncoding: 'utf8',
                                 });
                                 return callback();
                             },
-                            function (callback) {
-                                Fs.chown(Path.dirname(LogFile), self.json.build.user, self.json.build.user, callback);
+                            callback => {
+                                Fs.chown(Path.dirname(LogFile), this.json.build.user, this.json.build.user, callback);
                             },
-                        ], function (cbErr) {
-                            if (cbErr) self.server.log.warn(cbErr);
+                        ], err => {
+                            if (err) this.server.log.warn(err);
                         });
                     }
                 }
             },
-            function handlePowerStarts() {
+            () => {
                 // Started
-                if (data.indexOf(self.object.startup.done) > -1) {
-                    self.server.setStatus(Status.ON);
+                if (_.includes(data, this.object.startup.done)) {
+                    Async.series([
+                        callback => {
+                            this.onStart(callback);
+                        },
+                        callback => {
+                            this.server.setStatus(Status.ON);
+                            callback();
+                        },
+                    ]);
                 }
 
                 // Stopped; Don't trigger crash
-                if (self.server.status !== Status.ON && typeof self.object.startup.userInteraction !== 'undefined') {
-                    Async.each(self.object.startup.userInteraction, function coreOnConsoleAsyncEach(string) {
-                        if (data.indexOf(string) > -1) {
-                            self.server.log.info('Server detected as requiring user interaction, stopping now.');
-                            self.server.setStatus(Status.STOPPING);
+                if (this.server.status !== Status.ON && !_.isUndefined(this.object.startup.userInteraction)) {
+                    Async.each(this.object.startup.userInteraction, string => {
+                        if (_.includes(data, string)) {
+                            this.server.log.info('Server detected as requiring user interaction, stopping now.');
+                            this.server.setStatus(Status.STOPPING);
+                            this.server.command(this.object.stop, err => {
+                                if (err) this.server.log.warn(err);
+                            });
                         }
                     });
                 }
-            },
-            function sendToSocket() {
-                self.server.emit('console', self.sanitizeSocketData(data));
             },
         ]);
     }
 
     onStop(next) {
-        if (isStream.isWritable(this.logStream)) {
-            this.logStream.end(function () {
-                self.logStream = false;
-            });
-        }
-        return next();
+        Async.series([
+            callback => {
+                this.onConsole(`${Ansi.style.green}(Daemon) Server detected as stopped.`);
+                callback();
+            },
+            callback => {
+                if (isStream.isWritable(this.logStream)) {
+                    this.logStream.end(() => {
+                        this.logStream = false;
+                        callback();
+                    });
+                } else {
+                    callback();
+                }
+            },
+        ], err => {
+            if (_.isFunction(next)) {
+                return next(err);
+            }
+        });
     }
 
-    sanitizeSocketData(data) {
-        let newData = data.replace(new RegExp(this.object.output.find || '\r\n', this.object.output.flags || 'gm'), this.object.output.replace || '\n');
-        if (newData.indexOf('\n') === 0) {
-            newData = newData.substr(1);
-        }
-        if (!newData.endsWith('\n')) {
-            newData = newData + '\n';
-        }
-        return newData;
-    }
 }
 
 module.exports = Core;

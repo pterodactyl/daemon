@@ -24,7 +24,7 @@
  */
 const rfr = require('rfr');
 
-const Configuration = rfr('src/services/bungeecord/main.json');
+const Configuration = rfr('src/services/voice/main.json');
 const Core = rfr('src/services/index.js');
 
 class Service extends Core {
@@ -50,10 +50,6 @@ class Service extends Core {
 
     doQuery(next) {
         return super.doQuery(next);
-    }
-
-    sanitizeSocketData(data) {
-        return super.sanitizeSocketData(data);
     }
 
 }

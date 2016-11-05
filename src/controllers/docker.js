@@ -27,7 +27,8 @@ const Dockerode = require('dockerode');
 const isStream = require('isstream');
 const Async = require('async');
 const Util = require('util');
-const _ = require('underscore');
+const _ = require('lodash');
+const Carrier = require('carrier');
 
 const Log = rfr('src/helpers/logger.js');
 const Status = rfr('src/helpers/status.js');
@@ -39,6 +40,18 @@ const DockerController = new Dockerode({
     socketPath: Config.get('docker.socket', '/var/run/docker.sock'),
 });
 
+/**
+ * These constants define the amount of additional memory
+ * to allocate to the container to prevent OOM errors
+ * when using {SERVER_MEMORY} in the startup line.
+ */
+const CONST_LOWMEM_PCT = Config.get('docker.memory.low.percent', 0.085);
+const CONST_STDMEM_PCT = Config.get('docker.memory.std.percent', 0.048);
+const CONST_HIGHMEM_PCT = Config.get('docker.memory.high.percent', 0.014);
+
+const CONST_LOWMEM = Config.get('docker.memory.low.value', 1024);
+const CONST_STDMEM = Config.get('docker.memory.std.value', 10240);
+
 class Docker {
     constructor(server, next) {
         this.server = server;
@@ -49,21 +62,29 @@ class Docker {
         this.procData = undefined;
 
         // Check status and attach if server is running currently.
-        this.reattach(function constructorDocker(err, status) {
-            return next(err, status);
-        });
+        this.reattach(next);
+    }
+
+    hardlimit(memory) {
+        if (memory < CONST_LOWMEM) {
+            return memory + (memory * CONST_LOWMEM_PCT);
+        } else if (memory >= CONST_LOWMEM && memory < CONST_STDMEM) {
+            return memory + (memory * CONST_STDMEM_PCT);
+        } else if (memory >= CONST_STDMEM) {
+            return memory + (memory * CONST_HIGHMEM_PCT);
+        }
+        return memory;
     }
 
     reattach(next) {
-        const self = this;
-        this.inspect(function dockerReattach(err, data) {
+        this.inspect((err, data) => {
             if (err) return next(err);
             // We kind of have to assume that if the server is running it is on
             // and not in the process of booting or stopping.
-            if (typeof data.State.Running !== 'undefined' && data.State.Running !== false) {
-                self.server.setStatus(Status.ON);
-                self.attach(function (attachErr) {
-                    return next(attachErr, (!attachErr));
+            if (!_.isUndefined(data.State.Running) && data.State.Running !== false) {
+                this.server.setStatus(Status.ON);
+                this.attach(attachErr => {
+                    next(attachErr, (!attachErr));
                 });
             } else {
                 return next();
@@ -72,9 +93,7 @@ class Docker {
     }
 
     inspect(next) {
-        this.container.inspect(function dockerInspect(err, data) {
-            return next(err, data);
-        });
+        this.container.inspect(next);
     }
 
     /**
@@ -83,16 +102,15 @@ class Docker {
      * @return {[type]}        [description]
      */
     start(next) {
-        const self = this;
-        this.container.start(function dockerStart(err) {
+        this.container.start(err => {
             // Container is already running, we can just continue on and pretend we started it just now.
-            if (err && err.message.indexOf('HTTP code is 304 which indicates error: container already started') > -1) {
-                self.server.setStatus(Status.ON);
+            if (err && _.includes(err.message, 'container already started')) {
+                this.server.setStatus(Status.ON);
                 return next();
             } else if (err) {
                 next(err);
             } else {
-                self.server.setStatus(Status.STARTING);
+                this.server.setStatus(Status.STARTING);
                 return next();
             }
         });
@@ -104,9 +122,7 @@ class Docker {
      * @return {[type]}        [description]
      */
     stop(next) {
-        this.container.stop(function dockerStop(err) {
-            return next(err);
-        });
+        this.container.stop(next);
     }
 
     /**
@@ -115,9 +131,25 @@ class Docker {
      * @return {[type]}        [description]
      */
     kill(next) {
-        this.container.kill(function (err) {
-            return next(err);
-        });
+        this.container.kill(next);
+    }
+
+    /**
+     * Pauses a running container and returns a callback when done.
+     * @param  {Function} next [description]
+     * @return {[type]}        [description]
+     */
+    pause(next) {
+        this.container.pause(next);
+    }
+
+    /**
+     * Unpauses a running container and returns a callback when done.
+     * @param  {Function} next [description]
+     * @return {[type]}        [description]
+     */
+    unpause(next) {
+        this.container.unpause(next);
     }
 
     /**
@@ -127,7 +159,6 @@ class Docker {
      * @return callback
      */
     exec(command, next) {
-        const self = this;
         // Check if we are already attached. If we don't do this then we encounter issues
         // where the daemon thinks the container is crashed even if it is not. This
         // is due to the exec() function calling steamClosed()
@@ -135,18 +166,18 @@ class Docker {
             return next(new Error('An active stream is already in use for this container.'));
         }
 
-        this.container.exec({ Cmd: command, AttachStdin: true, AttachStdout: true, Tty: true }, function dockerExec(err, exec) {
+        this.container.exec({ Cmd: command, AttachStdin: true, AttachStdout: true, Tty: true }, (err, exec) => {
             if (err) return next(err);
-            exec.start(function dockerExecStartStart(execErr, stream) {
+            exec.start((execErr, stream) => {
                 if (!execErr && stream) {
                     stream.setEncoding('utf8');
-                    stream.on('data', function dockerExecStreamData(data) {
-                        // Send data to the Server.output() function.
-                        self.server.output(data);
+
+                    // Sends data once EOL is reached.
+                    Carrier.carry(this.stream, data => {
+                        this.server.output(data);
                     });
-                    stream.on('end', function dockerExecStreamEnd() {
-                        self.server.streamClosed();
-                    });
+
+                    stream.on('end', this.server.streamClosed());
                 } else {
                     return next(execErr);
                 }
@@ -162,7 +193,10 @@ class Docker {
      */
     write(command, next) {
         if (isStream.isWritable(this.stream)) {
-            this.stream.write(command + '\n');
+            if (command === '^C') {
+                return this.stop(next);
+            }
+            this.stream.write(`${command}\n`);
             return next();
         }
         return next(new Error('No writable stream was detected.'));
@@ -174,28 +208,30 @@ class Docker {
      * @return {Callback}
      */
     attach(next) {
-        const self = this;
         // Check if we are currently running exec(). If we don't do this then we encounter issues
         // where the daemon thinks the container is crashed even if it is not. Mostly an issue
         // with exec(), but still worth checking out here.
-        if (typeof this.stream !== 'undefined' || isStream(this.stream)) {
+        if (!_.isUndefined(this.stream) || isStream(this.stream)) {
             return next(new Error('An active stream is already in use for this container.'));
         }
 
-        this.container.attach({ stream: true, stdin: true, stdout: true, stderr: true }, function dockerAttach(err, stream) {
+        this.container.attach({ stream: true, stdin: true, stdout: true, stderr: true }, (err, stream) => {
             if (err) return next(err);
-            self.stream = stream;
-            self.stream.setEncoding('utf8');
-            self.stream.on('data', function dockerAttachStreamData(data) {
-                self.server.output(data);
+            this.stream = stream;
+            this.stream.setEncoding('utf8');
+
+            // Sends data once EOL is reached.
+            Carrier.carry(this.stream, data => {
+                this.server.output(data);
             });
-            self.stream.on('end', function dockerAttachStreamEnd() {
-                self.stream = undefined;
-                self.server.streamClosed();
+
+            this.stream.on('end', () => {
+                this.stream = undefined;
+                this.server.streamClosed();
             });
 
             // Go ahead and setup the stats stream so we can pull data as needed.
-            self.stats(next);
+            this.stats(next);
         });
     }
 
@@ -205,58 +241,72 @@ class Docker {
      * @return {Callback}
      */
     stats(next) {
-        const self = this;
-        this.container.stats({ stream: true }, function dockerTop(err, stream) {
+        this.container.stats({ stream: true }, (err, stream) => {
             if (err) return next(err);
-            self.procStream = stream;
-            self.procStream.setEncoding('utf8');
-            self.procStream.on('data', function dockerTopStreamData(data) {
-                try {
-                    self.procData = (typeof data !== 'object') ? JSON.parse(data) : data;
-                } catch (ex) {
-                    // We could log this, but for some reason the streams
-                    // like to return little bits and pieces of data rather
-                    // than the entire JSON object.
-                    // @TODO: look into fixing this.
-                    // self.server.log.warn(ex.stack);
-                }
+            this.procStream = stream;
+            this.procStream.setEncoding('utf8');
+            Carrier.carry(this.procStream, data => {
+                this.procData = (_.isObject(data)) ? data : JSON.parse(data);
             });
-            self.procStream.on('end', function dockerTopSteamEnd() {
-                self.procStream = undefined;
-                self.procData = undefined;
+            this.procStream.on('end', function dockerTopSteamEnd() {
+                this.procStream = undefined;
+                this.procData = undefined;
             });
             return next();
         });
     }
 
+    /**
+     * Updates usage liits without requiring a rebuild.
+     * @param  {Function} next
+     * @return {Callback}
+     */
+    update(next) {
+        // How Much Swap?
+        let swapSpace = 0;
+        if (this.server.json.build.swap < 0) {
+            swapSpace = -1;
+        } else if (this.server.json.build.swap > 0 && this.server.json.build.memory > 0) {
+            swapSpace = ((this.server.json.build.memory + this.server.json.build.swap) * 1000000);
+        }
+
+        this.container.update({
+            CpuQuota: (this.server.json.build.cpu > 0) ? (this.server.json.build.cpu * 1000) : -1,
+            CpuPeriod: (this.server.json.build.cpu > 0) ? 100000 : 0,
+            Memory: this.server.json.build.memory * 1000000,
+            MemorySwap: swapSpace,
+            BlkioWeight: this.server.json.build.io,
+        }, next);
+    }
+
+    /**
+     * Rebuilds a given servers container.
+     * @param  {Function} next
+     * @return {Callback}
+     */
     rebuild(next) {
-        const self = this;
         const config = this.server.json.build;
         const bindings = {};
         const exposed = {};
         Async.series([
-            function (callback) {
+            callback => {
                 // The default is to not automatically update images.
-                if (Config.get('docker.autoupdate_images', false) === false) {
-                    ImageHelper.exists(config.image, function (err) {
+                if (!Config.get('docker.autoupdate_images', true)) {
+                    ImageHelper.exists(config.image, err => {
                         if (!err) return callback();
                         Log.info(Util.format('Pulling image %s because it doesn\'t exist on the system.', config.image));
-                        ImageHelper.pull(config.image, function (pullErr) {
-                            return callback(pullErr);
-                        });
+                        ImageHelper.pull(config.image, callback);
                     });
                 } else {
                     Log.info(Util.format('Checking if we need to update image %s, if so it will happen now.', config.image));
-                    ImageHelper.pull(config.image, function (err) {
-                        return callback(err);
-                    });
+                    ImageHelper.pull(config.image, callback);
                 }
             },
-            function (callback) {
+            callback => {
                 // Build the port bindings
-                Async.forEachOf(config.ports, function (ports, ip, eachCallback) {
-                    if (!Array.isArray(ports)) return eachCallback();
-                    Async.each(ports, function (port, portCallback) {
+                Async.forEachOf(config.ports, (ports, ip, eachCallback) => {
+                    if (!_.isArray(ports)) return eachCallback();
+                    Async.each(ports, (port, portCallback) => {
                         if (/^\d{1,6}$/.test(port) !== true) return portCallback();
                         bindings[Util.format('%s/tcp', port)] = [{
                             'HostIp': ip,
@@ -269,15 +319,11 @@ class Docker {
                         exposed[Util.format('%s/tcp', port)] = {};
                         exposed[Util.format('%s/udp', port)] = {};
                         portCallback();
-                    }, function () {
-                        eachCallback();
-                    });
-                }, function () {
-                    return callback();
-                });
+                    }, eachCallback);
+                }, callback);
             },
-            function (callback) {
-                self.server.log.debug('Creating new container...');
+            callback => {
+                this.server.log.debug('Creating new container...');
 
                 // Add some additional environment variables
                 config.env.SERVER_MEMORY = config.memory;
@@ -285,7 +331,8 @@ class Docker {
                 config.env.SERVER_PORT = config.default.port;
 
                 const environment = [];
-                _.each(config.env, function (value, index) {
+                _.forEach(config.env, (value, index) => {
+                    if (_.isNull(value)) return;
                     environment.push(Util.format('%s=%s', index, value));
                 });
 
@@ -308,45 +355,92 @@ class Docker {
                     Tty: true,
                     Mounts: [
                         {
-                            Source: self.server.path(),
+                            Source: this.server.path(),
                             Destination: '/home/container',
                             RW: true,
+                        },
+                        {
+                            Source: '/etc/timezone',
+                            Destination: '/etc/timezone',
+                            RW: false,
                         },
                     ],
                     Env: environment,
                     ExposedPorts: exposed,
                     HostConfig: {
                         Binds: [
-                            Util.format('%s:/home/container', self.server.path()),
+                            Util.format('%s:/home/container', this.server.path()),
+                            '/etc/timezone:/etc/timezone:ro',
                         ],
+                        Tmpfs: {
+                            '/tmp': '',
+                        },
                         PortBindings: bindings,
                         OomKillDisable: config.oom_disabled || false,
                         CpuQuota: (config.cpu > 0) ? (config.cpu * 1000) : -1,
                         CpuPeriod: (config.cpu > 0) ? 100000 : 0,
-                        Memory: config.memory * 1000000,
+                        Memory: this.hardlimit(config.memory) * 1000000,
+                        MemoryReservation: config.memory * 1000000,
                         MemorySwap: swapSpace,
                         BlkioWeight: config.io,
-                        Dns: [
+                        Dns: Config.get('docker.dns', [
                             '8.8.8.8',
                             '8.8.4.4',
+                        ]),
+                        ExtraHosts: [
+                            `container:${Config.get('docker.interface')}`,
                         ],
+                        LogConfig: {
+                            Type: 'none',
+                        },
+                        SecurityOpt: [
+                            'no-new-privileges',
+                        ],
+                        ReadonlyRootfs: true,
+                        CapDrop: [
+                            'setpcap',
+                            'mknod',
+                            'audit_write',
+                            'chown',
+                            'net_raw',
+                            'dac_override',
+                            'fowner',
+                            'fsetid',
+                            'kill',
+                            'setgid',
+                            'setuid',
+                            'net_bind_service',
+                            'sys_chroot',
+                            'setfcap',
+                        ],
+                        NetworkMode: 'pterodactyl_nw',
                     },
-                }, function (err, container) {
-                    return callback(err, container);
+                }, (err, container) => {
+                    callback(err, container);
                 });
             },
-        ], function (err, data) {
+        ], (err, data) => {
             if (err) {
                 return next(err);
             }
-            self.server.log.debug('Removing old server container...');
-            // @TODO: logic here to determine if this failed, if so we need to
-            // remove the newly created server probably.
-            self.container.remove(function (removeError) {
-                return next(removeError, {
-                    id: data[2].id,
-                    image: config.image,
-                });
+            this.server.log.debug('Removing old server container...');
+
+            const newContainerInfo = {
+                id: data[2].id,
+                image: config.image,
+            };
+
+            this.container.inspect(inspectErr => {
+                // if the inspection does not fail, the container exists
+                if (!inspectErr) {
+                    this.container.remove(removeError => {
+                        next(removeError, newContainerInfo);
+                    });
+                // if it doesn't we'll just skip removal
+                } else {
+                    this.server.log.debug('Old container not found, skipping.');
+                    next(null, newContainerInfo);
+                }
             });
         });
     }
