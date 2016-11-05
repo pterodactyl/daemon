@@ -1,7 +1,50 @@
 # Changelog
 This file is a running track of new features and fixes to each version of the daemon released starting with `v0.2.0`.
 
-## v0.3.0-pre.4
+## v0.3.0 (Barefoot Barbosania)
+
+🎉🎉
+
+### Added
+* Added method to handle assigning a percent extra memory to containers based on the current allocated. Should help with Minecraft servers hitting OOM when java attempts to allocate a bit over the hard limit.
+* Support for ARK Servers.
+* Switched to using a pure Socket.io stream to handle file uploads from the browser. Faster, and much less buggy.
+* Added support for file copying.
+* Added support for creating empty folders though the API.
+
+### Changed
+* Changed some docker container creation options to prevent fork-bombing as well as prevent additional routes for privilege escalation in containers.
+* Changed server startup async pathway to call `onStarting` not `onStart`. `onStart` is now called when server is marked as started.
+* Daemon now uses internal Docker API to determine the container interface to use. Better support for non-linux environments.
+* Fallback to `minecraftping` method for all Minecraft servers to mitigate some Gamedig issues.
+* Dependencies are now hard-coded to prevent potential issues with the panel or version changes breaking features.
+* Servers now report core stats when starting and wait for performing query.
+* Query failures no longer spam log, and can be configured to kill servers after a set number of
+consecutive failures (or just keep on trucking).
+* Daemon now defaults to checking for updated docker images unless specifically configured otherwise.
+* **The following API Endpoints have been modified**:
+  * `GET /server/file/<file path>` -> `GET /server/file/f/<file path>`
+  * `POST /server/file/<file path>` -> `POST /server/file/save` with `path`: `/path/to/saveas.txt` and `contents`: `file contents`
+  * `DELETE /server/file/<file path>` -> `DELETE /server/file/f/<file path>`
+  * `GET /server/download/<token>` -> `GET /server/file/download/<token>`
+
+### Fixed
+* Properly call `onStop`, `onStarting`, and `onStart` when server actions occur.
+* Files with spaces in their name would break the `path()` function, this has been fixed.
+* Timezone was improperly set inside server containers.
+
+### Known Issues
+* Decompressing large files through the file manager throws a `EMFILE: too many open files` error.
+
+### Removed
+* BinaryJS has been removed due to it being abandoned and buggy.
+
+## v0.3.0-rc.2
+
+### Fixed
+* Remove PID limit that broke literally every Minecraft server with an "unrelated" error. Sorry about that...
+
+## v0.3.0-rc.1
 **Known Issue**: Decompressing large files through the file manager throws a `EMFILE: too many open files` error.
 
 ### Added
