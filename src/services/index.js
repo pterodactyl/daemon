@@ -42,15 +42,15 @@ class Core {
         this.server = server;
         this.json = server.json;
         this.config = config || rfr(Util.format('src/services/%s/main.json', this.json.service.type));
-        this.option = this.json.service.option;
+        this.service = this.json.service;
         this.object = undefined;
         this.logStream = undefined;
 
         this.parser = new FileParserHelper(this.server);
 
         // Find our data on initialization.
-        _.forEach(this.config, element => {
-            if (this.option.match(element.tag)) {
+        _.forEach(this.config, (element, option) => {
+            if (this.service.option === option) {
                 // Handle "symlink" in the configuration for plugins...
                 this.object = element;
                 const deepExtend = extendify({
