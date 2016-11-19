@@ -119,7 +119,7 @@ class FileParser {
 
                 // Loop through the matchedElements array and handle replacements
                 // as needed.
-                Async.each(matchedElements, element => {
+                Async.each(matchedElements, (element, eCallback) => {
                     if (_.isString(replacement)) {
                         newValue = this.getReplacement(replacement);
                     } else if (_.isObject(replacement)) {
@@ -137,6 +137,7 @@ class FileParser {
                     }
 
                     _.set(data, element, newValue);
+                    eCallback();
                 }, callback);
             }, () => {
                 Yaml.write(this.server.path(file), data, writeErr => {
@@ -196,7 +197,7 @@ class FileParser {
 
                 // Loop through the matchedElements array and handle replacements
                 // as needed.
-                Async.each(matchedElements, element => {
+                Async.each(matchedElements, (element, eCallback) => {
                     if (_.isString(replacement)) {
                         newValue = this.getReplacement(replacement);
                     } else if (_.isObject(replacement)) {
@@ -214,6 +215,7 @@ class FileParser {
                     }
 
                     _.set(data, element, newValue);
+                    eCallback();
                 }, callback);
             }, () => {
                 Fs.writeJson(this.server.path(file), data, next);
