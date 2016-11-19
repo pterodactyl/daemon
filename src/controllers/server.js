@@ -64,6 +64,7 @@ class Server extends EventEmitter {
             query: null,
         };
 
+        this.shouldRestart = false;
         this.knownWrite = false;
         this.buildInProgress = false;
         this.configLocation = Path.join(__dirname, '../../config/servers/', this.uuid, 'server.json');
@@ -271,21 +272,12 @@ class Server extends EventEmitter {
     }
 
     restart(next) {
-        Async.series([
-            callback => {
-                if (this.status !== Status.OFF) {
-                    this.once('is:OFF', callback);
-                    this.stop(err => {
-                        if (err) return callback(err);
-                    });
-                } else {
-                    return callback();
-                }
-            },
-            callback => {
-                this.start(callback);
-            },
-        ], next);
+        if (this.status !== Status.OFF) {
+            this.shouldRestart = true;
+            this.stop(next);
+        } else {
+            this.start(next);
+        }
     }
 
     /**
@@ -318,6 +310,13 @@ class Server extends EventEmitter {
         if (this.status === Status.OFF || this.status === Status.STOPPING) {
             this.setStatus(Status.OFF);
             this.service.onStop();
+
+            if (this.shouldRestart) {
+                this.shouldRestart = false;
+                this.start(err => {
+                    if (err) this.log.error(err);
+                });
+            }
             return;
         }
 
