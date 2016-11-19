@@ -28,11 +28,27 @@ const Fs = require('fs-extra');
 const Properties = require('properties-parser');
 const Yaml = require('node-yaml');
 const Ini = require('ini');
+const rfr = require('rfr');
+
+const ConfigHelper = rfr('src/helpers/config.js');
+
+const Config = new ConfigHelper();
 
 class FileParser {
 
     constructor(server) {
         this.server = server;
+    }
+
+    getReplacement(replacement) {
+        return replacement.replace(/{{ (\S+) }}/g, ($0, $1) => { // eslint-disable-line
+            if (_.startsWith($1, 'server')) {
+                return _.reduce(($1.replace('server.', '')).split('.'), (o, i) => o[i], this.server.json);
+            } else if (_.startsWith($1, 'config')) {
+                return Config.get($1.replace('config.', ''));
+            }
+            return $0;
+        });
     }
 
     file(file, strings, next) {
@@ -81,19 +97,47 @@ class FileParser {
                 if (_.startsWith(err.message, 'ENOENT: no such file or directory')) return next();
                 return next(err);
             }
-            Async.forEachOf(strings, (value, key, callback) => {
+            Async.forEachOf(strings, (replacement, eachKey, callback) => {
                 let newValue;
-                if (_.isString(value)) {
-                    newValue = value.replace(/{{ (\S+) }}/g, ($0, $1) => { // eslint-disable-line
-                        return _.reduce(($1).split('.'), (o, i) => o[i], this.server.json);
+                const matchedElements = [];
+
+                // Used for wildcard matching
+                const Split = _.split(eachKey, '.');
+                const Pos = _.indexOf(Split, '*');
+
+                // Determine if a '*' character is present, and if so
+                // push all of the matching keys into the matchedElements array
+                if (Pos >= 0) {
+                    const SearchBlock = (_.dropRight(Split, Split.length - Pos)).join('.');
+                    _.find(data[SearchBlock], (object, key) => { // eslint-disable-line
+                        Split[Pos] = key;
+                        matchedElements.push(Split.join('.'));
                     });
-                } else { newValue = value; }
-                if (!_.isBoolean(newValue) && !_.isNaN(_.toNumber(newValue))) {
-                    newValue = _.toNumber(newValue);
+                } else {
+                    matchedElements.push(eachKey);
                 }
 
-                _.set(data, key, newValue);
-                callback();
+                // Loop through the matchedElements array and handle replacements
+                // as needed.
+                Async.each(matchedElements, element => {
+                    if (_.isString(replacement)) {
+                        newValue = this.getReplacement(replacement);
+                    } else if (_.isObject(replacement)) {
+                        // Find & Replace
+                        newValue = _.get(data, element);
+                        _.forEach(replacement, (rep, find) => {
+                            newValue = newValue.replace(find, this.getReplacement(rep));
+                        });
+                    } else {
+                        newValue = replacement;
+                    }
+
+                    if (!_.isBoolean(newValue) && !_.isNaN(_.toNumber(newValue))) {
+                        newValue = _.toNumber(newValue);
+                    }
+
+                    _.set(data, element, newValue);
+                }, callback);
             }, () => {
                 Yaml.write(this.server.path(file), data, writeErr => {
                     next(writeErr);
@@ -130,19 +174,47 @@ class FileParser {
                 if (_.startsWith(err.message, 'ENOENT: no such file or directory')) return next();
                 return next(err);
             }
-            Async.forEachOf(strings, (value, key, callback) => {
+            Async.forEachOf(strings, (replacement, eachKey, callback) => {
                 let newValue;
-                if (_.isString(value)) {
-                    newValue = value.replace(/{{ (\S+) }}/g, ($0, $1) => { // eslint-disable-line
-                        return _.reduce(($1).split('.'), (o, i) => o[i], this.server.json);
+                const matchedElements = [];
+
+                // Used for wildcard matching
+                const Split = _.split(eachKey, '.');
+                const Pos = _.indexOf(Split, '*');
+
+                // Determine if a '*' character is present, and if so
+                // push all of the matching keys into the matchedElements array
+                if (Pos >= 0) {
+                    const SearchBlock = (_.dropRight(Split, Split.length - Pos)).join('.');
+                    _.find(data[SearchBlock], (object, key) => { // eslint-disable-line
+                        Split[Pos] = key;
+                        matchedElements.push(Split.join('.'));
                     });
-                } else { newValue = value; }
-                if (!_.isBoolean(newValue) && !_.isNaN(_.toNumber(newValue))) {
-                    newValue = _.toNumber(newValue);
+                } else {
+                    matchedElements.push(eachKey);
                 }
 
-                _.set(data, key, newValue);
-                callback();
+                // Loop through the matchedElements array and handle replacements
+                // as needed.
+                Async.each(matchedElements, element => {
+                    if (_.isString(replacement)) {
+                        newValue = this.getReplacement(replacement);
+                    } else if (_.isObject(replacement)) {
+                        // Find & Replace
+                        newValue = _.get(data, element);
+                        _.forEach(replacement, (rep, find) => {
+                            newValue = newValue.replace(find, this.getReplacement(rep));
+                        });
+                    } else {
+                        newValue = replacement;
+                    }
+
+                    if (!_.isBoolean(newValue) && !_.isNaN(_.toNumber(newValue))) {
+                        newValue = _.toNumber(newValue);
+                    }
+
+                    _.set(data, element, newValue);
+                }, callback);
             }, () => {
                 Fs.writeJson(this.server.path(file), data, next);
             });
