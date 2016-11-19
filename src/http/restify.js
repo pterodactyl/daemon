@@ -49,6 +49,11 @@ const RestServer = Restify.createServer({
     name: 'Pterodactyl Daemon',
     certificate: (Config.get('web.ssl.enabled') === true) ? Fs.readFileSync(Config.get('web.ssl.certificate')) : null,
     key: (Config.get('web.ssl.enabled') === true) ? Fs.readFileSync(Config.get('web.ssl.key')) : null,
+    formatters: {
+        'application/json': (req, res, body, callback) => {
+            callback(null, JSON.stringify(body, null, 4));
+        },
+    },
 });
 
 RestServer.pre((req, res, next) => {

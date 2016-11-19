@@ -31,12 +31,14 @@ const Mime = require('mime');
 const Path = require('path');
 const Crypto = require('crypto');
 const _ = require('lodash');
+const Os = require('os');
 
 const ConfigHelper = rfr('src/helpers/config.js');
 const ResponseHelper = rfr('src/helpers/responses.js');
 const BuilderController = rfr('src/controllers/builder.js');
 const DeleteController = rfr('src/controllers/delete.js');
 const Log = rfr('src/helpers/logger.js');
+const Package = rfr('package.json');
 
 const Config = new ConfigHelper();
 let Responses;
@@ -52,7 +54,20 @@ class RouteController {
 
     // Returns Index
     getIndex() {
-        this.res.send('Pterodactyl Management Daemon');
+        if (!Auth.allowed('g:info')) return;
+        this.res.send({
+            name: 'Pterodactyl Management Daemon',
+            version: Package.version,
+            system: {
+                type: Os.type(),
+                arch: Os.arch(),
+                platform: Os.platform(),
+                release: Os.release(),
+                cpus: Os.cpus().length,
+                freemem: Os.freemem(),
+            },
+            network: Os.networkInterfaces(),
+        });
     }
 
     // Saves Daemon Configuration to Disk

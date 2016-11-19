@@ -1,6 +1,21 @@
 # Changelog
 This file is a running track of new features and fixes to each version of the daemon released starting with `v0.2.0`.
 
+## v0.3.1 (Barefoot Barbosania)
+
+### Added
+* Support for `*` node in  config file search, as well as support for search and replace in config values. _Only applies to `yaml` and `json` parsers._
+* Calling base route now returns system information for authenticated admins using the global token.
+
+### Changed
+* Services now properly extend the `Core` class so that you only need to add functions and extend `parent()` if something is being done differently.
+* Changed `{{ build.<options> }}` replacements in service configurations to use `server.` or `config.` starts to identify values that should be replaced. **This is a breaking change from `0.3.0` ONLY if you are using custom templates.**
+
+### Fixed
+* Fixes a fatal error that was thrown when rebooting servers at times even though there was no actual server error.
+* Fixes a bug with the docker gateway being assigned with a subnet when it should not.
+* Fixes a bug that didn't detected bungeecord server's first startup, preventing the correct allocation binding. _Bungeecord servers **cannot run** on `:25577` without triggering this reboot line, apologies in advance._
+
 ## v0.3.0 (Barefoot Barbosania)
 
 🎉🎉
