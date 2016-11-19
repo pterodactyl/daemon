@@ -30,6 +30,7 @@ const extendify = require('extendify');
 const Gamedig = require('gamedig');
 const isStream = require('isstream');
 const Path = require('path');
+const Util = require('util');
 const createOutputStream = require('create-output-stream');
 const Ansi = require('ansi-escape-sequences');
 
@@ -37,26 +38,27 @@ const Status = rfr('src/helpers/status.js');
 const FileParserHelper = rfr('src/helpers/fileparser.js');
 
 class Core {
-    constructor(server, config) {
+    constructor(server, config = null) {
         this.server = server;
         this.json = server.json;
-        this.option = this.json.service.option;
+        this.config = config || rfr(Util.format('src/services/%s/main.json', this.json.service.type));
+        this.service = this.json.service;
         this.object = undefined;
         this.logStream = undefined;
 
         this.parser = new FileParserHelper(this.server);
 
         // Find our data on initialization.
-        _.forEach(config, element => {
-            if (this.option.match(element.tag)) {
+        _.forEach(this.config, (element, option) => {
+            if (this.service.option === option) {
                 // Handle "symlink" in the configuration for plugins...
                 this.object = element;
                 const deepExtend = extendify({
                     inPlace: false,
                     arrays: 'replace',
                 });
-                if (!_.isUndefined(element.symlink) && !_.isUndefined(config[element.symlink])) {
-                    this.object = deepExtend(config[element.symlink], element);
+                if (!_.isUndefined(element.symlink) && !_.isUndefined(this.config[element.symlink])) {
+                    this.object = deepExtend(this.config[element.symlink], element);
                 }
             }
         });
