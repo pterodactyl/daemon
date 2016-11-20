@@ -314,7 +314,9 @@ class Server extends EventEmitter {
             if (this.shouldRestart) {
                 this.shouldRestart = false;
                 this.start(err => {
-                    if (err) this.log.error(err);
+                    if (err && !_.includes(err.message, 'Server is currently queued for a container rebuild') && !_.includes(err.message, 'Server container was not found and needs to be rebuilt.')) {
+                        this.log.error(err);
+                    }
                 });
             }
             return;
