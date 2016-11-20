@@ -373,7 +373,7 @@ class Docker {
                             '/etc/timezone:/etc/timezone:ro',
                         ],
                         Tmpfs: {
-                            '/tmp': '',
+                            '/tmp': 'rw,exec,nosuid,size=50M',
                         },
                         PortBindings: bindings,
                         OomKillDisable: config.oom_disabled || false,
