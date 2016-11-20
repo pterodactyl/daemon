@@ -71,9 +71,7 @@ class FileParser {
                 Async.forEachOf(lines, (line, index, eachCallback) => {
                     Async.forEachOf(strings, (replaceString, findString, eachEachCallback) => {
                         if (line.startsWith(findString)) {
-                            lines[index] = replaceString.replace(/{{ (\S+) }}/g, ($0, $1) => { // eslint-disable-line
-                                return _.reduce(($1).split('.'), (o, i) => o[i], this.server.json);
-                            });
+                            lines[index] = this.getReplacement(replaceString); // eslint-disable-line
                         }
                         return eachEachCallback();
                     }, () => {
@@ -156,9 +154,7 @@ class FileParser {
             Async.forEachOf(strings, (value, key, callback) => {
                 let newValue;
                 if (_.isString(value)) {
-                    newValue = value.replace(/{{ (\S+) }}/g, ($0, $1) => { // eslint-disable-line
-                        return _.reduce(($1).split('.'), (o, i) => o[i], this.server.json);
-                    });
+                    newValue = this.getReplacement(value);
                 } else { newValue = value; }
 
                 Editor.set(key, newValue);
@@ -239,9 +235,7 @@ class FileParser {
                 Async.forEachOf(strings, (value, key, eachCallback) => {
                     let newValue;
                     if (_.isString(value)) {
-                        newValue = value.replace(/{{ (\S+) }}/g, ($0, $1) => { // eslint-disable-line
-                            return _.reduce(($1).split('.'), (o, i) => o[i], this.server.json);
-                        });
+                        newValue = this.getReplacement(value);
                     } else { newValue = value; }
                     if (!_.isBoolean(newValue) && !_.isNaN(_.toNumber(newValue))) {
                         newValue = _.toNumber(newValue);
