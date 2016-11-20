@@ -1,6 +1,13 @@
 # Changelog
 This file is a running track of new features and fixes to each version of the daemon released starting with `v0.2.0`.
 
+## v0.3.2 (Barefoot Barbosania)
+
+### Fixed
+* Fixes bug where Bungeecord and Spigot could not make use of certain features due to security restrictions. This release removes the `noexec` flag from the `/tmp` directory.
+* Fixes bug where daemon would report an extraneous error when starting a container marked for rebuild.
+* Fixes bug in certain file parsers that prevented the proper functioning of the parser.
+
 ## v0.3.1 (Barefoot Barbosania)
 
 ### Added
