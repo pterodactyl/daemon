@@ -23,6 +23,7 @@
  * SOFTWARE.
  */
 const rfr = require('rfr');
+const Path = require('path');
 const Util = require('util');
 const Async = require('async');
 const Dockerode = require('dockerode');
@@ -64,7 +65,7 @@ class SFTP {
             },
             callback => {
                 DockerController.createContainer({
-                    Image: 'quay.io/pterodactyl/scrappy:latest',
+                    Image: SFTP_DOCKER_IMAGE,
                     Hostname: 'ptdlsftp',
                     AttachStdin: true,
                     AttachStdout: true,
@@ -78,7 +79,7 @@ class SFTP {
                             RW: true,
                         },
                         {
-                            Source: '/srv/daemon/config/credentials',
+                            Source: Path.join(Path.dirname(require.main.filename), '../config/credentials'),
                             Destination: '/creds',
                             RW: true,
                         },
@@ -89,7 +90,7 @@ class SFTP {
                     HostConfig: {
                         Binds: [
                             Util.format('%s:/sftp-root', Config.get('sftp.path', '/srv/data')),
-                            Util.format('%s:/creds', '/srv/daemon/config/credentials'),
+                            Util.format('%s:/creds', Path.join(Path.dirname(require.main.filename), '../config/credentials')),
                         ],
                         PortBindings: {
                             '22/tcp': [
