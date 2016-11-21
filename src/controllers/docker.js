@@ -29,6 +29,7 @@ const Async = require('async');
 const Util = require('util');
 const _ = require('lodash');
 const Carrier = require('carrier');
+const RandomString = require('randomstring');
 
 const Log = rfr('src/helpers/logger.js');
 const Status = rfr('src/helpers/status.js');
@@ -346,6 +347,7 @@ class Docker {
                 // Make the container
                 DockerController.createContainer({
                     Image: config.image,
+                    name: `${this.server.json.user}_${RandomString.generate(3)}`,
                     Hostname: 'container',
                     User: config.user.toString(),
                     AttachStdin: true,
