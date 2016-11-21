@@ -24,6 +24,7 @@
  */
 const rfr = require('rfr');
 const Async = require('async');
+const Proc = require('child_process');
 
 const Log = rfr('src/helpers/logger.js');
 const Package = rfr('package.json');
@@ -45,31 +46,42 @@ const Initialize = new Initializer();
 const SFTP = new SFTPController(true);
 const Stats = new LiveStats();
 
-Async.series([
-    callback => {
-        Log.info('Starting Pterodactyl Daemon...');
+Log.info('Modules loaded, starting Pterodactyl Daemon...');
+Async.auto({
+    check_network: callback => {
         Log.info('Checking container networking environment...');
         Network.init(callback);
     },
-    callback => {
+    setup_network: ['check_network', (r, callback) => {
         Log.info('Checking pterodactyl0 interface and setting configuration values.');
         Network.interface(callback);
-    },
-    callback => {
+    }],
+    start_sftp: callback => {
         Log.info('Attempting to start SFTP service container...');
-        SFTP.startService(callback);
+        SFTP.startService(err => {
+            if (err) return callback(err);
+            Log.info('SFTP container successfully booted.');
+            return callback();
+        });
     },
-    callback => {
-        Log.info('SFTP service container booted!');
+    check_tar: callback => {
+        Proc.exec('tar --help', {}, callback);
+        Log.debug('Tar module found on server.');
+    },
+    check_zip: callback => {
+        Proc.exec('unzip --help', {}, callback);
+        Log.debug('Unzip module found on server.');
+    },
+    init_servers: ['setup_network', (r, callback) => {
         Log.info('Attempting to load servers and initialize daemon...');
         Initialize.init(callback);
-    },
-    callback => {
+    }],
+    init_websocket: ['init_servers', (r, callback) => {
         Log.info('Configuring websocket for daemon stats...');
         Stats.init();
         return callback();
-    },
-], err => {
+    }],
+}, err => {
     if (err) {
         // Log a fatal error and exit.
         // We need this to initialize successfully without any errors.
