@@ -5,14 +5,19 @@ This file is a running track of new features and fixes to each version of the da
 
 ### Fixed
 * Fixes hardcoded path for SFTP containers that was causing a whole host of issues on some systems.
+* Fixes previously known issue where decompressing large files through the file manager throws a `EMFILE: too many open files` error.
 
 ### Changed
 * Updates dependencies across the platform.
 * Docker containers are now named with the template `<sftp username>:<randomstring:3>` for easier identification when running `docker ps (-a)`.
 * Changes to deletion and creation function to run certain aspects in parallel to increase speed by utilizing `Async.auto()`. Most notable in the delete function.
+* Compression and Decompression now use native `tar` and `unzip` modules to reduce memory footprint and keep things speedy.
+* Chown function now uses native module for speed and reliability purposes.
+* Startup function modified to run more processes in parallel where possible to cut down on startup time.
 
 ### Deprecated
 * Daemon now requires Nodejs `v6` or `v7` to run. Previous versions are no longer supported.
+* Daemon no longer supports Windows ecosystems due to changes in chown and compression functions.
 
 ## v0.3.2 (Barefoot Barbosania)
 
