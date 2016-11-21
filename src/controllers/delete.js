@@ -46,9 +46,9 @@ class Delete {
     }
 
     delete(next) {
-        Async.series([
+        Async.auto({
             // Clear the 'Servers' object of the specific server
-            callback => {
+            clear_object: callback => {
                 this.log.info('Clearing servers object...');
                 const Servers = rfr('src/helpers/initialize.js').Servers;
 
@@ -58,31 +58,31 @@ class Delete {
                 return callback();
             },
             // Delete the container (kills if running)
-            callback => {
+            delete_container: ['clear_object', (r, callback) => {
                 this.log.info('Attempting to remove container...');
                 const container = DockerController.getContainer(this.json.container.id);
                 container.remove({ v: true, force: true }, err => {
                     if (!err) this.log.info('Removed container.');
                     return callback(err);
                 });
-            },
+            }],
             // Delete the configuration files for this server
-            callback => {
+            delete_config: ['clear_object', (r, callback) => {
                 this.log.info('Attempting to remove configuration files...');
                 Fs.remove(Path.join('./config/servers', this.json.uuid), err => {
                     if (!err) this.log.info('Removed configuration folder.');
                     return callback(err);
                 });
-            },
+            }],
             // Delete the SFTP user and files.
-            callback => {
+            delete_sftp: ['clear_object', (r, callback) => {
                 this.log.info('Attempting to remove SFTP user...');
                 SFTP.delete(this.json.user, err => {
                     if (!err) this.log.info('Removed SFTP user.');
                     return callback(err);
                 });
-            },
-        ], err => {
+            }],
+        }, err => {
             if (err) Log.fatal(err);
             return next(err);
         });
