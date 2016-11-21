@@ -1,6 +1,19 @@
 # Changelog
 This file is a running track of new features and fixes to each version of the daemon released starting with `v0.2.0`.
 
+## v0.3.3 [Unreleased]
+
+### Fixed
+* Fixes hardcoded path for SFTP containers that was causing a whole host of issues on some systems.
+
+### Changed
+* Updates dependencies across the platform.
+* Docker containers are now named with the template `<sftp username>:<randomstring:3>` for easier identification when running `docker ps (-a)`.
+* Changes to deletion and creation function to run certain aspects in parallel to increase speed by utilizing `Async.auto()`. Most notable in the delete function.
+
+### Deprecated
+* Daemon now requires Nodejs `v6` or `v7` to run. Previous versions are no longer supported.
+
 ## v0.3.2 (Barefoot Barbosania)
 
 ### Fixed

@@ -289,8 +289,9 @@ class Docker {
         const config = this.server.json.build;
         const bindings = {};
         const exposed = {};
-        Async.series([
-            callback => {
+        const environment = [];
+        Async.auto({
+            update_images: callback => {
                 // The default is to not automatically update images.
                 if (!Config.get('docker.autoupdate_images', true)) {
                     ImageHelper.exists(config.image, err => {
@@ -303,9 +304,9 @@ class Docker {
                     ImageHelper.pull(config.image, callback);
                 }
             },
-            callback => {
+            update_ports: callback => {
                 // Build the port bindings
-                Async.forEachOf(config.ports, (ports, ip, eachCallback) => {
+                Async.eachOf(config.ports, (ports, ip, eachCallback) => {
                     if (!_.isArray(ports)) return eachCallback();
                     Async.each(ports, (port, portCallback) => {
                         if (/^\d{1,6}$/.test(port) !== true) return portCallback();
@@ -323,19 +324,20 @@ class Docker {
                     }, eachCallback);
                 }, callback);
             },
-            callback => {
+            set_environment: callback => {
+                Async.eachOf(config.env, (value, index, eachCallback) => {
+                    if (_.isNull(value)) return eachCallback();
+                    environment.push(Util.format('%s=%s', index, value));
+                    return eachCallback();
+                }, callback);
+            },
+            create_container: ['update_images', 'update_ports', 'set_environment', (r, callback) => {
                 this.server.log.debug('Creating new container...');
 
                 // Add some additional environment variables
                 config.env.SERVER_MEMORY = config.memory;
                 config.env.SERVER_IP = config.default.ip;
                 config.env.SERVER_PORT = config.default.port;
-
-                const environment = [];
-                _.forEach(config.env, (value, index) => {
-                    if (_.isNull(value)) return;
-                    environment.push(Util.format('%s=%s', index, value));
-                });
 
                 // How Much Swap?
                 let swapSpace = 0;
@@ -420,8 +422,8 @@ class Docker {
                 }, (err, container) => {
                     callback(err, container);
                 });
-            },
-        ], (err, data) => {
+            }],
+        }, (err, data) => {
             if (err) {
                 return next(err);
             }
