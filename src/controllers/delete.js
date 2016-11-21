@@ -66,19 +66,19 @@ class Delete {
                     return callback(err);
                 });
             },
-            // Delete the SFTP user and files.
-            callback => {
-                this.log.info('Attempting to remove SFTP user...');
-                SFTP.delete(this.json.user, err => {
-                    if (!err) this.log.info('Removed SFTP user.');
-                    return callback(err);
-                });
-            },
             // Delete the configuration files for this server
             callback => {
                 this.log.info('Attempting to remove configuration files...');
                 Fs.remove(Path.join('./config/servers', this.json.uuid), err => {
                     if (!err) this.log.info('Removed configuration folder.');
+                    return callback(err);
+                });
+            },
+            // Delete the SFTP user and files.
+            callback => {
+                this.log.info('Attempting to remove SFTP user...');
+                SFTP.delete(this.json.user, err => {
+                    if (!err) this.log.info('Removed SFTP user.');
                     return callback(err);
                 });
             },
