@@ -70,7 +70,7 @@ class FileParser {
                 // @TODO: add line if its not already there.
                 Async.forEachOf(lines, (line, index, eachCallback) => {
                     Async.forEachOf(strings, (replaceString, findString, eachEachCallback) => {
-                        if (line.startsWith(findString)) {
+                        if (_.startsWith(line, findString)) {
                             lines[index] = this.getReplacement(replaceString); // eslint-disable-line
                         }
                         return eachEachCallback();

@@ -184,7 +184,7 @@ class RouteController {
     postServerCommand() {
         if (!Auth.allowed('s:command')) return;
         if (!_.isUndefined(this.req.params.command)) {
-            if (this.req.params.command.trim().replace(/^\/*/, '').startsWith(Auth.server().service.object.stop)) {
+            if (_.startsWith(this.req.params.command.trim().replace(/^\/*/, ''), Auth.server().service.object.stop)) {
                 if (!Auth.allowed('s:power:stop')) return;
             }
             Auth.server().command(this.req.params.command, err => {
@@ -346,7 +346,7 @@ class RouteController {
             if (response.statusCode === 200) {
                 try {
                     const json = JSON.parse(body);
-                    if (typeof json !== 'undefined' && json.path) {
+                    if (!_.isUndefined(json) && json.path) {
                         const Server = Auth.allServers();
                         // Does the server even exist?
                         if (_.isUndefined(Server[json.server])) {

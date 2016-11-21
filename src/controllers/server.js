@@ -97,7 +97,7 @@ class Server extends EventEmitter {
     }
 
     hasPermission(perm, token) {
-        if (typeof perm !== 'undefined' && typeof token !== 'undefined') {
+        if (!_.isUndefined(perm) && !_.isUndefined(token)) {
             if (!_.isUndefined(this.json.keys) && token in this.json.keys) {
                 if (_.includes(this.json.keys[token], perm) || _.includes(this.json.keys[token], 's:*')) {
                     // Check Suspension Status
@@ -235,9 +235,10 @@ class Server extends EventEmitter {
                 return next(err);
             }
 
-            if (typeof reboot !== 'undefined') {
-                // @TODO: Handle the need for a reboot here.
+            if (!_.isUndefined(reboot)) {
+                this.restart(next);
             }
+
             return next();
         });
     }
@@ -296,7 +297,7 @@ class Server extends EventEmitter {
         }
 
         // Prevent a user sending a stop command manually from crashing the server.
-        if (command.trim().replace(/^\/*/, '').startsWith(this.service.object.stop)) {
+        if (_.startsWith(command.trim().replace(/^\/*/, ''), this.service.object.stop)) {
             this.setStatus(Status.STOPPING);
         }
 
@@ -369,14 +370,15 @@ class Server extends EventEmitter {
         const dataPath = Path.join(Config.get('sftp.path', '/srv/data'), this.json.user, '/data');
         let returnPath = dataPath;
 
-        if (typeof location !== 'undefined' && location.replace(/\s+/g, '').length > 0) {
+        if (!_.isUndefined(location) && location.replace(/\s+/g, '').length > 0) {
             returnPath = Path.join(dataPath, Path.normalize(Querystring.unescape(location)));
         }
 
         // Path is good, return it.
-        if (returnPath.startsWith(dataPath)) {
+        if (_.startsWith(returnPath, dataPath)) {
             return returnPath;
         }
+
         return dataPath;
     }
 
@@ -477,7 +479,7 @@ class Server extends EventEmitter {
         // Ports are a pain in the butt.
         if (!_.isUndefined(newObject.build)) {
             _.forEach(newObject.build, (obj, ident) => {
-                if (ident.endsWith('|overwrite')) {
+                if (_.endsWith(ident, '|overwrite')) {
                     const item = ident.split('|')[0];
                     newObject.build[item] = obj;
                     delete newObject.build[ident];
