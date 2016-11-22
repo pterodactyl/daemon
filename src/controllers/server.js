@@ -220,7 +220,7 @@ class Server extends EventEmitter {
             callback => {
                 this.service.onAttached(callback);
             },
-        ], (err, reboot) => {
+        ], err => {
             if (err) {
                 if (err.statusCode === 404) { // container not found
                     this.log.error('The container for this server could not be found. Trying to rebuild it.');
@@ -233,10 +233,6 @@ class Server extends EventEmitter {
 
                 this.log.error(err);
                 return next(err);
-            }
-
-            if (!_.isUndefined(reboot)) {
-                this.restart(next);
             }
 
             return next();
