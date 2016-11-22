@@ -430,7 +430,7 @@ class Docker {
             this.server.log.debug('Removing old server container...');
 
             const newContainerInfo = {
-                id: data[2].id,
+                id: data.create_container.id,
                 image: config.image,
             };
 
