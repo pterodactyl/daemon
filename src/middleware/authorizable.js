@@ -48,17 +48,24 @@ class AuthorizationMiddleware {
             return false;
         }
 
+        if (!this.token) {
+            this.res.send(403, { 'error': 'Missing required X-Access-Token header.' });
+            return false;
+        }
+
         // Master Controller; permissions not reliant on a specific server being defined.
         if (_.startsWith(perm, 'c:')) {
             if (_.includes(configKeys, this.token)) {
                 return true;
             }
+            this.res.send(403, { 'error': 'You do not have permission to perform this action aganist the system.' });
+            return false;
         }
 
         // All other permissions controllers, do rely on a specific server being defined.
         // Both 'c:*' and 'g:*' permissions use the same permission checking, but 'g:*' permissions
         // require that a server header also be sent with the request.
-        if (!this.token || !this.uuid) {
+        if (!this.uuid) {
             this.res.send(403, { 'error': 'Missing required X-Access-Server headers.' });
             return false;
         }
@@ -69,6 +76,7 @@ class AuthorizationMiddleware {
                     return true;
                 }
             }
+
             if (_.startsWith(perm, 's:')) {
                 if (_.includes(configKeys, this.token)) {
                     return true;
@@ -77,6 +85,9 @@ class AuthorizationMiddleware {
                     return true;
                 }
             }
+
+            this.res.send(403, { 'error': 'You do not have permission to perform this action aganist a server.' });
+            return false;
         }
 
         this.res.send(403, { 'error': 'You do not have permission to perform that action on the system.' });

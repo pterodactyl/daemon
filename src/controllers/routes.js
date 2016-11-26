@@ -54,7 +54,7 @@ class RouteController {
 
     // Returns Index
     getIndex() {
-        if (!Auth.allowed('g:info')) return;
+        if (!Auth.allowed('c:info')) return;
         this.res.send({
             name: 'Pterodactyl Management Daemon',
             version: Package.version,
