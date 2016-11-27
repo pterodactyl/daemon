@@ -91,6 +91,7 @@ class Server extends EventEmitter {
         const Service = rfr(Util.format('src/services/%s/index.js', this.json.service.type));
         this.service = new Service(this);
 
+        this.pack = new Pack(this);
         this.socketIO = new Websocket(this).init();
         this.uploadSocket = new UploadSocket(this).init();
         this.fs = new FileSystem(this);
