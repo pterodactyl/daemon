@@ -26,8 +26,8 @@
   },
   "engines": {
     "node": ">=6.0.0",
-    "os" : [
-        "linux"
+    "os": [
+      "linux"
     ]
   },
   "homepage": "https://github.com/Pterodactyl/Daemon#readme",
@@ -45,6 +45,7 @@
     "bunyan": "1.8.5",
     "carrier": "0.3.0",
     "chokidar": "1.6.1",
+    "compare-versions": "3.0.0",
     "create-output-stream": "0.0.1",
     "dockerode": "2.3.1",
     "extendify": "1.0.0",

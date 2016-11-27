@@ -25,6 +25,8 @@
 const rfr = require('rfr');
 const Async = require('async');
 const Proc = require('child_process');
+const Request = require('request');
+const compareVersions = require('compare-versions');
 
 const Log = rfr('src/helpers/logger.js');
 const Package = rfr('package.json');
@@ -48,6 +50,34 @@ const Stats = new LiveStats();
 
 Log.info('Modules loaded, starting Pterodactyl Daemon...');
 Async.auto({
+    check_version: callback => {
+        Request.get('https://cdn.pterodactyl.io/releases/latest.json', {
+            timeout: 5000,
+        }, (err, response, body) => {
+            if (err) {
+                Log.warn(err, 'Download action failed due to an error with the request.');
+                return this.res.send(500, { 'error': 'An error occured while attempting to perform this request.' });
+            }
+
+            if (response.statusCode === 200) {
+                const json = JSON.parse(body);
+
+                if (compareVersions(Package.version, json.daemon) >= 0) {
+                    Log.info('Pterodactyl Daemon is up-to-date!');
+                    return callback();
+                }
+
+                Log.warn('+ ----- WARNING! ----- +');
+                Log.warn(`Pterodactyl Daemon is not up-to-date! You are running version ${Package.version} and the latest version is ${json.daemon}.`);
+                Log.warn(`Find out more here: https://github.com/Pterodactyl/Daemon/releases/v${json.daemon}`);
+                Log.warn('+ -------------------- +');
+                return callback();
+            }
+
+            Log.warn('Unable to check if this daemon is up to date!');
+            return callback();
+        });
+    },
     check_network: callback => {
         Log.info('Checking container networking environment...');
         Network.init(callback);
