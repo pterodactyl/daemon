@@ -31,12 +31,14 @@ const Mime = require('mime');
 const Path = require('path');
 const Crypto = require('crypto');
 const _ = require('lodash');
+const Os = require('os');
 
 const ConfigHelper = rfr('src/helpers/config.js');
 const ResponseHelper = rfr('src/helpers/responses.js');
 const BuilderController = rfr('src/controllers/builder.js');
 const DeleteController = rfr('src/controllers/delete.js');
 const Log = rfr('src/helpers/logger.js');
+const Package = rfr('package.json');
 
 const Config = new ConfigHelper();
 let Responses;
@@ -52,7 +54,20 @@ class RouteController {
 
     // Returns Index
     getIndex() {
-        this.res.send('Pterodactyl Management Daemon');
+        if (!Auth.allowed('c:info')) return;
+        this.res.send({
+            name: 'Pterodactyl Management Daemon',
+            version: Package.version,
+            system: {
+                type: Os.type(),
+                arch: Os.arch(),
+                platform: Os.platform(),
+                release: Os.release(),
+                cpus: Os.cpus().length,
+                freemem: Os.freemem(),
+            },
+            network: Os.networkInterfaces(),
+        });
     }
 
     // Saves Daemon Configuration to Disk
@@ -169,7 +184,7 @@ class RouteController {
     postServerCommand() {
         if (!Auth.allowed('s:command')) return;
         if (!_.isUndefined(this.req.params.command)) {
-            if (this.req.params.command.trim().replace(/^\/*/, '').startsWith(Auth.server().service.object.stop)) {
+            if (_.startsWith(this.req.params.command.trim().replace(/^\/*/, ''), Auth.server().service.object.stop)) {
                 if (!Auth.allowed('s:power:stop')) return;
             }
             Auth.server().command(this.req.params.command, err => {
@@ -331,7 +346,7 @@ class RouteController {
             if (response.statusCode === 200) {
                 try {
                     const json = JSON.parse(body);
-                    if (typeof json !== 'undefined' && json.path) {
+                    if (!_.isUndefined(json) && json.path) {
                         const Server = Auth.allServers();
                         // Does the server even exist?
                         if (_.isUndefined(Server[json.server])) {

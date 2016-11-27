@@ -1,6 +1,49 @@
 # Changelog
 This file is a running track of new features and fixes to each version of the daemon released starting with `v0.2.0`.
 
+## v0.3.3 (Barefoot Barbosania)
+### Added
+* Daemon now checks if it is up-to-date when booting.
+
+### Fixed
+* Fixes hardcoded path for SFTP containers that was causing a whole host of issues on some systems.
+* Fixes previously known issue where decompressing large files through the file manager throws a `EMFILE: too many open files` error.
+* Fixes permissions and error response for URLs.
+
+### Changed
+* Updates dependencies across the platform.
+* Docker containers are now named with the template `<sftp username>:<randomstring:3>` for easier identification when running `docker ps (-a)`.
+* Changes to deletion and creation function to run certain aspects in parallel to increase speed by utilizing `Async.auto()`. Most notable in the delete function.
+* Compression and Decompression now use native `tar` and `unzip` modules to reduce memory footprint and keep things speedy.
+* Chown function now uses native module for speed and reliability purposes.
+* Startup function modified to run more processes in parallel where possible to cut down on startup time.
+
+### Deprecated
+* Daemon now requires Nodejs `v6` or `v7` to run. Previous versions are no longer supported.
+* Daemon no longer supports Windows ecosystems due to changes in chown and compression functions.
+
+## v0.3.2 (Barefoot Barbosania)
+
+### Fixed
+* Fixes bug where Bungeecord and Spigot could not make use of certain features due to security restrictions. This release removes the `noexec` flag from the `/tmp` directory.
+* Fixes bug where daemon would report an extraneous error when starting a container marked for rebuild.
+* Fixes bug in certain file parsers that prevented the proper functioning of the parser.
+
+## v0.3.1 (Barefoot Barbosania)
+
+### Added
+* Support for `*` node in  config file search, as well as support for search and replace in config values. _Only applies to `yaml` and `json` parsers._
+* Calling base route now returns system information for authenticated admins using the global token.
+
+### Changed
+* Services now properly extend the `Core` class so that you only need to add functions and extend `parent()` if something is being done differently.
+* Changed `{{ build.<options> }}` replacements in service configurations to use `server.` or `config.` starts to identify values that should be replaced. **This is a breaking change from `0.3.0` ONLY if you are using custom templates.**
+
+### Fixed
+* Fixes a fatal error that was thrown when rebooting servers at times even though there was no actual server error.
+* Fixes a bug with the docker gateway being assigned with a subnet when it should not.
+* Fixes a bug that didn't detected bungeecord server's first startup, preventing the correct allocation binding. _Bungeecord servers **cannot run** on `:25577` without triggering this reboot line, apologies in advance._
+
 ## v0.3.0 (Barefoot Barbosania)
 
 🎉🎉

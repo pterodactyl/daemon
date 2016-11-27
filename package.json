@@ -24,43 +24,48 @@
   "bugs": {
     "url": "https://github.com/Pterodactyl/Daemon/issues"
   },
+  "engines": {
+    "node": ">=6.0.0",
+    "os": [
+      "linux"
+    ]
+  },
   "homepage": "https://github.com/Pterodactyl/Daemon#readme",
   "devDependencies": {
-    "eslint": "3.7.1",
-    "eslint-config-airbnb": "12.0.0",
-    "eslint-plugin-import": "1.16.0",
-    "eslint-plugin-jsx-a11y": "2.2.2",
-    "eslint-plugin-lodash": "1.10.3",
-    "eslint-plugin-react": "6.3.0"
+    "eslint": "3.10.2",
+    "eslint-config-airbnb": "13.0.0",
+    "eslint-plugin-import": "2.2.0",
+    "eslint-plugin-jsx-a11y": "2.2.3",
+    "eslint-plugin-lodash": "2.2.0",
+    "eslint-plugin-react": "6.7.1"
   },
   "dependencies": {
     "ansi-escape-sequences": "3.0.0",
-    "async": "2.0.1",
-    "bunyan": "1.8.1",
+    "async": "2.1.2",
+    "bunyan": "1.8.5",
     "carrier": "0.3.0",
-    "chokidar": "1.6.0",
-    "chownr": "1.0.1",
+    "chokidar": "1.6.1",
+    "compare-versions": "3.0.0",
     "create-output-stream": "0.0.1",
-    "decompress": "4.0.0",
     "dockerode": "2.3.1",
     "extendify": "1.0.0",
-    "fs-extra": "0.30.0",
+    "fs-extra": "1.0.0",
     "gamedig": "0.2.25",
     "ini": "1.3.4",
+    "ip-cidr": "0.0.4",
     "is-json": "2.0.1",
     "isstream": "0.1.2",
-    "lodash": "4.16.4",
+    "lodash": "4.17.2",
     "mime": "1.3.4",
     "mmmagic": "0.4.5",
-    "moment": "2.15.1",
-    "node-yaml": "3.0.2",
+    "moment": "2.16.0",
+    "node-yaml": "3.0.3",
     "properties-parser": "0.3.1",
-    "randomstring": "1.1.3",
-    "request": "2.75.0",
-    "restify": "4.1.1",
+    "randomstring": "1.1.5",
+    "request": "2.79.0",
+    "restify": "4.3.0",
     "rfr": "1.2.3",
     "socket.io": "1.5.0",
-    "socketio-file-upload": "0.5.0",
-    "tar-fs": "1.13.2"
+    "socketio-file-upload": "0.5.0"
   }
 }

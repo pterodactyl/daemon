@@ -28,10 +28,9 @@ const Path = require('path');
 const Chokidar = require('chokidar');
 const _ = require('lodash');
 const Mmm = require('mmmagic');
-const decompressEngine = require('decompress');
-const Tar = require('tar-fs');
 const RandomString = require('randomstring');
-const chownr = require('chownr');
+const Process = require('child_process');
+const Util = require('util');
 
 const Magic = Mmm.Magic;
 const Mime = new Magic(Mmm.MAGIC_MIME_TYPE);
@@ -75,7 +74,17 @@ class FileSystem {
             chownTarget = this.server.path(file);
         }
 
-        chownr(chownTarget, this.server.json.build.user, this.server.json.build.user, next);
+        const Exec = Process.spawn('chown', ['-R', Util.format('%d:%d', this.server.json.build.user, this.server.json.build.user), chownTarget], {});
+        Exec.on('error', execErr => {
+            this.server.log.error(execErr);
+            return next(new Error('There was an error while attempting to set ownership of files.'));
+        });
+        Exec.on('exit', (code, signal) => {
+            if (code !== 0) {
+                return next(new Error(`Unable to set ownership of files properly, exited with code ${code} signal ${signal}.`));
+            }
+            return next();
+        });
     }
 
     isSelf(moveTo, moveFrom) {
@@ -267,32 +276,43 @@ class FileSystem {
         if (!_.isArray(files)) {
             const fromFile = this.server.path(files);
             const toDir = fromFile.substring(0, _.lastIndexOf(fromFile, '/'));
-            decompressEngine(fromFile, toDir, {
-                strip: 1,
-            }).then(out => {
-                Async.eachOfLimit(out, 10, (v, k, eachCallback) => {
-                    Fs.chown(Path.join(toDir, v.path), this.server.json.build.user, this.server.json.build.user, eachCallback);
-                }, err => {
-                    next(err);
-                });
-            }).catch(next);
+            this.systemDecompress(fromFile, toDir, next);
         } else if (_.isArray(files)) {
             Async.eachLimit(files, 1, (file, callback) => {
                 const fromFile = this.server.path(file);
                 const toDir = fromFile.substring(0, _.lastIndexOf(fromFile, '/'));
-                decompressEngine(fromFile, toDir, {
-                    strip: 1,
-                }).then(out => {
-                    Async.eachOfLimit(out, 10, (v, k, eachCallback) => {
-                        Fs.chown(this.server.path(Path.join(toDir, v.path)), this.server.json.build.user, this.server.json.build.user, eachCallback);
-                    }, err => {
-                        next(err);
-                    });
-                }).catch(callback);
+                this.systemDecompress(fromFile, toDir, callback);
             }, next);
         } else {
             return next(new Error('Invalid datatype passed to decompression function.'));
         }
+    }
+
+    systemDecompress(file, to, next) {
+        Mime.detectFile(file, (err, result) => {
+            if (err) return next(err);
+
+            let Exec;
+            if (result === 'application/x-gzip' || result === 'application/gzip') {
+                Exec = Process.spawn('tar', ['xzf', file, '-C', to], {});
+            } else if (result === 'application/zip') {
+                Exec = Process.spawn('unzip', [file, '-d', to], {});
+            } else {
+                return next(new Error(`Decompression of file failed: ${result} is not a decompessible Mimetype.`));
+            }
+
+            Exec.on('error', execErr => {
+                this.server.log.error(execErr);
+                return next(new Error('There was an error while attempting to decompress this file.'));
+            });
+            Exec.on('exit', (code, signal) => {
+                if (code !== 0) {
+                    return next(new Error(`Decompression of file exited with code ${code} signal ${signal}.`));
+                }
+
+                this.chown(to, next);
+            });
+        });
     }
 
     // Unlike other functions, if multiple files and folders are passed
@@ -307,13 +327,7 @@ class FileSystem {
             if (this.isSelf(to, files)) {
                 return next(new Error('Unable to compress folder into itself.'));
             }
-
-            const Stream = Fs.createWriteStream(Path.join(this.server.path(to), SaveAsName));
-            Tar.pack(this.server.path(files)).pipe(Stream);
-            Stream.on('error', next);
-            Stream.on('close', () => {
-                next(null, SaveAsName);
-            });
+            this.systemCompress([_.replace(this.server.path(files), `${this.server.path()}/`, '')], Path.join(this.server.path(to), SaveAsName), next);
         } else if (_.isArray(files)) {
             const FileEntries = [];
             Async.series([
@@ -324,7 +338,7 @@ class FileSystem {
                             return eachCallback();
                         }
 
-                        FileEntries.push(_.replace(this.server.path(file), this.server.path(), ''));
+                        FileEntries.push(_.replace(this.server.path(file), `${this.server.path()}/`, ''));
                         eachCallback();
                     }, callback);
                 },
@@ -332,13 +346,7 @@ class FileSystem {
                     if (_.isEmpty(FileEntries)) {
                         return next(new Error('None of the files passed to the command were valid.'));
                     }
-
-                    const Stream = Fs.createWriteStream(Path.join(this.server.path(to), SaveAsName));
-                    Tar.pack(this.server.path(), {
-                        entries: FileEntries,
-                    }).pipe(Stream);
-                    Stream.on('error', callback);
-                    Stream.on('close', callback);
+                    this.systemCompress(FileEntries, Path.join(this.server.path(to), SaveAsName), callback);
                 },
             ], err => {
                 next(err, SaveAsName);
@@ -346,6 +354,27 @@ class FileSystem {
         } else {
             return next(new Error('Invalid datatype passed to decompression function.'));
         }
+    }
+
+    systemCompress(files, archive, next) {
+        const Exec = Process.spawn('tar', ['czf', archive, files.join(' ')], {
+            cwd: this.server.path(),
+        });
+
+        Exec.on('error', execErr => {
+            this.server.log.error(execErr);
+            return next(new Error('There was an error while attempting to compress this folder.'));
+        });
+        Exec.on('exit', (code, signal) => {
+            if (code !== 0) {
+                return next(new Error(`Compression of files exited with code ${code} signal ${signal}.`));
+            }
+
+            this.chown(archive, err => {
+                if (err) return next(err);
+                return next(null, Path.basename(archive));
+            });
+        });
     }
 
     directory(path, next) {

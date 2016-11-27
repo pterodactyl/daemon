@@ -64,6 +64,7 @@ class Server extends EventEmitter {
             query: null,
         };
 
+        this.shouldRestart = false;
         this.knownWrite = false;
         this.buildInProgress = false;
         this.configLocation = Path.join(__dirname, '../../config/servers/', this.uuid, 'server.json');
@@ -96,7 +97,7 @@ class Server extends EventEmitter {
     }
 
     hasPermission(perm, token) {
-        if (typeof perm !== 'undefined' && typeof token !== 'undefined') {
+        if (!_.isUndefined(perm) && !_.isUndefined(token)) {
             if (!_.isUndefined(this.json.keys) && token in this.json.keys) {
                 if (_.includes(this.json.keys[token], perm) || _.includes(this.json.keys[token], 's:*')) {
                     // Check Suspension Status
@@ -219,7 +220,7 @@ class Server extends EventEmitter {
             callback => {
                 this.service.onAttached(callback);
             },
-        ], (err, reboot) => {
+        ], err => {
             if (err) {
                 if (err.statusCode === 404) { // container not found
                     this.log.error('The container for this server could not be found. Trying to rebuild it.');
@@ -234,9 +235,6 @@ class Server extends EventEmitter {
                 return next(err);
             }
 
-            if (typeof reboot !== 'undefined') {
-                // @TODO: Handle the need for a reboot here.
-            }
             return next();
         });
     }
@@ -271,21 +269,12 @@ class Server extends EventEmitter {
     }
 
     restart(next) {
-        Async.series([
-            callback => {
-                if (this.status !== Status.OFF) {
-                    this.once('is:OFF', callback);
-                    this.stop(err => {
-                        if (err) return callback(err);
-                    });
-                } else {
-                    return callback();
-                }
-            },
-            callback => {
-                this.start(callback);
-            },
-        ], next);
+        if (this.status !== Status.OFF) {
+            this.shouldRestart = true;
+            this.stop(next);
+        } else {
+            this.start(next);
+        }
     }
 
     /**
@@ -304,7 +293,7 @@ class Server extends EventEmitter {
         }
 
         // Prevent a user sending a stop command manually from crashing the server.
-        if (command.trim().replace(/^\/*/, '').startsWith(this.service.object.stop)) {
+        if (_.startsWith(command.trim().replace(/^\/*/, ''), this.service.object.stop)) {
             this.setStatus(Status.STOPPING);
         }
 
@@ -318,6 +307,15 @@ class Server extends EventEmitter {
         if (this.status === Status.OFF || this.status === Status.STOPPING) {
             this.setStatus(Status.OFF);
             this.service.onStop();
+
+            if (this.shouldRestart) {
+                this.shouldRestart = false;
+                this.start(err => {
+                    if (err && !_.includes(err.message, 'Server is currently queued for a container rebuild') && !_.includes(err.message, 'Server container was not found and needs to be rebuilt.')) {
+                        this.log.error(err);
+                    }
+                });
+            }
             return;
         }
 
@@ -368,14 +366,15 @@ class Server extends EventEmitter {
         const dataPath = Path.join(Config.get('sftp.path', '/srv/data'), this.json.user, '/data');
         let returnPath = dataPath;
 
-        if (typeof location !== 'undefined' && location.replace(/\s+/g, '').length > 0) {
+        if (!_.isUndefined(location) && location.replace(/\s+/g, '').length > 0) {
             returnPath = Path.join(dataPath, Path.normalize(Querystring.unescape(location)));
         }
 
         // Path is good, return it.
-        if (returnPath.startsWith(dataPath)) {
+        if (_.startsWith(returnPath, dataPath)) {
             return returnPath;
         }
+
         return dataPath;
     }
 
@@ -476,7 +475,7 @@ class Server extends EventEmitter {
         // Ports are a pain in the butt.
         if (!_.isUndefined(newObject.build)) {
             _.forEach(newObject.build, (obj, ident) => {
-                if (ident.endsWith('|overwrite')) {
+                if (_.endsWith(ident, '|overwrite')) {
                     const item = ident.split('|')[0];
                     newObject.build[item] = obj;
                     delete newObject.build[ident];

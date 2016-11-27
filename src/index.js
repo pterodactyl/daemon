@@ -24,6 +24,9 @@
  */
 const rfr = require('rfr');
 const Async = require('async');
+const Proc = require('child_process');
+const Request = require('request');
+const compareVersions = require('compare-versions');
 
 const Log = rfr('src/helpers/logger.js');
 const Package = rfr('package.json');
@@ -45,31 +48,70 @@ const Initialize = new Initializer();
 const SFTP = new SFTPController(true);
 const Stats = new LiveStats();
 
-Async.series([
-    callback => {
-        Log.info('Starting Pterodactyl Daemon...');
+Log.info('Modules loaded, starting Pterodactyl Daemon...');
+Async.auto({
+    check_version: callback => {
+        Request.get('https://cdn.pterodactyl.io/releases/latest.json', {
+            timeout: 5000,
+        }, (err, response, body) => {
+            if (err) {
+                Log.warn(err, 'Download action failed due to an error with the request.');
+                return this.res.send(500, { 'error': 'An error occured while attempting to perform this request.' });
+            }
+
+            if (response.statusCode === 200) {
+                const json = JSON.parse(body);
+
+                if (compareVersions(Package.version, json.daemon) >= 0) {
+                    Log.info('Pterodactyl Daemon is up-to-date!');
+                    return callback();
+                }
+
+                Log.warn('+ ----- WARNING! ----- +');
+                Log.warn(`Pterodactyl Daemon is not up-to-date! You are running version ${Package.version} and the latest version is ${json.daemon}.`);
+                Log.warn(`Find out more here: https://github.com/Pterodactyl/Daemon/releases/v${json.daemon}`);
+                Log.warn('+ -------------------- +');
+                return callback();
+            }
+
+            Log.warn('Unable to check if this daemon is up to date!');
+            return callback();
+        });
+    },
+    check_network: callback => {
         Log.info('Checking container networking environment...');
         Network.init(callback);
     },
-    callback => {
+    setup_network: ['check_network', (r, callback) => {
         Log.info('Checking pterodactyl0 interface and setting configuration values.');
         Network.interface(callback);
-    },
-    callback => {
+    }],
+    start_sftp: callback => {
         Log.info('Attempting to start SFTP service container...');
-        SFTP.startService(callback);
+        SFTP.startService(err => {
+            if (err) return callback(err);
+            Log.info('SFTP container successfully booted.');
+            return callback();
+        });
     },
-    callback => {
-        Log.info('SFTP service container booted!');
+    check_tar: callback => {
+        Proc.exec('tar --help', {}, callback);
+        Log.debug('Tar module found on server.');
+    },
+    check_zip: callback => {
+        Proc.exec('unzip --help', {}, callback);
+        Log.debug('Unzip module found on server.');
+    },
+    init_servers: ['setup_network', (r, callback) => {
         Log.info('Attempting to load servers and initialize daemon...');
         Initialize.init(callback);
-    },
-    callback => {
+    }],
+    init_websocket: ['init_servers', (r, callback) => {
         Log.info('Configuring websocket for daemon stats...');
         Stats.init();
         return callback();
-    },
-], err => {
+    }],
+}, err => {
     if (err) {
         // Log a fatal error and exit.
         // We need this to initialize successfully without any errors.

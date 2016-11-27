@@ -27,6 +27,7 @@ const NETWORK_NAME = 'pterodactyl_nw';
 const rfr = require('rfr');
 const Dockerode = require('dockerode');
 const _ = require('lodash');
+const CIDR = require('ip-cidr');
 
 const Log = rfr('src/helpers/logger.js');
 const LoadConfig = rfr('src/helpers/config.js');
@@ -88,10 +89,25 @@ class Network {
                 return next(new Error('No gateway could be found for pterodactyl0.'));
             }
 
-            Log.info(`Gateway detected as ${_.get(data, 'IPAM.Config[0].Gateway')} for pterodactyl0.`);
+            const Gateway = new CIDR(_.get(data, 'IPAM.Config[0].Gateway', '172.18.0.1'));
+            let IPGateway = null;
+            if (!Gateway.isValid()) {
+                return next(new Error('The pterodactyl0 network gateway is invalid.'));
+            }
+
+            const GatewayRange = Gateway.toRange();
+            if (GatewayRange[0] === GatewayRange[1]) {
+                IPGateway = GatewayRange[0];
+            } else {
+                const Split = _.split(GatewayRange[0], '.');
+                Split[3] = Number(_.last(Split)) + 1;
+                IPGateway = Split.join('.');
+            }
+
+            Log.info(`Gateway detected as ${IPGateway} for pterodactyl0.`);
             Config.modify({
                 docker: {
-                    interface: _.get(data, 'IPAM.Config[0].Gateway'),
+                    interface: IPGateway,
                 },
             }, next);
         });
