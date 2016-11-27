@@ -22,29 +22,44 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+const rfr = require('rfr');
 const Fs = require('fs-extra');
 const _ = require('lodash');
 const extendify = require('extendify');
+const Cache = require('memory-cache');
 
 class Config {
 
     constructor() {
-        this.configJson = this.raw();
-        this.docker0 = null;
+        if (_.isNull(Cache.get('config'))) {
+            Cache.put('config', this.raw());
+        }
     }
 
     raw() {
-        return Fs.readJsonSync('./config/core.json');
+        try {
+            return rfr('config/core.json');
+        } catch (ex) {
+            if (ex.code === 'MODULE_NOT_FOUND') {
+                console.error('+ ------------------------------------ +'); // eslint-disable-line
+                console.error('|  No config file located for Daemon!  |'); // eslint-disable-line
+                console.error('|  Please create a configuration file  |'); // eslint-disable-line
+                console.error('|  at config/core.json with the info   |'); // eslint-disable-line
+                console.error('|  provided by Pterodactyl Panel when  |'); // eslint-disable-line
+                console.error('|  you created this node.              |'); // eslint-disable-line
+                console.error('+ ------------------------------------ +'); // eslint-disable-line
+                console.trace(ex.message); // eslint-disable-line
+                process.exit(1);
+            }
+            throw ex;
+        }
     }
 
     get(key, defaultResponse) {
         let getObject;
         try {
-            this.configJson = this.raw(); // Without this things don't ever end up updated...
-            getObject = _.reduce(key.split('.'), (o, i) => o[i], this.configJson);
-        } catch (ex) {
-            //
-        }
+            getObject = _.reduce(key.split('.'), (o, i) => o[i], Cache.get('config'));
+        } catch (ex) { _.noop(); }
 
         if (!_.isUndefined(getObject)) {
             return getObject;
@@ -59,7 +74,7 @@ class Config {
         }
 
         Fs.writeJson('./config/core.json', json, err => {
-            if (!err) this.configJson = json;
+            if (!err) Cache.put('config', json);
             return next(err);
         });
     }
@@ -71,7 +86,14 @@ class Config {
             inPlace: false,
             arrays: 'replace',
         });
-        Fs.writeJson('./config/core.json', deepExtend(this.raw(), object), next);
+        const modifiedJson = deepExtend(Cache.get('config'), object);
+
+        Fs.writeJson('./config/core.json', modifiedJson, err => {
+            if (err) return next(err);
+
+            Cache.put('config', modifiedJson);
+            return next();
+        });
     }
 }
 
