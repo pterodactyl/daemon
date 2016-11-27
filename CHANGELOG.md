@@ -1,6 +1,13 @@
 # Changelog
 This file is a running track of new features and fixes to each version of the daemon released starting with `v0.2.0`.
 
+## v0.4.0 (Curvaceous Caviramus)
+### Added
+* Added configurable docker policy to allow for more lax security settings if needed. The full list of policies can be found [in our documentation](https://daemon.pterodactyl.io/docs/security-policies).
+
+### Changed
+* Configuration for daemon is now loaded into memory and all requests for config are passed to that cache. Reduces number of file reads from >20 to 1 on boot.
+
 ## v0.3.3 (Barefoot Barbosania)
 ### Added
 * Daemon now checks if it is up-to-date when booting.

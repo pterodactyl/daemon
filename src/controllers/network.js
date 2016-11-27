@@ -62,12 +62,12 @@ class Network {
         DockerController.createNetwork({
             Name: NETWORK_NAME,
             Driver: 'bridge',
-            EnableIPv6: true,
-            Internal: false,
+            EnableIPv6: Config.get('docker.policy.network.ipv6', true),
+            Internal: Config.get('docker.policy.network.internal', false),
             Options: {
                 'com.docker.network.bridge.default_bridge': 'false',
-                'com.docker.network.bridge.enable_icc': 'false',
-                'com.docker.network.bridge.enable_ip_masquerade': 'true',
+                'com.docker.network.bridge.enable_icc': Config.get('docker.policy.network.enable_icc', 'false'),
+                'com.docker.network.bridge.enable_ip_masquerade': Config.get('docker.policy.network.enable_ip_masquerade', 'true'),
                 'com.docker.network.bridge.host_binding_ipv4': '0.0.0.0',
                 'com.docker.network.bridge.name': 'pterodactyl0',
                 'com.docker.network.driver.mtu': '1500',
