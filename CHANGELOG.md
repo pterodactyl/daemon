@@ -2,10 +2,13 @@
 This file is a running track of new features and fixes to each version of the daemon released starting with `v0.2.0`.
 
 ## v0.3.3 [Unreleased]
+### Added
+* Daemon now checks if it is up-to-date when booting.
 
 ### Fixed
 * Fixes hardcoded path for SFTP containers that was causing a whole host of issues on some systems.
 * Fixes previously known issue where decompressing large files through the file manager throws a `EMFILE: too many open files` error.
+* Fixes permissions and error response for URLs.
 
 ### Changed
 * Updates dependencies across the platform.
