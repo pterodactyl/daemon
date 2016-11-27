@@ -377,7 +377,7 @@ class Docker {
                             '/etc/timezone:/etc/timezone:ro',
                         ],
                         Tmpfs: {
-                            '/tmp': 'rw,exec,nosuid,size=50M',
+                            '/tmp': Config.get('docker.policy.container.tmpfs', 'rw,exec,nosuid,size=50M'),
                         },
                         PortBindings: bindings,
                         OomKillDisable: config.oom_disabled || false,
@@ -395,13 +395,13 @@ class Docker {
                             `container:${Config.get('docker.interface')}`,
                         ],
                         LogConfig: {
-                            Type: 'none',
+                            Type: Config.get('docker.policy.container.log_driver', 'none'),
                         },
                         SecurityOpt: [
                             'no-new-privileges',
                         ],
-                        ReadonlyRootfs: true,
-                        CapDrop: [
+                        ReadonlyRootfs: Config.get('docker.policy.container.readonly_root', true),
+                        CapDrop: Config.get('docker.policy.container.cap_drop', [
                             'setpcap',
                             'mknod',
                             'audit_write',
@@ -416,7 +416,7 @@ class Docker {
                             'net_bind_service',
                             'sys_chroot',
                             'setfcap',
-                        ],
+                        ]),
                         NetworkMode: 'pterodactyl_nw',
                     },
                 }, (err, container) => {
