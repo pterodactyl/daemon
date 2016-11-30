@@ -325,6 +325,9 @@ class Docker {
                 }, callback);
             },
             set_environment: callback => {
+                config.env.SERVER_MEMORY = config.memory;
+                config.env.SERVER_IP = config.default.ip;
+                config.env.SERVER_PORT = config.default.port;
                 Async.eachOf(config.env, (value, index, eachCallback) => {
                     if (_.isNull(value)) return eachCallback();
                     environment.push(Util.format('%s=%s', index, value));
@@ -333,11 +336,6 @@ class Docker {
             },
             create_container: ['update_images', 'update_ports', 'set_environment', (r, callback) => {
                 this.server.log.debug('Creating new container...');
-
-                // Add some additional environment variables
-                config.env.SERVER_MEMORY = config.memory;
-                config.env.SERVER_IP = config.default.ip;
-                config.env.SERVER_PORT = config.default.port;
 
                 // How Much Swap?
                 let swapSpace = 0;
