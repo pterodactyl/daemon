@@ -294,9 +294,17 @@ class FileSystem {
 
             let Exec;
             if (result === 'application/x-gzip' || result === 'application/gzip') {
-                Exec = Process.spawn('tar', ['xzf', file, '-C', to], {});
+                Exec = Process.spawn('tar', ['xzf', Path.basename(file), '-C', to], {
+                    cwd: Path.dirname(file),
+                    uid: this.server.json.build.user,
+                    gid: this.server.json.build.user,
+                });
             } else if (result === 'application/zip') {
-                Exec = Process.spawn('unzip', [file, '-d', to], {});
+                Exec = Process.spawn('unzip', ['-q', '-o', Path.basename(file), '-d', to], {
+                    cwd: Path.dirname(file),
+                    uid: this.server.json.build.user,
+                    gid: this.server.json.build.user,
+                });
             } else {
                 return next(new Error(`Decompression of file failed: ${result} is not a decompessible Mimetype.`));
             }
@@ -310,7 +318,7 @@ class FileSystem {
                     return next(new Error(`Decompression of file exited with code ${code} signal ${signal}.`));
                 }
 
-                this.chown(to, next);
+                return next();
             });
         });
     }
@@ -359,6 +367,8 @@ class FileSystem {
     systemCompress(files, archive, next) {
         const Exec = Process.spawn('tar', ['czf', archive, files.join(' ')], {
             cwd: this.server.path(),
+            uid: this.server.json.build.user,
+            gid: this.server.json.build.user,
         });
 
         Exec.on('error', execErr => {
@@ -370,10 +380,7 @@ class FileSystem {
                 return next(new Error(`Compression of files exited with code ${code} signal ${signal}.`));
             }
 
-            this.chown(archive, err => {
-                if (err) return next(err);
-                return next(null, Path.basename(archive));
-            });
+            return next(null, Path.basename(archive));
         });
     }
 
