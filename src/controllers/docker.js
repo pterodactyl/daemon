@@ -395,9 +395,9 @@ class Docker {
                         LogConfig: {
                             Type: Config.get('docker.policy.container.log_driver', 'none'),
                         },
-                        SecurityOpt: [
+                        SecurityOpt: Config.get('docker.policy.container.securityopts', [
                             'no-new-privileges',
-                        ],
+                        ]),
                         ReadonlyRootfs: Config.get('docker.policy.container.readonly_root', true),
                         CapDrop: Config.get('docker.policy.container.cap_drop', [
                             'setpcap',
