@@ -4,6 +4,7 @@ This file is a running track of new features and fixes to each version of the da
 ## v0.3.4 (Barefoot Barbosania)
 ### Added
 * Added configurable docker policies to allow for more lax security settings if needed. The full list of policies can be found [in our documentation](https://daemon.pterodactyl.io/docs/security-policies).
+* Added `PATCH /config` route to allow panel to tweak core configuration file.
 
 ### Changed
 * Changes the way that server creation is handled to allow initialization of the `Server()` class without a docker container existing on the system. *This change

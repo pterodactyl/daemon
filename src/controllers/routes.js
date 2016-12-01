@@ -70,12 +70,19 @@ class RouteController {
         });
     }
 
+    // Updates saved configuration on system.
+    patchConfig() {
+        if (!Auth.allowed('c:config')) return;
+        Config.modify(this.req.params, err => {
+            Responses.generic204(err);
+        });
+    }
+
     // Saves Daemon Configuration to Disk
     putConfig() {
         if (!Auth.allowed('c:config')) return;
         Config.save(this.req.params, err => {
-            if (err) return this.res.send(500, { 'error': err.message });
-            return this.res.send(204);
+            Responses.generic204(err);
         });
     }
 
