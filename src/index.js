@@ -62,7 +62,7 @@ Async.auto({
             if (response.statusCode === 200) {
                 const json = JSON.parse(body);
 
-                if (compareVersions(Package.version, json.daemon) >= 0) {
+                if (compareVersions(Package.version, json.daemon) >= 0 || Package.version === '0.0.0-canary') {
                     Log.info('Pterodactyl Daemon is up-to-date!');
                     return callback();
                 }
