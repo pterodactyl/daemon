@@ -16,7 +16,7 @@ causes the application startup to take longer if containers are missing for serv
 * Fixes mislabeled TeamSpeak 3 in configuration preventing proper boot sequence.
 
 ### Deprecated
-* `uploads.maxFileSize` removed in favor of `uploads.filesize` which accepts a size in MB rather than bytes.
+* `uploads.maxFileSize` removed in favor of `uploads.size_limit` which accepts a size in MB rather than bytes.
 
 ## v0.3.3 (Barefoot Barbosania)
 ### Added
