@@ -51,6 +51,11 @@ const Stats = new LiveStats();
 Log.info('Modules loaded, starting Pterodactyl Daemon...');
 Async.auto({
     check_version: callback => {
+        if (Package.version === '0.0.0-canary') {
+            Log.info('Pterodactyl Daemon is up-to-date running a nightly build.');
+            return callback();
+        }
+
         Request.get('https://cdn.pterodactyl.io/releases/latest.json', {
             timeout: 5000,
         }, (err, response, body) => {
@@ -62,7 +67,7 @@ Async.auto({
             if (response.statusCode === 200) {
                 const json = JSON.parse(body);
 
-                if (compareVersions(Package.version, json.daemon) >= 0 || Package.version === '0.0.0-canary') {
+                if (compareVersions(Package.version, json.daemon) >= 0) {
                     Log.info('Pterodactyl Daemon is up-to-date!');
                     return callback();
                 }
