@@ -24,7 +24,7 @@
         },
         "query": "mumbleping"
     },
-    "teamspeak": {
+    "ts3": {
         "startup": {
             "done": "listening on 0.0.0.0:",
             "userInteraction": []
