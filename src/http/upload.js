@@ -24,6 +24,7 @@
  */
 const rfr = require('rfr');
 const Siofu = require('socketio-file-upload');
+const Fs = require('fs-extra');
 const _ = require('lodash');
 
 const ConfigHelper = rfr('src/helpers/config.js');
@@ -54,13 +55,19 @@ class Upload {
             Uploader.listen(socket);
 
             Uploader.on('start', event => {
-                Uploader.maxFileSize = Config.get('uploads.maximumSize', 100000000);
+                Uploader.maxFileSize = (Config.get('uploads.size_limit', 100)) * (1000 * 1000);
                 Uploader.dir = this.server.path(event.file.meta.path);
+
+                if (event.file.size > Uploader.maxFileSize) {
+                    Uploader.abort(event.file.id, socket);
+                }
             });
 
             Uploader.on('saved', event => {
                 if (!event.file.success) {
-                    this.server.log.warn('An error was encountered while attempting to save a file.', event);
+                    this.server.log.warn('An error was encountered while attempting to save a file (or the network operation was interrupted).', event);
+
+                    Fs.remove(event.file.pathName);
                     return;
                 }
 
@@ -71,7 +78,7 @@ class Upload {
 
             Uploader.on('error', event => {
                 if (_.startsWith(event.memo, 'disconnect during upload') || _.startsWith(event.error.code, 'ENOENT')) return;
-                this.server.log.error(event);
+                this.server.log.error('There was an error while attempting to process a file upload.', event);
             });
         });
     }
