@@ -82,6 +82,9 @@ class Delete {
                     return callback(err);
                 });
             }],
+            delete_folder: ['delete_sftp', (r, callback) => {
+                Fs.remove(Path.join(Config.get('sftp.path', '/srv/daemon-data'), this.json.user), callback);
+            }],
         }, err => {
             if (err) Log.fatal(err);
             return next(err);

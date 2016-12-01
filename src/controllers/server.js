@@ -364,7 +364,7 @@ class Server extends EventEmitter {
     }
 
     path(location) {
-        const dataPath = Path.join(Config.get('sftp.path', '/srv/data'), this.json.user, '/data');
+        const dataPath = Path.join(Config.get('sftp.path', '/srv/daemon-data'), this.json.user, '/data');
         let returnPath = dataPath;
 
         if (!_.isUndefined(location) && location.replace(/\s+/g, '').length > 0) {
