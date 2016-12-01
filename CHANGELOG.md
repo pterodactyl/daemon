@@ -8,11 +8,15 @@ This file is a running track of new features and fixes to each version of the da
 ### Changed
 * Changes the way that server creation is handled to allow initialization of the `Server()` class without a docker container existing on the system. *This change
 causes the application startup to take longer if containers are missing for servers, as we hold application boot until all containers are created now.*
+* Better file upload error handling, stops file upload if maximum size is exceeded rather than uploading to maximum size.
 
 ### Fixed
 * Fixes a race condition when updating a server that would fail to assign the correct memory limits to a container.
 * Fixes an issue where file decompression would be extremely slow on large files, and might never occur.
 * Fixes mislabeled TeamSpeak 3 in configuration preventing proper boot sequence.
+
+### Deprecated
+* `uploads.maxFileSize` removed in favor of `uploads.filesize` which accepts a size in MB rather than bytes.
 
 ## v0.3.3 (Barefoot Barbosania)
 ### Added
