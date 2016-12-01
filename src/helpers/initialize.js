@@ -77,9 +77,15 @@ class Initialize {
      * @return {[type]}        [description]
      */
     setup(json, next) {
-        Servers[json.uuid] = new Server(json, err => {
+        Async.series([
+            callback => {
+                Servers[json.uuid] = new Server(json, callback);
+            },
+        ], err => {
+            if (err) return next(err);
+
             Log.debug({ server: json.uuid }, 'Loaded configuration and initalized server.');
-            return next(err);
+            return next(null, Servers[json.uuid]);
         });
     }
 }

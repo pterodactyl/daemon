@@ -56,7 +56,7 @@ const CONST_STDMEM = Config.get('docker.memory.std.value', 10240);
 class Docker {
     constructor(server, next) {
         this.server = server;
-        this.containerID = this.server.json.container.id;
+        this.containerID = _.get(this.server.json, 'container.id', null);
         this.container = DockerController.getContainer(this.containerID);
         this.stream = undefined;
         this.procStream = undefined;
@@ -281,11 +281,11 @@ class Docker {
     }
 
     /**
-     * Rebuilds a given servers container.
+     * Builds a new container for a server.
      * @param  {Function} next
      * @return {Callback}
      */
-    rebuild(next) {
+    build(next) {
         const config = this.server.json.build;
         const bindings = {};
         const exposed = {};
@@ -422,28 +422,27 @@ class Docker {
                 });
             }],
         }, (err, data) => {
-            if (err) {
-                return next(err);
-            }
-            this.server.log.debug('Removing old server container...');
-
-            const newContainerInfo = {
+            if (err) return next(err);
+            return next(null, {
                 id: data.create_container.id,
                 image: config.image,
-            };
-
-            this.container.inspect(inspectErr => {
-                // if the inspection does not fail, the container exists
-                if (!inspectErr) {
-                    this.container.remove(removeError => {
-                        next(removeError, newContainerInfo);
-                    });
-                // if it doesn't we'll just skip removal
-                } else {
-                    this.server.log.debug('Old container not found, skipping.');
-                    next(null, newContainerInfo);
-                }
             });
+        });
+    }
+
+    /**
+     * Destroys a container for a server.
+     */
+    destroy(container, next) {
+        const FindContainer = DockerController.getContainer(container);
+        FindContainer.inspect(err => {
+            if (!err) {
+                this.container.remove(next);
+            } else if (err.statusCode === 404) {
+                return next();
+            } else {
+                return next(err);
+            }
         });
     }
 }

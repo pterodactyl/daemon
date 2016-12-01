@@ -55,8 +55,8 @@ Async.auto({
             timeout: 5000,
         }, (err, response, body) => {
             if (err) {
-                Log.warn(err, 'Download action failed due to an error with the request.');
-                return this.res.send(500, { 'error': 'An error occured while attempting to perform this request.' });
+                Log.warn('An error occurred while attempting to check the latest daemon release version.');
+                return callback();
             }
 
             if (response.statusCode === 200) {
@@ -74,7 +74,7 @@ Async.auto({
                 return callback();
             }
 
-            Log.warn('Unable to check if this daemon is up to date!');
+            Log.warn('Unable to check if this daemon is up to date! Invalid status code returned.');
             return callback();
         });
     },
