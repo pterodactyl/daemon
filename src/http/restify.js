@@ -39,7 +39,7 @@ const RestLogger = Bunyan.createLogger({
             level: 'info',
             type: 'rotating-file',
             path: Path.join(Config.get('logger.path', 'logs/'), 'request.log'),
-            period: '1d',
+            period: '4h',
             count: 3,
         },
     ],
