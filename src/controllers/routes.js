@@ -180,6 +180,7 @@ class RouteController {
         if (!Auth.allowed('s:get')) return;
         this.res.send({
             container: Auth.server().json.container,
+            user: Auth.server().json.build.user,
             service: Auth.server().json.service,
             status: Auth.server().status,
             query: Auth.server().processData.query,
