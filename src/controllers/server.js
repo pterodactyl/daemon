@@ -73,28 +73,32 @@ class Server extends EventEmitter {
         this.lastCrash = undefined;
         this.failedQueryCount = 0;
 
-        this.docker = new Docker(this, (err, status) => {
-            if (status) {
-                this.log.info('Daemon detected that the server container is currently running, re-attaching to it now!');
-            }
-
-            if (err && err.statusCode === 404) { // no such container
-                this.log.warn('Container was not found. Attempting to recreate it.');
-                this.rebuild(rebuildErr => {
-                    if (rebuildErr) this.log.fatal('Unable to rebuild container!');
-                    return next(rebuildErr);
+        Async.series([
+            callback => {
+                this.docker = new Docker(this, (err, status) => {
+                    if (err && err.statusCode === 404) { // no such container
+                        this.log.warn('Container was not found. Attempting to recreate it.');
+                        this.rebuild(callback);
+                    } else {
+                        if (!err && status) {
+                            this.log.info('Daemon detected that the server container is currently running, re-attaching to it now!');
+                        }
+                        return callback(err);
+                    }
                 });
-            } else {
-                return next(err);
-            }
+            },
+        ], err => {
+            if (err) return next(err);
+
+            const Service = rfr(Util.format('src/services/%s/index.js', this.json.service.type));
+            this.service = new Service(this);
+
+            this.socketIO = new Websocket(this).init();
+            this.uploadSocket = new UploadSocket(this).init();
+            this.fs = new FileSystem(this);
+
+            return next();
         });
-
-        const Service = rfr(Util.format('src/services/%s/index.js', this.json.service.type));
-        this.service = new Service(this);
-
-        this.socketIO = new Websocket(this).init();
-        this.uploadSocket = new UploadSocket(this).init();
-        this.fs = new FileSystem(this);
     }
 
     hasPermission(perm, token) {
@@ -461,16 +465,10 @@ class Server extends EventEmitter {
     // If overwrite = true (PUT request) then the JSON is simply replaced with the new object keys
     // while keeping any that are not listed. If overwrite = false (PATCH request) then only the
     // specific data keys that exist are changed or added. (see _.extend documentation).
-    modifyConfig(object, overwrite, skipcgroup, next) {
+    modifyConfig(object, overwrite, next) {
         if (_.isFunction(overwrite)) {
             next = overwrite; // eslint-disable-line
-            skipcgroup = false; // eslint-disable-line
             overwrite = false; // eslint-disable-line
-        }
-
-        if (_.isFunction(skipcgroup)) {
-            next = skipcgroup; // eslint-disable-line
-            skipcgroup = false; // eslint-disable-line
         }
 
         const deepExtend = extendify({
@@ -495,12 +493,12 @@ class Server extends EventEmitter {
 
         // Update 127.0.0.1 to point to the docker0 interface.
         if (newObject.build.default.ip === '127.0.0.1') {
-            newObject.build.default.ip = Config.get('docker.interface');
+            newObject.build.default.ip = Config.get('docker.interface', '172.18.0.1');
         }
 
         _.forEach(newObject.build.ports, (ports, ip) => {
             if (ip === '127.0.0.1') {
-                newObject.build.ports[Config.get('docker.interface')] = ports;
+                newObject.build.ports[Config.get('docker.interface', '172.18.0.1')] = ports;
                 delete newObject.build.ports[ip];
             }
         });
@@ -512,13 +510,18 @@ class Server extends EventEmitter {
                 callback();
             },
             write_config: ['set_knownwrite', (results, callback) => {
-                Fs.writeJson(this.configLocation, newObject, err => {
+                Fs.outputJson(this.configLocation, newObject, err => {
                     if (!err) this.json = newObject;
                     return callback(err);
                 });
             }],
             update_live: ['write_config', (results, callback) => {
-                if (!skipcgroup) {
+                if (
+                    !_.isUndefined(_.get(object, 'build.io', undefined)) ||
+                    !_.isUndefined(_.get(object, 'build.cpu', undefined)) ||
+                    !_.isUndefined(_.get(object, 'build.memory', undefined)) ||
+                    !_.isUndefined(_.get(object, 'build.swap', undefined))
+                ) {
                     this.updateCGroups(callback);
                 } else {
                     return callback();
@@ -528,7 +531,7 @@ class Server extends EventEmitter {
             this.knownWrite = false;
             if (err) return next(err);
 
-            if (!this.alreadyMarkedForRebuild) {
+            if (newObject.rebuild && !this.alreadyMarkedForRebuild) {
                 this.log.debug('Server is has been marked as requiring a rebuild on next boot cycle.');
             }
 
@@ -565,7 +568,7 @@ class Server extends EventEmitter {
                         id: results.rebuild.id.substr(0, 12),
                         image: results.rebuild.image,
                     },
-                }, false, true, callback);
+                }, false, callback);
             }],
             init: ['update_config', (results, callback) => {
                 const InitializeHelper = rfr('src/helpers/initialize.js').Initialize;

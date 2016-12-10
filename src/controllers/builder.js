@@ -24,8 +24,6 @@
  */
 const rfr = require('rfr');
 const Async = require('async');
-const Fs = require('fs-extra');
-const Path = require('path');
 const RandomString = require('randomstring');
 const _ = require('lodash');
 
@@ -70,10 +68,6 @@ class Builder {
                 this.log.debug('Creating SFTP user on the system...');
                 SFTP.create(this.json.user, RandomString.generate(), callback);
             },
-            create_empty_config: callback => {
-                const configPath = Path.join(__dirname, '../../config/servers/', this.json.uuid, 'server.json');
-                Fs.ensureFile(configPath, callback);
-            },
             set_uid: ['create_sftp', (results, callback) => {
                 this.log.debug('Retrieving the user\'s ID...');
                 SFTP.uid(this.json.user, (err, uid) => {
@@ -89,28 +83,15 @@ class Builder {
                     return callback();
                 });
             }],
-            create_container: ['create_empty_config', 'set_uid', (results, callback) => {
+            create_container: ['set_uid', 'verify_ip', (results, callback) => {
                 // This automatically "rebuilds" the missing docker
                 // container and writes the updated configuration to
                 // the disk.
                 this.server = new Server(this.json, callback);
             }],
-            // We have to re-initialized to grab the new
-            // container that we created.
-            re_init: ['create_container', (results, callback) => {
-                ServerInitializer.setup(this.json, callback);
-            }],
         }, err => {
             next(err, this.json);
         });
-    }
-
-    writeConfigToDisk(next) {
-        if (_.isUndefined(this.json.uuid)) {
-            return next(new Error('No UUID was passed properly in the JSON recieved.'));
-        }
-        // Attempt to write to disk, return error if failed, otherwise return nothing.
-        Fs.outputJson(Path.join('./config/servers', this.json.uuid, '/server.json'), this.json, next);
     }
 }
 

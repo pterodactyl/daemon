@@ -1,6 +1,10 @@
 # Changelog
 This file is a running track of new features and fixes to each version of the daemon released starting with `v0.2.0`.
 
+## v0.3.5 (Barefoot Barbosania)
+### Fixed
+* Fixes some race conditions and random bugs that would occur when attempting to create a server on the system.
+
 ## v0.3.4 (Barefoot Barbosania)
 ### Added
 * Added configurable docker policies to allow for more lax security settings if needed. The full list of policies can be found [in our documentation](https://daemon.pterodactyl.io/docs/security-policies).
