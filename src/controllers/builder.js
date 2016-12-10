@@ -29,13 +29,11 @@ const _ = require('lodash');
 
 const Log = rfr('src/helpers/logger.js');
 const Server = rfr('src/controllers/server.js');
-const InitializeHelper = rfr('src/helpers/initialize.js').Initialize;
 const ConfigHelper = rfr('src/helpers/config.js');
 const SFTPController = rfr('src/controllers/sftp.js');
 
 const Config = new ConfigHelper();
 const SFTP = new SFTPController();
-const ServerInitializer = new InitializeHelper();
 
 class Builder {
 
