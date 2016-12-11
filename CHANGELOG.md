@@ -4,6 +4,8 @@ This file is a running track of new features and fixes to each version of the da
 ## v0.3.5 (Barefoot Barbosania)
 ### Fixed
 * Fixes some race conditions and random bugs that would occur when attempting to create a server on the system.
+* Fixes a flaw in underlying docker/dockerode implementation that would return a `container not found` error if there was an execution error in the container. Changes `err.statusCode` checks to simply read the response message and look for `No such container:` in the message instead. 
+
 
 ## v0.3.4 (Barefoot Barbosania)
 ### Added

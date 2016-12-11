@@ -76,7 +76,7 @@ class Server extends EventEmitter {
         Async.series([
             callback => {
                 this.docker = new Docker(this, (err, status) => {
-                    if (err && err.statusCode === 404) { // no such container
+                    if (err && _.startsWith(_.get(err, 'json.message', 'error'), 'No such container')) { // no such container
                         this.log.warn('Container was not found. Attempting to recreate it.');
                         this.rebuild(callback);
                     } else {
@@ -227,7 +227,7 @@ class Server extends EventEmitter {
             },
         ], err => {
             if (err) {
-                if (err.statusCode === 404) { // container not found
+                if (err && _.startsWith(_.get(err, 'json.message', 'error'), 'No such container')) { // no such container
                     this.log.error('The container for this server could not be found. Trying to rebuild it.');
                     this.modifyConfig({ rebuild: true }, false, modifyError => {
                         if (modifyError) return this.log.error('Could not modify config.');

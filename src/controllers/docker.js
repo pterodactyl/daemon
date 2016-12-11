@@ -438,7 +438,7 @@ class Docker {
         FindContainer.inspect(err => {
             if (!err) {
                 this.container.remove(next);
-            } else if (err.statusCode === 404) {
+            } else if (err && _.startsWith(_.get(err, 'json.message', 'error'), 'No such container')) { // no such container
                 return next();
             } else {
                 return next(err);
