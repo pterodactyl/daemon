@@ -1,11 +1,14 @@
 # Changelog
 This file is a running track of new features and fixes to each version of the daemon released starting with `v0.2.0`.
 
+## v0.3.6 (Barefoot Barbosania)
+### Fixed
+* Fixes runtime bug that broke socket connections on newly created servers until the daemon was restarted. This was most obvious if you created a new server and then started it and reloaded the page. Due to a modification in the build script the server was improperly initialized and requests would get sucked into the wrong portals.
+
 ## v0.3.5 (Barefoot Barbosania)
 ### Fixed
 * Fixes some race conditions and random bugs that would occur when attempting to create a server on the system.
-* Fixes a flaw in underlying docker/dockerode implementation that would return a `container not found` error if there was an execution error in the container. Changes `err.statusCode` checks to simply read the response message and look for `No such container:` in the message instead. 
-
+* Fixes a flaw in underlying docker/dockerode implementation that would return a `container not found` error if there was an execution error in the container. Changes `err.statusCode` checks to simply read the response message and look for `No such container:` in the message instead.
 
 ## v0.3.4 (Barefoot Barbosania)
 ### Added
