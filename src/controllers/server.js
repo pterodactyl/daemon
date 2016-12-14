@@ -73,28 +73,32 @@ class Server extends EventEmitter {
         this.lastCrash = undefined;
         this.failedQueryCount = 0;
 
-        this.docker = new Docker(this, (err, status) => {
-            if (status) {
-                this.log.info('Daemon detected that the server container is currently running, re-attaching to it now!');
-            }
-            if (err && err.statusCode === 404) { // no such container
-                this.log.info('Container was not found. Attempting to recreate it.');
-                next(); // Continue normal initialization
-                this.rebuild(rebuildErr => {
-                    if (rebuildErr) this.log.fatal('Could not recreate container.');
+        Async.series([
+            callback => {
+                this.docker = new Docker(this, (err, status) => {
+                    if (err && _.startsWith(_.get(err, 'json.message', 'error'), 'No such container')) { // no such container
+                        this.log.warn('Container was not found. Attempting to recreate it.');
+                        this.rebuild(callback);
+                    } else {
+                        if (!err && status) {
+                            this.log.info('Daemon detected that the server container is currently running, re-attaching to it now!');
+                        }
+                        return callback(err);
+                    }
                 });
-            } else {
-                return next(err);
-            }
+            },
+        ], err => {
+            if (err) return next(err);
+
+            const Service = rfr(Util.format('src/services/%s/index.js', this.json.service.type));
+            this.service = new Service(this);
+
+            this.socketIO = new Websocket(this).init();
+            this.uploadSocket = new UploadSocket(this).init();
+            this.fs = new FileSystem(this);
+
+            return next();
         });
-
-        const Service = rfr(Util.format('src/services/%s/index.js', this.json.service.type));
-        this.service = new Service(this);
-
-        this.pack = new Pack(this);
-        this.socketIO = new Websocket(this).init();
-        this.uploadSocket = new UploadSocket(this).init();
-        this.fs = new FileSystem(this);
     }
 
     hasPermission(perm, token) {
@@ -223,7 +227,7 @@ class Server extends EventEmitter {
             },
         ], err => {
             if (err) {
-                if (err.statusCode === 404) { // container not found
+                if (err && _.startsWith(_.get(err, 'json.message', 'error'), 'No such container')) { // no such container
                     this.log.error('The container for this server could not be found. Trying to rebuild it.');
                     this.modifyConfig({ rebuild: true }, false, modifyError => {
                         if (modifyError) return this.log.error('Could not modify config.');
@@ -364,7 +368,7 @@ class Server extends EventEmitter {
     }
 
     path(location) {
-        const dataPath = Path.join(Config.get('sftp.path', '/srv/data'), this.json.user, '/data');
+        const dataPath = Path.join(Config.get('sftp.path', '/srv/daemon-data'), this.json.user, '/data');
         let returnPath = dataPath;
 
         if (!_.isUndefined(location) && location.replace(/\s+/g, '').length > 0) {
@@ -471,7 +475,8 @@ class Server extends EventEmitter {
             inPlace: false,
             arrays: 'replace',
         });
-        const newObject = (overwrite === true) ? _.assignIn(this.json, object) : deepExtend(this.json, object);
+
+        const newObject = (overwrite) ? _.assignIn(this.json, object) : deepExtend(this.json, object);
 
         // Ports are a pain in the butt.
         if (!_.isUndefined(newObject.build)) {
@@ -484,59 +489,58 @@ class Server extends EventEmitter {
             });
         }
 
-        // Do a quick determination of wether or not we need to process a rebuild request for this server.
-        // If so, we need to append that action to the object that we're writing.
-        const checkForRebuild = _.omit(object.build, ['cpu', 'swap', 'io', 'memory', 'disk']);
-        if (!_.isUndefined(object.build) && !_.isEmpty(checkForRebuild)) {
-            newObject.rebuild = true;
-        }
+        newObject.rebuild = (_.isUndefined(object.rebuild) || object.rebuild);
 
         // Update 127.0.0.1 to point to the docker0 interface.
         if (newObject.build.default.ip === '127.0.0.1') {
-            newObject.build.default.ip = Config.get('docker.interface');
+            newObject.build.default.ip = Config.get('docker.interface', '172.18.0.1');
         }
 
         _.forEach(newObject.build.ports, (ports, ip) => {
             if (ip === '127.0.0.1') {
-                newObject.build.ports[Config.get('docker.interface')] = ports;
+                newObject.build.ports[Config.get('docker.interface', '172.18.0.1')] = ports;
                 delete newObject.build.ports[ip];
             }
         });
 
-        Async.series([
-            callback => {
+        Async.auto({
+            set_knownwrite: callback => {
                 this.knownWrite = true;
+                this.alreadyMarkedForRebuild = this.json.rebuild;
                 callback();
             },
-            callback => {
-                Fs.writeJson(this.configLocation, newObject, err => {
+            write_config: ['set_knownwrite', (results, callback) => {
+                Fs.outputJson(this.configLocation, newObject, err => {
                     if (!err) this.json = newObject;
                     return callback(err);
                 });
-            },
-            callback => {
-                if (!_.isUndefined(object.build) && _.isEmpty(checkForRebuild)) {
+            }],
+            update_live: ['write_config', (results, callback) => {
+                if (
+                    !_.isUndefined(_.get(object, 'build.io', undefined)) ||
+                    !_.isUndefined(_.get(object, 'build.cpu', undefined)) ||
+                    !_.isUndefined(_.get(object, 'build.memory', undefined)) ||
+                    !_.isUndefined(_.get(object, 'build.swap', undefined))
+                ) {
                     this.updateCGroups(callback);
                 } else {
                     return callback();
                 }
-            },
-            callback => {
-                if (newObject.rebuild && object.rebuild !== true) {
-                    this.log.info('Server has been queued for a container rebuild on next boot.');
-                } else if (newObject.rebuild && object.rebuild) {
-                    this.log.debug('Server is already queued for a rebuild on next boot.');
-                }
-                callback();
-            },
-        ], err => {
-            if (err) this.knownWrite = false;
-            return next(err);
+            }],
+        }, err => {
+            this.knownWrite = false;
+            if (err) return next(err);
+
+            if (newObject.rebuild && !this.alreadyMarkedForRebuild) {
+                this.log.debug('Server is has been marked as requiring a rebuild on next boot cycle.');
+            }
+
+            return next();
         });
     }
 
     updateCGroups(next) {
-        this.log.debug('Updating some build parameters without triggering a container rebuild.');
+        this.log.debug('Updating some container resource limits prior to rebuild.');
         this.emit('console', `${Ansi.style.yellow}(Daemon) Your server has had some resource limits modified, you may need to restart to apply them.\n`);
         this.docker.update(next);
     }
@@ -545,42 +549,43 @@ class Server extends EventEmitter {
         // You shouldn't really be able to make it this far without this being set,
         // but for the sake of double checking...
         if (this.buildInProgress !== true) this.buildInProgress = true;
-        Async.waterfall([
-            callback => {
-                this.log.debug('Running rebuild for server...');
-                this.docker.rebuild((err, data) => {
+        Async.auto({
+            rebuild: callback => {
+                this.log.debug('Rebuilding server container.');
+                this.docker.build((err, data) => {
                     callback(err, data);
                 });
             },
-            (data, callback) => {
-                this.log.debug('New container created successfully, updating config...');
+            destroy: ['rebuild', (results, callback) => {
+                this.log.debug(`New server container created with ID ${results.rebuild.id.substr(0, 12)}, removing old container.`);
+                this.docker.destroy(_.get(this.json, 'container.id', 'undefined_container_00'), callback);
+            }],
+            update_config: ['destroy', (results, callback) => {
+                this.log.debug('Containers successfully rotated, updating stored configuration.');
                 this.modifyConfig({
                     rebuild: false,
                     container: {
-                        id: data.id.substr(0, 12),
-                        image: data.image,
+                        id: results.rebuild.id.substr(0, 12),
+                        image: results.rebuild.image,
                     },
-                }, callback);
-            },
-            callback => {
+                }, false, callback);
+            }],
+            init: ['update_config', (results, callback) => {
                 const InitializeHelper = rfr('src/helpers/initialize.js').Initialize;
                 const Initialize = new InitializeHelper();
-                Initialize.setup(this.json, err => {
+                Initialize.setup(this.json, (err, newServer) => {
                     if (err) return callback(err);
-
-                    // If we don't do this we end up continuing to use the old server
-                    // object for things which causes issues since not all the functions
-                    // get updated.
-                    const Servers = rfr('src/helpers/initialize.js').Servers;
-                    return callback(err, Servers[this.json.uuid]);
+                    return callback(null, newServer);
                 });
-            },
-            (server, callback) => {
-                this.buildInProgress = false;
-                callback(null, server);
-            },
-        ], (err, server) => {
-            next(err, server);
+            }],
+        }, (err, results) => {
+            this.buildInProgress = false;
+            if (!err) {
+                this.log.info('Completed rebuild process for server container.');
+                return next(null, results.init);
+            }
+
+            return next(err);
         });
     }
 

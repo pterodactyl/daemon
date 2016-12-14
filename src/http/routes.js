@@ -80,6 +80,11 @@ RestServer.put('/config', (req, res, next) => {
     return next();
 });
 
+RestServer.patch('/config', (req, res, next) => {
+    Routes.patchConfig();
+    return next();
+});
+
 /**
  * Big Picture Actions
  */

@@ -22,11 +22,23 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+const rfr = require('rfr');
 const _ = require('lodash');
 const Async = require('async');
+const EventEmitter = require('events').EventEmitter;
+// const Fs = require('fs-extra');
+const Cache = require('memory-cache');
+const Request = require('request');
+const Util = require('util');
 
-class Pack {
+const ConfigHelper = rfr('src/helpers/config.js');
+const Config = new ConfigHelper();
+
+// const CACHE_TTL = 900000; // 15 minutes
+
+class Pack extends EventEmitter {
     constructor(server) {
+        super();
         this.server = server;
         this.pack = this.server.json.service.pack;
     }
@@ -46,12 +58,19 @@ class Pack {
         ], next);
     }
 
-    checkCache() {
+    checkCache(next) {
         // Checks cache; if up-to-date or not due for a check
         // simply return and allow setup to continue.
         //
         // If cache is expired, call updateCache() and then return
         // for install to continue.
+        if (_.isNil(Cache.get(`pack.${this.pack}`))) {
+            // Cache expired, or never added, check now.
+            this.updateCache();
+        }
+
+        // Cache is not expired, nothing to do.
+        return next();
     }
 
     updateCache() {
@@ -64,6 +83,12 @@ class Pack {
         // contact the panel and determine if the hash has changed.
         // If not, simply return and tell the checkCache() call that
         // eveything is good. If hash has changed, handle the update.
+        //
+        // Will need to run the request and hash check in parallel for speed.
+        // Should compare the returned MD5 hash to the one we have stored.
+        Request.get(Util.format('%s/remote/pack/%s', Config.get('remote.base'), this.pack), {
+
+        });
     }
 
     getNewPack() {

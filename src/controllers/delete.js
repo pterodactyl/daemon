@@ -49,7 +49,7 @@ class Delete {
         Async.auto({
             // Clear the 'Servers' object of the specific server
             clear_object: callback => {
-                this.log.info('Clearing servers object...');
+                this.log.debug('Clearing servers object...');
                 const Servers = rfr('src/helpers/initialize.js').Servers;
 
                 // Prevent crash detection
@@ -59,31 +59,35 @@ class Delete {
             },
             // Delete the container (kills if running)
             delete_container: ['clear_object', (r, callback) => {
-                this.log.info('Attempting to remove container...');
+                this.log.debug('Attempting to remove container...');
                 const container = DockerController.getContainer(this.json.container.id);
                 container.remove({ v: true, force: true }, err => {
-                    if (!err) this.log.info('Removed container.');
+                    if (!err) this.log.debug('Removed container.');
                     return callback(err);
                 });
             }],
             // Delete the configuration files for this server
             delete_config: ['clear_object', (r, callback) => {
-                this.log.info('Attempting to remove configuration files...');
+                this.log.debug('Attempting to remove configuration files...');
                 Fs.remove(Path.join('./config/servers', this.json.uuid), err => {
-                    if (!err) this.log.info('Removed configuration folder.');
+                    if (!err) this.log.debug('Removed configuration folder.');
                     return callback(err);
                 });
             }],
             // Delete the SFTP user and files.
             delete_sftp: ['clear_object', (r, callback) => {
-                this.log.info('Attempting to remove SFTP user...');
+                this.log.debug('Attempting to remove SFTP user...');
                 SFTP.delete(this.json.user, err => {
-                    if (!err) this.log.info('Removed SFTP user.');
+                    if (!err) this.log.debug('Removed SFTP user.');
                     return callback(err);
                 });
             }],
+            delete_folder: ['delete_sftp', (r, callback) => {
+                Fs.remove(Path.join(Config.get('sftp.path', '/srv/daemon-data'), this.json.user), callback);
+            }],
         }, err => {
             if (err) Log.fatal(err);
+            this.log.info('Server deleted.');
             return next(err);
         });
     }

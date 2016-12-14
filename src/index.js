@@ -51,12 +51,17 @@ const Stats = new LiveStats();
 Log.info('Modules loaded, starting Pterodactyl Daemon...');
 Async.auto({
     check_version: callback => {
+        if (Package.version === '0.0.0-canary') {
+            Log.info('Pterodactyl Daemon is up-to-date running a nightly build.');
+            return callback();
+        }
+
         Request.get('https://cdn.pterodactyl.io/releases/latest.json', {
             timeout: 5000,
         }, (err, response, body) => {
             if (err) {
-                Log.warn(err, 'Download action failed due to an error with the request.');
-                return this.res.send(500, { 'error': 'An error occured while attempting to perform this request.' });
+                Log.warn('An error occurred while attempting to check the latest daemon release version.');
+                return callback();
             }
 
             if (response.statusCode === 200) {
@@ -74,7 +79,7 @@ Async.auto({
                 return callback();
             }
 
-            Log.warn('Unable to check if this daemon is up to date!');
+            Log.warn('Unable to check if this daemon is up to date! Invalid status code returned.');
             return callback();
         });
     },
@@ -115,7 +120,7 @@ Async.auto({
     if (err) {
         // Log a fatal error and exit.
         // We need this to initialize successfully without any errors.
-        Log.fatal(err);
+        Log.fatal({ err, additional: err }, 'A fatal error caused the daemon to stop abruptly.');
         process.exit(1);
     }
     rfr('src/http/routes.js');

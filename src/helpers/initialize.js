@@ -77,9 +77,29 @@ class Initialize {
      * @return {[type]}        [description]
      */
     setup(json, next) {
-        Servers[json.uuid] = new Server(json, err => {
+        Async.series([
+            callback => {
+                if (!_.isUndefined(Servers[json.uuid])) {
+                    delete Servers[json.uuid];
+                }
+
+                Servers[json.uuid] = new Server(json, callback);
+            },
+        ], err => {
+            if (err) return next(err);
+
             Log.debug({ server: json.uuid }, 'Loaded configuration and initalized server.');
-            return next(err);
+            return next(null, Servers[json.uuid]);
+        });
+    }
+
+    /**
+     * Sets up a server given its UUID.
+     */
+    setupByUuid(uuid, next) {
+        Fs.readJson(Util.format('./config/servers/%s/server.json', uuid), (err, object) => {
+            if (err) return next(err);
+            this.setup(object, next);
         });
     }
 }

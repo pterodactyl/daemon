@@ -1,12 +1,44 @@
 # Changelog
 This file is a running track of new features and fixes to each version of the daemon released starting with `v0.2.0`.
 
-## v0.4.0 (Curvaceous Caviramus)
-### Added
-* Added configurable docker policy to allow for more lax security settings if needed. The full list of policies can be found [in our documentation](https://daemon.pterodactyl.io/docs/security-policies).
+## v0.3.7 (Barefoot Barbosania)
+### Fixed
+* Fixes a network configuration issue with `Docker 1.12.4` caused by no assigned IPv6 gateway.
 
 ### Changed
-* Configuration for daemon is now loaded into memory and all requests for config are passed to that cache. Reduces number of file reads from >20 to 1 on boot.
+* ICC is now **enabled** by default on `pterodactyl0`.
+
+### Added
+* Additional network configuration options are available in core.json if needed to customize network name and subnets.
+* Added support for pulling images from private registries.
+
+
+## v0.3.6 (Barefoot Barbosania)
+### Fixed
+* Fixes runtime bug that broke socket connections on newly created servers until the daemon was restarted. This was most obvious if you created a new server and then started it and reloaded the page. Due to a modification in the build script the server was improperly initialized and requests would get sucked into the wrong portals.
+
+## v0.3.5 (Barefoot Barbosania)
+### Fixed
+* Fixes some race conditions and random bugs that would occur when attempting to create a server on the system.
+* Fixes a flaw in underlying docker/dockerode implementation that would return a `container not found` error if there was an execution error in the container. Changes `err.statusCode` checks to simply read the response message and look for `No such container:` in the message instead.
+
+## v0.3.4 (Barefoot Barbosania)
+### Added
+* Added configurable docker policies to allow for more lax security settings if needed. The full list of policies can be found [in our documentation](https://daemon.pterodactyl.io/docs/security-policies).
+* Added `PATCH /config` route to allow panel to tweak core configuration file.
+
+### Changed
+* Changes the way that server creation is handled to allow initialization of the `Server()` class without a docker container existing on the system. *This change
+causes the application startup to take longer if containers are missing for servers, as we hold application boot until all containers are created now.*
+* Better file upload error handling, stops file upload if maximum size is exceeded rather than uploading to maximum size.
+
+### Fixed
+* Fixes a race condition when updating a server that would fail to assign the correct memory limits to a container.
+* Fixes an issue where file decompression would be extremely slow on large files, and might never occur.
+* Fixes mislabeled TeamSpeak 3 in configuration preventing proper boot sequence.
+
+### Deprecated
+* `uploads.maxFileSize` removed in favor of `uploads.size_limit` which accepts a size in MB rather than bytes.
 
 ## v0.3.3 (Barefoot Barbosania)
 ### Added
