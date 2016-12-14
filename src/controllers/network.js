@@ -64,6 +64,14 @@ class Network {
             Driver: 'bridge',
             EnableIPv6: Config.get('docker.policy.network.ipv6', true),
             Internal: Config.get('docker.policy.network.internal', false),
+            IPAM: {
+                Config: [
+                    {
+                        Subnet: 'fdba:17c8:6c94::/64',
+                        Gateway: 'fdba:17c8:6c94::1011',
+                    },
+                ],
+            },
             Options: {
                 'com.docker.network.bridge.default_bridge': 'false',
                 'com.docker.network.bridge.enable_icc': Config.get('docker.policy.network.enable_icc', 'false'),
