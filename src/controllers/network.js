@@ -22,8 +22,6 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-const NETWORK_NAME = 'pterodactyl_nw';
-
 const rfr = require('rfr');
 const Dockerode = require('dockerode');
 const _ = require('lodash');
@@ -36,6 +34,8 @@ const Config = new LoadConfig();
 const DockerController = new Dockerode({
     socketPath: Config.get('docker.socket', '/var/run/docker.sock'),
 });
+
+const NETWORK_NAME = Config.get('docker.network.name', 'pterodactyl_nw');
 
 class Network {
 
@@ -67,8 +67,12 @@ class Network {
             IPAM: {
                 Config: [
                     {
-                        Subnet: 'fdba:17c8:6c94::/64',
-                        Gateway: 'fdba:17c8:6c94::1011',
+                        Subnet: Config.get('docker.network.interfaces.v4.subnet', '172.18.0.0/16'),
+                        Gateway: Config.get('docker.network.interfaces.v4.gateway', '172.18.0.1/16'),
+                    },
+                    {
+                        Subnet: Config.get('docker.network.interfaces.v6.subnet', 'fdba:17c8:6c94::/64'),
+                        Gateway: Config.get('docker.network.interfaces.v6.gateway', 'fdba:17c8:6c94::1011'),
                     },
                 ],
             },
@@ -89,7 +93,7 @@ class Network {
 
     interface(next) {
         Log.info('Checking gateway for pterodactyl0');
-        const DockerNetwork = DockerController.getNetwork('pterodactyl_nw');
+        const DockerNetwork = DockerController.getNetwork(NETWORK_NAME);
         DockerNetwork.inspect((err, data) => {
             if (err) return next(err);
 
