@@ -90,6 +90,10 @@ class Core {
     // is opened, and then all of the lines are run at the same time.
     // Very quick function, surprisingly...
     onPreflight(next) {
+        if (!_.get(this.object, 'configs', false)) {
+            return next(new Error('No configuration object was assigned to this service. Unable to continue.'));
+        }
+
         // Check each configuration file and set variables as needed.
         Async.forEachOf(this.object.configs, (data, file, callback) => {
             switch (_.get(data, 'parser', 'file')) {
