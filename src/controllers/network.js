@@ -68,7 +68,7 @@ class Network {
                 Config: [
                     {
                         Subnet: Config.get('docker.network.interfaces.v4.subnet', '172.18.0.0/16'),
-                        Gateway: Config.get('docker.network.interfaces.v4.gateway', '172.18.0.1/16'),
+                        Gateway: Config.get('docker.network.interfaces.v4.gateway', '172.18.0.1'),
                     },
                     {
                         Subnet: Config.get('docker.network.interfaces.v6.subnet', 'fdba:17c8:6c94::/64'),
