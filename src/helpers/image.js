@@ -51,7 +51,28 @@ class DockerImage {
      * @return {Function}
      */
     static pull(image, next) {
-        DockerController.pull(image, (err, stream) => {
+        let pullWithConfig = {};
+        if (_.isObject(Config.get('docker.registry', false))) {
+            if (Config.get('docker.registry.key', false)) {
+                pullWithConfig = {
+                    authconfig: {
+                        key: Config.get('docker.registry.key', ''),
+                    },
+                };
+            } else {
+                pullWithConfig = {
+                    authconfig: {
+                        username: Config.get('docker.registry.username', ''),
+                        password: Config.get('docker.registry.password', ''),
+                        auth: Config.get('docker.registry.auth', ''),
+                        email: Config.get('docker.registry.email', ''),
+                        serveraddress: Config.get('docker.registry.serveraddress', ''),
+                    },
+                };
+            }
+        }
+
+        DockerController.pull(image, pullWithConfig, (err, stream) => {
             if (err) return next(err);
             stream.setEncoding('utf8');
             stream.on('data', () => { _.noop(); });

@@ -6,10 +6,11 @@ This file is a running track of new features and fixes to each version of the da
 * Fixes a network configuration issue with `Docker 1.12.4` caused by no assigned IPv6 gateway.
 
 ### Changed
-* ICC is now **enabled** by default on `pterodactyl0`. 
+* ICC is now **enabled** by default on `pterodactyl0`.
 
 ### Added
 * Additional network configuration options are available in core.json if needed to customize network name and subnets.
+* Added support for pulling images from private registries.
 
 
 ## v0.3.6 (Barefoot Barbosania)
