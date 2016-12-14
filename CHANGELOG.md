@@ -1,6 +1,17 @@
 # Changelog
 This file is a running track of new features and fixes to each version of the daemon released starting with `v0.2.0`.
 
+## v0.3.7 (Barefoot Barbosania)
+### Fixed
+* Fixes a network configuration issue with `Docker 1.12.4` caused by no assigned IPv6 gateway.
+
+### Changed
+* ICC is now **enabled** by default on `pterodactyl0`. 
+
+### Added
+* Additional network configuration options are available in core.json if needed to customize network name and subnets.
+
+
 ## v0.3.6 (Barefoot Barbosania)
 ### Fixed
 * Fixes runtime bug that broke socket connections on newly created servers until the daemon was restarted. This was most obvious if you created a new server and then started it and reloaded the page. Due to a modification in the build script the server was improperly initialized and requests would get sucked into the wrong portals.
