@@ -1,7 +1,7 @@
 {
     "srcds": {
         "startup": {
-            "done": "Assigned anonymous gameserver Steam ID",
+            "done": "gameserver Steam ID",
             "userInteraction": []
         },
         "stop": "quit",
