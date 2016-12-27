@@ -1,4 +1,5 @@
 # Pterodactyl Daemon (Wings)
+[![Codacy Badge](https://api.codacy.com/project/badge/Grade/9980e8d33b724d3cbce09b7b448907e1)](https://www.codacy.com/app/PufferPanel/Daemon?utm_source=github.com&utm_medium=referral&utm_content=Pterodactyl/Daemon&utm_campaign=badger)
 ![](https://david-dm.org/Pterodactyl/Daemon.svg) [![NSP Status](https://nodesecurity.io/orgs/pterodactyl/projects/5570baa8-5a85-4e8b-afb7-51e1e0888c67/badge)](https://nodesecurity.io/orgs/pterodactyl/projects/5570baa8-5a85-4e8b-afb7-51e1e0888c67)
 
 The server control and management daemon built specifically for Pterodactyl Panel.
