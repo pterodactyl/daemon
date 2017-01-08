@@ -1,14 +1,39 @@
+'use strict';
+
+/**
+ * Pterodactyl - Daemon
+ * Copyright (c) 2015 - 2016 Dane Everitt <dane@daneeveritt.com>
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+
 const _ = require('lodash');
-const inquirer = require('inquirer');
-const winston = require('winston');
-const request = require('request');
-const fs = require('fs');
-const path = require('path');
+const Inquirer = require('inquirer');
+const Winston = require('winston');
+const Request = require('request');
+const Fs = require('fs');
+const Rfr = require('rfr');
 
-const configFilePath = path.resolve(__dirname, '../config/core.json');
+const configFilePath = Rfr.resolve('/config/core.json');
 
-const log = new winston.Logger({
-    transports: [new winston.transports.Console({
+const log = new Winston.Logger({
+    transports: [new Winston.transports.Console({
         level: 'info',
         handleExceptions: true,
         colorize: true,
@@ -41,10 +66,10 @@ const params = {
             if (value === '') {
                 return 'A configuration token is required.';
             }
-            if (value.length !== 32) {
-                return 'The token provided is invalid. It must be 32 characters long.';
+            if (value.length === 32) {
+                return true;
             }
-            return true;
+            return 'The token provided is invalid. It must be 32 characters long.';
         },
     },
     overwrite: {
@@ -96,11 +121,11 @@ _.forEach(params, (param, key) => {
 });
 
 // Check if the configuration file exists already
-const configExists = fs.existsSync(configFilePath);
+const configExists = Fs.existsSync(configFilePath);
 if (configExists) log.debug('Config already exists.');
 
 // Interactive questioning of missing parameters
-inquirer.prompt([
+Inquirer.prompt([
     {
         name: 'panelurl',
         type: 'string',
@@ -135,7 +160,7 @@ inquirer.prompt([
 
     // Fetch configuration from the panel
     log.info('Trying to fetch configuration from the panel...');
-    request(`${params.panelurl.value}/remote/configuration/${params.token.value}`, (error, response, body) => {
+    Request.get(`${params.panelurl.value}/remote/configuration/${params.token.value}`, (error, response, body) => {
         if (!error) {
             // response should always be JSON
             const jsonBody = JSON.parse(body);
@@ -143,7 +168,7 @@ inquirer.prompt([
             if (response.statusCode === 200) {
                 log.info('Writing configuration file...');
 
-                fs.writeFile(configFilePath, JSON.stringify(jsonBody, null, 4), err => {
+                Fs.writeFile(configFilePath, JSON.stringify(jsonBody, null, 4), err => {
                     if (err) {
                         log.error('Failed to write configuration file.');
                     } else {
@@ -158,6 +183,8 @@ inquirer.prompt([
                 } else {
                     log.error('An unknown error occured!', body);
                 }
+            } else {
+                log.error('Sorry. Something went wrong fetching the configuration.');
             }
         } else {
             log.error('Sorry. Something went wrong fetching the configuration.');
