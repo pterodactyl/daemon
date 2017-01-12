@@ -1,5 +1,7 @@
 # Pterodactyl Daemon (Wings)
-![](https://david-dm.org/Pterodactyl/Daemon.svg) [![NSP Status](https://nodesecurity.io/orgs/pterodactyl/projects/5570baa8-5a85-4e8b-afb7-51e1e0888c67/badge)](https://nodesecurity.io/orgs/pterodactyl/projects/5570baa8-5a85-4e8b-afb7-51e1e0888c67)
+[![Build Status](https://travis-ci.org/Pterodactyl/Daemon.svg?branch=develop)](https://travis-ci.org/Pterodactyl/Daemon) [![dependencies Status](https://david-dm.org/Pterodactyl/Daemon/status.svg)](https://david-dm.org/Pterodactyl/Daemon) [![NSP Status](https://nodesecurity.io/orgs/pterodactyl/projects/5570baa8-5a85-4e8b-afb7-51e1e0888c67/badge)](https://nodesecurity.io/orgs/pterodactyl/projects/5570baa8-5a85-4e8b-afb7-51e1e0888c67)
+
+[![bitHound Overall Score](https://www.bithound.io/github/Pterodactyl/Daemon/badges/score.svg)](https://www.bithound.io/github/Pterodactyl/Daemon) [![bitHound Dependencies](https://www.bithound.io/github/Pterodactyl/Daemon/badges/dependencies.svg)](https://www.bithound.io/github/Pterodactyl/Daemon/develop/dependencies/npm) [![bitHound Dev Dependencies](https://www.bithound.io/github/Pterodactyl/Daemon/badges/devDependencies.svg)](https://www.bithound.io/github/Pterodactyl/Daemon/develop/dependencies/npm)
 
 The server control and management daemon built specifically for Pterodactyl Panel.
 
