@@ -23,22 +23,14 @@
  * SOFTWARE.
  */
 
+/* eslint no-console: 0 */
+const rfr = require('rfr');
 const _ = require('lodash');
 const Inquirer = require('inquirer');
-const Winston = require('winston');
 const Request = require('request');
 const Fs = require('fs');
-const Rfr = require('rfr');
 
-const configFilePath = Rfr.resolve('/config/core.json');
-
-const log = new Winston.Logger({
-    transports: [new Winston.transports.Console({
-        level: 'info',
-        handleExceptions: true,
-        colorize: true,
-    })],
-});
+const configFilePath = rfr.resolve('/config/core.json');
 
 const regex = {
     fqdn: new RegExp(/^https?:\/\/(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,64}\/?$/),
@@ -107,9 +99,9 @@ const argv = require('yargs')
     .check(checkParams)
     .help('h')
     .fail((msg, err, yargs) => {
-        log.error(err.message);
-        log.info(yargs.help());
-        process.exit();
+        console.error(err.message);
+        console.log(yargs.help());
+        process.exit(1);
     })
     .argv;
 
@@ -122,7 +114,7 @@ _.forEach(params, (param, key) => {
 
 // Check if the configuration file exists already
 const configExists = Fs.existsSync(configFilePath);
-if (configExists) log.debug('Config already exists.');
+if (configExists) console.log('Configuration file (core.json) exists.');
 
 // Interactive questioning of missing parameters
 Inquirer.prompt([
@@ -154,40 +146,40 @@ Inquirer.prompt([
 
     // If file exists and no overwrite wanted error and exit.
     if (!params.overwrite.value && configExists) {
-        log.error('Configuration already exists. Aborting.');
+        console.error('Configuration file already exists, no overwrite requested. Aborting.');
         process.exit();
     }
 
     // Fetch configuration from the panel
-    log.info('Trying to fetch configuration from the panel...');
+    console.log('Fetching configuration from panel.');
     Request.get(`${params.panelurl.value}/remote/configuration/${params.token.value}`, (error, response, body) => {
         if (!error) {
             // response should always be JSON
             const jsonBody = JSON.parse(body);
 
             if (response.statusCode === 200) {
-                log.info('Writing configuration file...');
+                console.log('Writing configuration to file.');
 
                 Fs.writeFile(configFilePath, JSON.stringify(jsonBody, null, 4), err => {
                     if (err) {
-                        log.error('Failed to write configuration file.');
+                        console.error('Failed to write configuration file.');
                     } else {
-                        log.info('Configuration written successfully.');
+                        console.log('Configuration file written successfully.');
                     }
                 });
             } else if (response.statusCode === 403) {
-                if (jsonBody.error === 'token_invalid') {
-                    log.error('The token you used is invalid.');
-                } else if (jsonBody.error === 'token_expired') {
-                    log.error('The token you used is expired.');
+                if (_.get('error', jsonBody) === 'token_invalid') {
+                    console.error('The token you used is invalid.');
+                } else if (_.get('error', jsonBody) === 'token_expired') {
+                    console.error('The token provided is expired.');
                 } else {
-                    log.error('An unknown error occured!', body);
+                    console.error('An unknown error occured!', body);
                 }
             } else {
-                log.error('Sorry. Something went wrong fetching the configuration.');
+                console.error('Sorry. Something went wrong fetching the configuration.');
             }
         } else {
-            log.error('Sorry. Something went wrong fetching the configuration.');
+            console.error('Sorry. Something went wrong fetching the configuration.');
         }
     });
 });
