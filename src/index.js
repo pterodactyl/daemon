@@ -42,11 +42,13 @@ const NetworkController = rfr('src/controllers/network.js');
 const Initializer = rfr('src/helpers/initialize.js').Initialize;
 const SFTPController = rfr('src/controllers/sftp.js');
 const LiveStats = rfr('src/http/stats.js');
+const ServiceController = rfr('src/controllers/service.js');
 
 const Network = new NetworkController();
 const Initialize = new Initializer();
 const SFTP = new SFTPController(true);
 const Stats = new LiveStats();
+const Service = new ServiceController();
 
 Log.info('Modules loaded, starting Pterodactyl Daemon...');
 Async.auto({
@@ -107,7 +109,7 @@ Async.auto({
         Proc.exec('unzip --help', {}, callback);
         Log.debug('Unzip module found on server.');
     },
-    init_servers: ['setup_network', (r, callback) => {
+    init_servers: ['check_services', 'setup_network', (r, callback) => {
         Log.info('Attempting to load servers and initialize daemon...');
         Initialize.init(callback);
     }],
@@ -116,6 +118,9 @@ Async.auto({
         Stats.init();
         return callback();
     }],
+    check_services: callback => {
+        Service.boot(callback);
+    },
 }, err => {
     if (err) {
         // Log a fatal error and exit.
