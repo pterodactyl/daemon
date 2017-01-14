@@ -71,7 +71,6 @@ class Server extends EventEmitter {
 
         this.log = Log.child({ server: this.uuid });
         this.lastCrash = undefined;
-        this.failedQueryCount = 0;
 
         Async.series([
             callback => {
@@ -130,34 +129,17 @@ class Server extends EventEmitter {
         }
 
         // Handle Internal Tracking
-        if (status === Status.ON) {
-            if (_.isNull(this.intervals.query)) {
-                this.intervals.query = setInterval(this.query, 10000, this);
-            }
+        if (status === Status.ON || status === Status.STARTING) {
             if (_.isNull(this.intervals.process)) {
                 this.intervals.process = setInterval(this.process, 2000, this);
-            }
-        } else if (status === Status.STARTING) {
-            if (_.isNull(this.intervals.process)) {
-                this.intervals.process = setInterval(this.process, 2000, this);
-            }
-
-            if (!_.isNull(this.intervals.query)) {
-                clearInterval(this.intervals.query);
-                this.intervals.query = null;
-                this.processData.query = {};
             }
         } else if (status === Status.STOPPING || status === Status.OFF) {
-            if (!_.isNull(this.intervals.query) || !_.isNull(this.intervals.process)) {
+            if (!_.isNull(this.intervals.process)) {
                 // Server is stopping or stopped, lets clear the interval as well as any stored
-                // information about the process or query. Lets also detach the stats stream.
+                // information about the process. Lets also detach the stats stream.
                 clearInterval(this.intervals.process);
-                clearInterval(this.intervals.query);
                 this.intervals.process = null;
-                this.intervals.query = null;
-                this.failedQueryCount = 0;
                 this.processData.process = {};
-                this.processData.query = {};
             }
         }
 
@@ -384,40 +366,8 @@ class Server extends EventEmitter {
     }
 
     // Still using self here because of intervals.
-    query(self) { // eslint-disable-line
-        if (self.status !== Status.ON) return;
-
-        self.service.doQuery((err, response) => {
-            if (err) {
-                // Only report error once, otherwise don't spam up the display.
-                if (self.failedQueryCount === 0) {
-                    self.log.warn(`${err.message} -- Additional query errors will not display unless there is a successful query.`);
-                    self.service.onConsole(`${Ansi.style.magenta}(Daemon) ${err.message} -- Additional query errors will not display unless there is a successful query.\n`);
-                }
-
-                self.failedQueryCount++; // eslint-disable-line
-                if (Config.get('query.kill_on_fail', false) && self.failedQueryCount > Config.get('query.fail_limit', 3)) {
-                    self.service.onConsole(`${Ansi.style.magenta}(Daemon) Server has reached maximum consecutive query failure limit (n = ${Config.get('query.fail_limit', 3)}) and has been marked as crashed.\n`);
-                    self.docker.kill(killErr => {
-                        if (killErr) return self.log.fatal(killErr);
-                    });
-                    self.failedQueryCount = 0; // eslint-disable-line
-                }
-            } else {
-                self.failedQueryCount = 0; // eslint-disable-line
-            }
-
-            self.processData.query = { // eslint-disable-line
-                name: _.get(response, 'name', null),
-                map: _.get(response, 'map', null),
-                maxplayers: _.get(response, 'maxplayers', null),
-                players: _.get(response, 'players', null),
-                bots: _.get(response, 'bots', null),
-                raw: _.get(response, 'raw', {}),
-                error: _.get(err, 'message', false),
-            };
-            self.emit('query', self.processData.query);
-        });
+    query() {
+        return _.noop();
     }
 
     process(self) { // eslint-disable-line

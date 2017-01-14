@@ -27,7 +27,6 @@ const Async = require('async');
 const _ = require('lodash');
 const Fs = require('fs-extra');
 const extendify = require('extendify');
-const Gamedig = require('gamedig');
 const isStream = require('isstream');
 const Path = require('path');
 const Util = require('util');
@@ -65,19 +64,7 @@ class Core {
     }
 
     doQuery(next) {
-        if (this.object.query === 'none') {
-            return next(null, {});
-        }
-
-        Gamedig.query({
-            type: this.object.query,
-            host: this.json.build.default.ip,
-            port: this.json.build.default.port,
-            port_query: this.json.build.default.port,
-        }, response => {
-            if (response.error) return next(new Error(`Server unresponsive to query attempt. (${response.error})`));
-            return next(null, response);
-        });
+        return next(null);
     }
 
     // Forgive me padrè for I have sinned. Badly.
