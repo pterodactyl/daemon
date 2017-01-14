@@ -33,16 +33,16 @@
   },
   "homepage": "https://github.com/Pterodactyl/Daemon#readme",
   "devDependencies": {
-    "eslint": "3.10.2",
-    "eslint-config-airbnb": "13.0.0",
+    "eslint": "3.13.1",
+    "eslint-config-airbnb": "14.0.0",
     "eslint-plugin-import": "2.2.0",
-    "eslint-plugin-jsx-a11y": "2.2.3",
-    "eslint-plugin-lodash": "2.2.0",
-    "eslint-plugin-react": "6.7.1"
+    "eslint-plugin-jsx-a11y": "3.0.2",
+    "eslint-plugin-lodash": "2.2.5",
+    "eslint-plugin-react": "6.9.0"
   },
   "dependencies": {
     "ansi-escape-sequences": "3.0.0",
-    "async": "2.1.2",
+    "async": "2.1.4",
     "bunyan": "1.8.5",
     "carrier": "0.3.0",
     "chokidar": "1.6.1",
@@ -55,19 +55,19 @@
     "inquirer": "2.0.0",
     "ip-cidr": "0.0.4",
     "isstream": "0.1.2",
-    "lodash": "4.17.2",
+    "lodash": "4.17.4",
     "memory-cache": "0.1.6",
     "mime": "1.3.4",
     "mmmagic": "0.4.5",
-    "moment": "2.16.0",
+    "moment": "2.17.1",
     "node-yaml": "3.0.3",
     "properties-parser": "0.3.1",
     "randomstring": "1.1.5",
     "request": "2.79.0",
     "restify": "4.3.0",
     "rfr": "1.2.3",
-    "socket.io": "1.5.0",
-    "socketio-file-upload": "0.5.0",
+    "socket.io": "1.7.2",
+    "socketio-file-upload": "0.6.0",
     "yargs": "6.6.0"
   }
 }
