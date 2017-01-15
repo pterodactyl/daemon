@@ -38,4 +38,7 @@ daemon
 !lib/.githold
 !logs/.githold
 
+src/services/**/*
+!src/servces/index.js
+
 .DS_Store
