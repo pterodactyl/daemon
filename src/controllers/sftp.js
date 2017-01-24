@@ -129,14 +129,31 @@ class SFTP {
                 if (!_.isUndefined(Config.get('sftp.container'))) {
                     DockerController.listContainers({ 'all': 1 }, (err, containers) => {
                         if (err) return callback(err);
-                        const foundContainer = _.find(containers, values => {
-                            if (_.startsWith(values.Id, Config.get('sftp.container'))) return values.Id;
+                        let foundContainer;
+
+                        // Attempt to find container by ID
+                        foundContainer = _.find(containers, values => {
+                            if (_.startsWith(values.Id, Config.get('sftp.container'))) return true;
                         });
+
+                        // Couldn't locate by ID, lets try looking for the SFTP image itself.
+                        if (_.isUndefined(foundContainer)) {
+                            Log.debug('Unable to locate suitable SFTP container by assigned ID, attempting to locate by image name.');
+                            foundContainer = _.find(containers, values => {
+                                if (values.Image === SFTP_DOCKER_IMAGE) return true;
+                            });
+                        }
 
                         if (!_.isUndefined(foundContainer)) {
                             this.container = DockerController.getContainer(foundContainer.Id);
+                            Config.modify({
+                                'sftp': {
+                                    'container': this.container.id,
+                                },
+                            }, callback);
+                        } else {
+                            return callback();
                         }
-                        return callback();
                     });
                 } else {
                     return callback();
