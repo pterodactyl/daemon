@@ -11,9 +11,11 @@ This file is a running track of new features and fixes to each version of the da
 * `socket.io` bumped to `1.7.2`
 * `socketio-file-upload` bumped to `0.6.0` in order to address a potential issue in file uploads in Chrome.
 * Minor version updates to multiple dependencies (no change in daemon function).
+* SFTP subsystem now looking for container based on assigned ID and if a container is not found it will also attempt to locate it by image name before trying to create a new container.
 
 ### Fixed
 * Fixes a race condition that would cause duplicate socket streams for data output and generally confuse both the panel and daemon.
+* Fixes a race condition when booting SFTP subsystem container.
 
 ### Removed
 * Gamedig removed due to lac of updates and multiple security vulnerabilities in dependencies.

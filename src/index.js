@@ -89,7 +89,7 @@ Async.auto({
         Log.info('Checking container networking environment...');
         Network.init(callback);
     },
-    setup_network: ['check_network', (r, callback) => {
+    setup_network: ['start_sftp', 'check_network', (r, callback) => {
         Log.info('Checking pterodactyl0 interface and setting configuration values.');
         Network.interface(callback);
     }],
