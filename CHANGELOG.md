@@ -5,11 +5,15 @@ This file is a running track of new features and fixes to each version of the da
 ### Added
 * Service configuration files are now retrieved from the panel the daemon is associated with rather than being locally managed. Any changes are automatically pulled on daemon boot.
 * Daemon configuration is now possible using `npm run-script configure` to contact remote panel and collect the configuration file.
+* Support for sending commands and receiving server log over websockets.
 
 ### Changed
 * `socket.io` bumped to `1.7.2`
 * `socketio-file-upload` bumped to `0.6.0` in order to address a potential issue in file uploads in Chrome.
 * Minor version updates to multiple dependencies (no change in daemon function).
+
+### Fixed
+* Fixes a race condition that would cause duplicate socket streams for data output and generally confuse both the panel and daemon.
 
 ### Removed
 * Gamedig removed due to lac of updates and multiple security vulnerabilities in dependencies.

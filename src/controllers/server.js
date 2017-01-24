@@ -72,21 +72,7 @@ class Server extends EventEmitter {
         this.log = Log.child({ server: this.uuid });
         this.lastCrash = undefined;
 
-        Async.series([
-            callback => {
-                this.docker = new Docker(this, (err, status) => {
-                    if (err && _.startsWith(_.get(err, 'json.message', 'error'), 'No such container')) { // no such container
-                        this.log.warn('Container was not found. Attempting to recreate it.');
-                        this.rebuild(callback);
-                    } else {
-                        if (!err && status) {
-                            this.log.info('Daemon detected that the server container is currently running, re-attaching to it now!');
-                        }
-                        return callback(err);
-                    }
-                });
-            },
-        ], err => {
+        this.initContainer(err => {
             if (err) return next(err);
 
             const Service = rfr(Util.format('src/services/%s/index.js', this.json.service.type));
@@ -97,6 +83,20 @@ class Server extends EventEmitter {
             this.fs = new FileSystem(this);
 
             return next();
+        });
+    }
+
+    initContainer(next) {
+        this.docker = new Docker(this, (err, status) => {
+            if (err && _.startsWith(_.get(err, 'json.message', 'error'), 'No such container')) { // no such container
+                this.log.warn('Container was not found. Attempting to recreate it.');
+                this.rebuild(next);
+            } else {
+                if (!err && status) {
+                    this.log.info('Daemon detected that the server container is currently running, re-attaching to it now!');
+                }
+                return next(err);
+            }
         });
     }
 
@@ -151,8 +151,8 @@ class Server extends EventEmitter {
 
     preflight(next) {
         // Return immediately if server is currently powered on.
-        if (this.status !== Status.OFF) {
-            return next(new Error('Server is already running.'));
+        if (this.status !== Status.STARTING) {
+            return next(new Error('Server must be in starting state to run preflight.'));
         }
         return this.service.onPreflight(next);
     }
@@ -161,6 +161,9 @@ class Server extends EventEmitter {
         if (this.status !== Status.OFF) {
             return next(new Error('Server is already running.'));
         }
+
+        // Set status early on to avoid super fast clickers
+        this.setStatus(Status.STARTING);
 
         if (this.json.rebuild === true || this.buildInProgress === true) {
             if (this.buildInProgress !== true) {
@@ -171,13 +174,15 @@ class Server extends EventEmitter {
                         callback();
                     },
                     callback => {
+                        this.setStatus(Status.OFF);
                         this.rebuild(callback);
                     },
-                    (newServer, callback) => {
-                        newServer.start(callback);
+                    callback => {
+                        this.start(callback);
                     },
                 ], err => {
                     if (err) {
+                        this.setStatus(Status.OFF);
                         this.emit('console', `${Ansi.style.red}(Daemon) An error was encountered while attempting to rebuild this container.`);
                         this.buildInProgress = false;
                         Log.error(err);
@@ -200,7 +205,6 @@ class Server extends EventEmitter {
                 this.docker.start(callback);
             },
             callback => {
-                this.setStatus(Status.STARTING);
                 this.emit('console', `${Ansi.style.green}(Daemon) Attached to server container.`);
                 this.docker.attach(callback);
             },
@@ -209,6 +213,8 @@ class Server extends EventEmitter {
             },
         ], err => {
             if (err) {
+                this.setStatus(Status.OFF);
+
                 if (err && _.startsWith(_.get(err, 'json.message', 'error'), 'No such container')) { // no such container
                     this.log.error('The container for this server could not be found. Trying to rebuild it.');
                     this.modifyConfig({ rebuild: true }, false, modifyError => {
@@ -520,19 +526,14 @@ class Server extends EventEmitter {
                     },
                 }, false, callback);
             }],
-            init: ['update_config', (results, callback) => {
-                const InitializeHelper = rfr('src/helpers/initialize.js').Initialize;
-                const Initialize = new InitializeHelper();
-                Initialize.setup(this.json, (err, newServer) => {
-                    if (err) return callback(err);
-                    return callback(null, newServer);
-                });
+            init_container: ['update_config', (results, callback) => {
+                this.initContainer(callback);
             }],
-        }, (err, results) => {
+        }, err => {
             this.buildInProgress = false;
             if (!err) {
                 this.log.info('Completed rebuild process for server container.');
-                return next(null, results.init);
+                return next();
             }
 
             return next(err);
