@@ -176,6 +176,13 @@ class RouteController {
         }
     }
 
+    installPack() {
+        if (!Auth.allowed('c:install-pack')) return;
+        Auth.server().installPack(err => {
+            Responses.generic204(err);
+        });
+    }
+
     getServer() {
         if (!Auth.allowed('s:get')) return;
         this.res.send({

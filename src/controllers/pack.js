@@ -25,22 +25,23 @@
 const rfr = require('rfr');
 const _ = require('lodash');
 const Async = require('async');
-const EventEmitter = require('events').EventEmitter;
-// const Fs = require('fs-extra');
+const Fs = require('fs-extra');
 const Cache = require('memory-cache');
 const Request = require('request');
-const Util = require('util');
+const Path = require('path');
+const Crypto = require('crypto');
+const Process = require('child_process');
 
+const Log = rfr('src/helpers/logger.js');
 const ConfigHelper = rfr('src/helpers/config.js');
 const Config = new ConfigHelper();
 
-// const CACHE_TTL = 900000; // 15 minutes
-
-class Pack extends EventEmitter {
+class Pack {
     constructor(server) {
-        super();
         this.server = server;
         this.pack = this.server.json.service.pack;
+        this.archiveLocation = null;
+        this.logger = Log;
     }
 
     // Called when a server is started and marked as needing a pack update
@@ -51,34 +52,89 @@ class Pack extends EventEmitter {
             return next();
         }
 
+        this.archiveLocation = Path.join(Config.get('pack.cache', './packs'), this.pack, 'archive.tar.gz');
+        this.logger = Log.child({ pack: this.pack, server: this.server.json.uuid });
+
         Async.series([
             callback => {
                 this.checkCache(callback);
+            },
+            callback => {
+                this.unpackToServer(callback);
             },
         ], next);
     }
 
     checkCache(next) {
-        // Checks cache; if up-to-date or not due for a check
-        // simply return and allow setup to continue.
-        //
-        // If cache is expired, call updateCache() and then return
-        // for install to continue.
-        if (_.isNil(Cache.get(`pack.${this.pack}`))) {
-            // Cache expired, or never added, check now.
-            this.updateCache();
+        // If pack is updating, just call this function every
+        // second until it is done and then move on.
+        if (!_.isNil(Cache.get(`pack.updating.${this.pack}`))) {
+            setTimeout(() => {
+                this.checkCache(next);
+            }, 1000);
+            return;
         }
 
-        // Cache is not expired, nothing to do.
-        return next();
+        Cache.put(`pack.updating.${this.pack}`, true);
+        this.logger.debug('Checking if pack needs to be updated.');
+        Async.auto({
+            file_exists: callback => {
+                Fs.access(this.archiveLocation, Fs.constants.R_OK, err => {
+                    if (err && err.code === 'ENOENT') {
+                        return callback(null, false);
+                    }
+                    return callback(err, true);
+                });
+            },
+            local_hash: ['file_exists', (results, callback) => {
+                if (!results.file_exists) return callback();
+
+                this.logger.debug('Checking existing pack checksum.');
+                const ChecksumStream = Fs.createReadStream(this.archiveLocation);
+                const SHA1Hash = Crypto.createHash('sha1');
+                ChecksumStream.on('data', data => {
+                    SHA1Hash.update(data, 'utf8');
+                });
+
+                ChecksumStream.on('end', () => {
+                    Cache.put(`pack.${this.pack}`, SHA1Hash.digest('hex'));
+                    return callback();
+                });
+
+                ChecksumStream.on('error', callback);
+            }],
+            remote_hash: ['file_exists', (results, callback) => {
+                if (!results.file_exists) return callback();
+
+                this.logger.debug('Checking remote host for valid pack checksum.');
+                Request.get(`${Config.get('remote.base')}/daemon/packs/pull/${this.pack}/hash`, (err, resp) => {
+                    if (err) return callback(err);
+                    if (resp.statusCode !== 200) {
+                        return callback(new Error(`Recieved a non-200 error code (${resp.statusCode}) when attempting to check a pack hash (${this.pack}).`));
+                    }
+
+                    const Results = JSON.parse(resp.body);
+                    return callback(null, Results['archive.tar.gz']);
+                });
+            }],
+        }, (err, results) => {
+            if (err) return this.logger.fatal(err);
+
+            if (results.file_exists) {
+                if (Cache.get(`pack.${this.pack}`) === results.remote_hash) {
+                    // Pack exists, and is valid.
+                    this.logger.debug('Pack checksums are valid, not re-downloading.');
+                    Cache.del(`pack.updating.${this.pack}`);
+                    return next();
+                }
+            }
+
+            Log.debug('Pack was not found on the system, or the hash was different. Downloading again.');
+            this.downloadPack(next);
+        });
     }
 
-    updateCache() {
-        // Updates the cache for a given pack. Should check if
-        // an update is in progress, and if so wait for an
-        // event emitter to be called that will alert
-        // to the update status.
-        //
+    downloadPack(next) {
         // If no update is in progress, this function should
         // contact the panel and determine if the hash has changed.
         // If not, simply return and tell the checkCache() call that
@@ -86,14 +142,62 @@ class Pack extends EventEmitter {
         //
         // Will need to run the request and hash check in parallel for speed.
         // Should compare the returned MD5 hash to the one we have stored.
-        Request.get(Util.format('%s/remote/pack/%s', Config.get('remote.base'), this.pack), {
+        Async.series([
+            callback => {
+                Fs.ensureDir(Path.join(Config.get('pack.cache', './packs'), this.pack), callback);
+            },
+            callback => {
+                Log.debug('Downloading pack...');
+                Request.get(`${Config.get('remote.base')}/daemon/packs/pull/${this.pack}`)
+                    .on('error', next)
+                    .on('response', response => {
+                        if (response.statusCode !== 200) {
+                            return next(new Error(`Recieved non-200 response (${response.statusCode}) from panel for pack ${this.pack}`));
+                        }
+                    })
+                    .pipe(Fs.createWriteStream(this.archiveLocation))
+                    .on('close', callback);
+            },
+            callback => {
+                Log.debug('Generating checksum...');
+                const ChecksumStream = Fs.createReadStream(this.archiveLocation);
+                const SHA1Hash = Crypto.createHash('sha1');
+                ChecksumStream.on('data', data => {
+                    SHA1Hash.update(data, 'utf8');
+                });
 
-        });
+                ChecksumStream.on('end', () => {
+                    Cache.put(`pack.${this.pack}`, SHA1Hash.digest('hex'));
+                    return callback();
+                });
+            },
+            callback => {
+                Log.debug('Downlaod complete, moving on.');
+                Cache.del(`pack.updating.${this.pack}`);
+                return callback();
+            },
+        ], next);
     }
 
-    getNewPack() {
-        // Contacts the panel to get the new pack information
-        // and files.
+    unpackToServer(next) {
+        this.logger.debug('Unpacking pack to server.');
+        const Exec = Process.spawn('tar', ['xzf', Path.basename(this.archiveLocation), '-C', this.server.path()], {
+            cwd: Path.dirname(this.archiveLocation),
+            uid: this.server.json.build.user,
+            gid: this.server.json.build.user,
+        });
+
+        Exec.on('error', execErr => {
+            this.logger.error(execErr);
+            return next(new Error('There was an error while attempting to decompress this file.'));
+        });
+        Exec.on('exit', (code, signal) => {
+            if (code !== 0) {
+                this.logger.error(`Decompression of file exited with code ${code} signal ${signal}.`);
+            }
+
+            return next();
+        });
     }
 }
 

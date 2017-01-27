@@ -40,6 +40,7 @@ const Status = rfr('src/helpers/status.js');
 const ConfigHelper = rfr('src/helpers/config.js');
 const Websocket = rfr('src/http/socket.js').ServerSockets;
 const UploadSocket = rfr('src/http/upload.js');
+const PackSystem = rfr('src/controllers/pack.js');
 const FileSystem = rfr('src/controllers/fs.js');
 const SFTPController = rfr('src/controllers/sftp.js');
 
@@ -78,6 +79,7 @@ class Server extends EventEmitter {
             const Service = rfr(Util.format('src/services/%s/index.js', this.json.service.type));
             this.service = new Service(this);
 
+            this.pack = new PackSystem(this);
             this.socketIO = new Websocket(this).init();
             this.uploadSocket = new UploadSocket(this).init();
             this.fs = new FileSystem(this);
@@ -580,6 +582,10 @@ class Server extends EventEmitter {
             }
             return next(err);
         });
+    }
+
+    installPack(next) {
+        this.pack.install(next);
     }
 
 }

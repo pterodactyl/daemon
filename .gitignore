@@ -14,6 +14,7 @@ lib/*
 src/services/**/*
 tmp/*
 daemon
+packs/**
 .DS_Store
 !config/.githold
 !config/servers/.githold

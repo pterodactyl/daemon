@@ -97,6 +97,9 @@ class Builder {
                 // Static function will read the JSON from the file and go from there.
                 Initialize.setupByUuid(this.json.uuid, callback);
             }],
+            install_pack: ['initialize', (results, callback) => {
+                results.initialize.installPack(callback);
+            }],
         }, err => {
             next(err, this.json);
         });
