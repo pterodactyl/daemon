@@ -80,7 +80,13 @@ class Service {
     }
 
     getServices(next) {
-        Request.get(`${Config.get('remote.base')}/daemon/services`, (err, response, body) => {
+        Request({
+            method: 'GET',
+            url: `${Config.get('remote.base')}/daemon/services`,
+            headers: {
+                'X-Access-Node': Config.get('keys.0'),
+            },
+        }, (err, response, body) => {
             if (err) return next(err);
 
             if (response.statusCode !== 200) {
@@ -97,7 +103,13 @@ class Service {
 
     pullFile(file, next) {
         Log.debug(`Pulling updated service file: ${file}`);
-        Request.get(`${Config.get('remote.base')}/daemon/services/pull/${file}`, (err, response, body) => {
+        Request({
+            method: 'GET',
+            url: `${Config.get('remote.base')}/daemon/services/pull/${file}`,
+            headers: {
+                'X-Access-Node': Config.get('keys.0'),
+            },
+        }, (err, response, body) => {
             if (err) return next(err);
 
             if (response.statusCode !== 200) {

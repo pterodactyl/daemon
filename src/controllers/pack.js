@@ -107,7 +107,13 @@ class Pack {
                 if (!results.file_exists) return callback();
 
                 this.logger.debug('Checking remote host for valid pack checksum.');
-                Request.get(`${Config.get('remote.base')}/daemon/packs/pull/${this.pack}/hash`, (err, resp) => {
+                Request({
+                    method: 'GET',
+                    url: `${Config.get('remote.base')}/daemon/packs/pull/${this.pack}/hash`,
+                    headers: {
+                        'X-Access-Node': Config.get('keys.0'),
+                    },
+                }, (err, resp) => {
                     if (err) return callback(err);
                     if (resp.statusCode !== 200) {
                         return callback(new Error(`Recieved a non-200 error code (${resp.statusCode}) when attempting to check a pack hash (${this.pack}).`));
@@ -148,15 +154,21 @@ class Pack {
             },
             callback => {
                 Log.debug('Downloading pack...');
-                Request.get(`${Config.get('remote.base')}/daemon/packs/pull/${this.pack}`)
-                    .on('error', next)
-                    .on('response', response => {
-                        if (response.statusCode !== 200) {
-                            return next(new Error(`Recieved non-200 response (${response.statusCode}) from panel for pack ${this.pack}`));
-                        }
-                    })
-                    .pipe(Fs.createWriteStream(this.archiveLocation))
-                    .on('close', callback);
+                Request({
+                    method: 'GET',
+                    url: `${Config.get('remote.base')}/daemon/packs/pull/${this.pack}`,
+                    headers: {
+                        'X-Access-Node': Config.get('keys.0'),
+                    },
+                })
+                .on('error', next)
+                .on('response', response => {
+                    if (response.statusCode !== 200) {
+                        return next(new Error(`Recieved non-200 response (${response.statusCode}) from panel for pack ${this.pack}`));
+                    }
+                })
+                .pipe(Fs.createWriteStream(this.archiveLocation))
+                .on('close', callback);
             },
             callback => {
                 Log.debug('Generating checksum...');
