@@ -117,6 +117,11 @@ class Server extends EventEmitter {
         return false;
     }
 
+    setPermissions(next) {
+        this.log.debug('Setting correct ownership of server files.');
+        this.fs.chown('/', next);
+    }
+
     setStatus(status) {
         if (status === this.status) return;
         const inverted = _.invert(Status);

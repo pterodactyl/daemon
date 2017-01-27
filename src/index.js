@@ -113,6 +113,12 @@ Async.auto({
         Log.info('Attempting to load servers and initialize daemon...');
         Initialize.init(callback);
     }],
+    configure_perms: ['init_servers', (r, callback) => {
+        const Servers = rfr('src/helpers/initialize.js').Servers;
+        Async.each(Servers, (Server, loopCallback) => {
+            Server.setPermissions(loopCallback);
+        }, callback);
+    }],
     init_websocket: ['init_servers', (r, callback) => {
         Log.info('Configuring websocket for daemon stats...');
         Stats.init();
