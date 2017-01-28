@@ -111,8 +111,7 @@ Inquirer.prompt([
 
     // Docker Info
     r += '== DOCKER INFO ==\n';
-    r += exec('docker info');
-    r += '\n';
+    r += `${exec('docker info')}\n\n`;
 
     // Latest logs
     if (answers.logs) {
