@@ -32,7 +32,7 @@ const Path = require('path');
 
 const packageInfo = require('../package.json');
 
-// eslint-disable-line import/no-unresolved
+// eslint-disable-next-line import/no-unresolved
 const config = require('../config/core.json');
 
 function postToHastebin(text) {
