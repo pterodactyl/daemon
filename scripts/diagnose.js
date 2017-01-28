@@ -31,6 +31,8 @@ const execSync = require('child_process').execSync;
 const Path = require('path');
 
 const packageInfo = require('../package.json');
+
+// eslint-disable-line import/no-unresolved
 const config = require('../config/core.json');
 
 function postToHastebin(text) {
