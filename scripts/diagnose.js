@@ -55,10 +55,14 @@ function postToHastebin(text) {
 }
 
 function exec(command) {
-    return execSync(command, {
-        encoding: 'utf8',
-        timeout: 5000,
-    });
+    try {
+        return execSync(command, {
+            encoding: 'utf8',
+            timeout: 5000,
+        }).trim();
+    } catch (e) {
+        return e.toString().trim();
+    }
 }
 
 Inquirer.prompt([
@@ -102,9 +106,8 @@ Inquirer.prompt([
 
     // Dependency Versions
     r += '== DEPENDENCIES ==\n';
-    r += exec('docker --version').trim();
-    r += '\n';
-    r += `Nodejs Version ${exec('node --version')}\n`;
+    r += `${exec('docker --version')}\n`;
+    r += `Nodejs Version ${exec('node --version')}\n\n`;
 
     // Docker Info
     r += '== DOCKER INFO ==\n';
