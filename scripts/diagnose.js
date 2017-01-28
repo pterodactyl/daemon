@@ -29,11 +29,15 @@ const Inquirer = require('inquirer');
 const Request = require('request');
 const execSync = require('child_process').execSync;
 const Path = require('path');
+const fs = require('fs');
 
 const packageInfo = require('../package.json');
 
-// eslint-disable-next-line import/no-unresolved
-const config = require('../config/core.json');
+let config;
+if (fs.existsSync('../config/core.json')) {
+    // eslint-disable-next-line import/no-unresolved, global-require
+    config = require('../config/core.json');
+}
 
 function postToHastebin(text) {
     return new Promise((resolve, reject) => {
@@ -78,11 +82,7 @@ Inquirer.prompt([
     let r = '=== WINGS DIAGNOSTICS ===\n';
 
     // Wings Version
-    if (packageInfo) {
-        r += `Wings version: ${packageInfo.version}\n\n`;
-    } else {
-        r += 'Error: No package.json found.\n\n';
-    }
+    r += `wings.js version: ${packageInfo.version}\n\n`;
 
     // Wings configuration
     r += '== CONFIGURATON ==\n';
