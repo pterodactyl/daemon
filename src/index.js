@@ -43,12 +43,14 @@ const Initializer = rfr('src/helpers/initialize.js').Initialize;
 const SFTPController = rfr('src/controllers/sftp.js');
 const LiveStats = rfr('src/http/stats.js');
 const ServiceController = rfr('src/controllers/service.js');
+const TimezoneHelper = rfr('src/helpers/timezone.js');
 
 const Network = new NetworkController();
 const Initialize = new Initializer();
 const SFTP = new SFTPController(true);
 const Stats = new LiveStats();
 const Service = new ServiceController();
+const Timezone = new TimezoneHelper();
 
 Log.info('Modules loaded, starting Pterodactyl Daemon...');
 Async.auto({
@@ -92,6 +94,10 @@ Async.auto({
     setup_network: ['start_sftp', 'check_network', (r, callback) => {
         Log.info('Checking pterodactyl0 interface and setting configuration values.');
         Network.interface(callback);
+    }],
+    setup_timezone: ['setup_network', (r, callback) => {
+        Log.info('Configuring timezone file location...');
+        Timezone.configure(callback);
     }],
     start_sftp: callback => {
         Log.info('Attempting to start SFTP service container...');

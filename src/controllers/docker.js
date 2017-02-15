@@ -23,6 +23,7 @@
  * SOFTWARE.
  */
 const rfr = require('rfr');
+const Fs = require('fs-extra');
 const Dockerode = require('dockerode');
 const isStream = require('isstream');
 const Async = require('async');
@@ -362,8 +363,8 @@ class Docker {
                             RW: true,
                         },
                         {
-                            Source: '/etc/timezone',
-                            Destination: '/etc/timezone',
+                            Source: Config.get('docker.timezone_path'),
+                            Destination: Config.get('docker.timezone_path'),
                             RW: false,
                         },
                     ],
@@ -372,7 +373,7 @@ class Docker {
                     HostConfig: {
                         Binds: [
                             Util.format('%s:/home/container', this.server.path()),
-                            '/etc/timezone:/etc/timezone:ro',
+                            Util.format('%s:%s:ro', Config.get('docker.timezone_path'), Config.get('docker.timezone_path')),
                         ],
                         Tmpfs: {
                             '/tmp': Config.get('docker.policy.container.tmpfs', 'rw,exec,nosuid,size=50M'),
