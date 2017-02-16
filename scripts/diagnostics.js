@@ -29,6 +29,7 @@ const Request = require('request');
 const Process = require('child_process');
 const Fs = require('fs-extra');
 const _ = require('lodash');
+const Path = require('path');
 const Package = require('../package.json');
 
 function postToHastebin(text) {
@@ -88,7 +89,21 @@ Inquirer.prompt([
         },
         bunyan_logs: callback => {
             if (answers.logs) {
-                Process.exec('./node_modules/bunyan/bin/bunyan -o short logs/wings.log', { maxBuffer: 100 * 1024 }, (err, stdout) => {
+                const MainLog = (Fs.existsSync(Path.resolve('logs/wings.log')));
+                const SecondLog = (Fs.existsSync(Path.resolve('logs/wings.log.0')));
+
+                let logFile;
+                if (MainLog && SecondLog) {
+                    logFile = 'logs/wings.log logs/wings.log.0';
+                } else if (MainLog) {
+                    logFile = 'logs/wings.log';
+                } else if (SecondLog) {
+                    logFile = 'logs/wings.log.0';
+                } else {
+                    return callback(null, '[no logs found]');
+                }
+
+                Process.exec(`./node_modules/bunyan/bin/bunyan -o short ${logFile}`, { maxBuffer: 100 * 1024 }, (err, stdout) => {
                     callback(err, stdout);
                 });
             } else {
