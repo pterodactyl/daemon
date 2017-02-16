@@ -37,12 +37,12 @@ class TimezoneHelper {
 
         Async.parallel({
             is_timezone: callback => {
-                Fs.access('/etc/timezone', Fs.constants.F_OK, err => {
+                Fs.access('/etc/timezone', (Fs.constants || Fs).F_OK, err => {
                     callback(null, (!err));
                 });
             },
             is_localtime: callback => {
-                Fs.access('/etc/localtime', Fs.constants.F_OK, err => {
+                Fs.access('/etc/localtime', (Fs.constants || Fs).F_OK, err => {
                     callback(null, (!err));
                 });
             },

@@ -66,7 +66,7 @@ Inquirer.prompt([
 ]).then(answers => {
     Async.auto({
         config: callback => {
-            Fs.access('./config/core.json', Fs.constants.R_OK | Fs.constants.W_OK, err => { // eslint-disable-line
+            Fs.access('./config/core.json', (Fs.constants || Fs).R_OK | (Fs.constants || Fs).W_OK, err => { // eslint-disable-line
                 if (err) return callback(null, { error: true });
                 return callback(null, Fs.readJsonSync('./config/core.json'));
             });

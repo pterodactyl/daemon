@@ -79,7 +79,7 @@ class Pack {
         this.logger.debug('Checking if pack needs to be updated.');
         Async.auto({
             file_exists: callback => {
-                Fs.access(this.archiveLocation, Fs.constants.R_OK, err => {
+                Fs.access(this.archiveLocation, (Fs.constants || Fs).R_OK, err => {
                     if (err && err.code === 'ENOENT') {
                         return callback(null, false);
                     }
