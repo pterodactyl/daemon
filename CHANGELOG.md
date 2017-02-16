@@ -1,7 +1,7 @@
 # Changelog
 This file is a running track of new features and fixes to each version of the daemon released starting with `v0.2.0`.
 
-## v0.4.0
+## v0.4.0-pre.1 (Candid Comodactylus)
 ### Added
 * Service configuration files are now retrieved from the panel the daemon is associated with rather than being locally managed. Any changes are automatically pulled on daemon boot.
 * Daemon configuration is now possible using `npm run-script configure` to contact remote panel and collect the configuration file.
