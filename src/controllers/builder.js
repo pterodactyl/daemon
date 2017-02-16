@@ -31,7 +31,9 @@ const Log = rfr('src/helpers/logger.js');
 const Server = rfr('src/controllers/server.js');
 const ConfigHelper = rfr('src/helpers/config.js');
 const SFTPController = rfr('src/controllers/sftp.js');
+const InitializeHelper = rfr('src/helpers/initialize.js').Initialize;
 
+const Initialize = new InitializeHelper();
 const Config = new ConfigHelper();
 const SFTP = new SFTPController();
 
@@ -81,21 +83,8 @@ class Builder {
                     return callback();
                 });
             }],
-            create_container: ['set_uid', 'verify_ip', (results, callback) => {
-                // This automatically "rebuilds" the missing docker
-                // container and writes the updated configuration to
-                // the disk.
-                this.server = new Server(this.json, callback);
-            }],
-            initialize: ['create_container', (results, callback) => {
-                const InitializeHelper = rfr('src/helpers/initialize.js').Initialize;
-                const Initialize = new InitializeHelper();
-
-                // Using this setupByUuid function because this.json no longer matches
-                // the servers JSON after container modification and such.
-                //
-                // Static function will read the JSON from the file and go from there.
-                Initialize.setupByUuid(this.json.uuid, callback);
+            initialize: ['set_uid', 'verify_ip', (results, callback) => {
+                Initialize.setup(this.json, callback);
             }],
             install_pack: ['initialize', (results, callback) => {
                 results.initialize.installPack(callback);
