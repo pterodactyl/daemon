@@ -10,7 +10,7 @@
     "start": "node src/index.js | node_modules/bunyan/bin/bunyan -o short",
     "test": "./node_modules/eslint/bin/eslint.js --config .eslintrc src/* scripts/*",
     "configure": "node scripts/configure.js",
-    "diagnostics": "node scripts/diagnose.js"
+    "diagnostics": "node scripts/diagnostics.js"
   },
   "repository": {
     "type": "git",
