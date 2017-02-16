@@ -24,13 +24,14 @@
  */
 
 /* eslint no-console: 0 */
-const rfr = require('rfr');
 const _ = require('lodash');
 const Inquirer = require('inquirer');
 const Request = require('request');
-const Fs = require('fs');
+const Fs = require('fs-extra');
+const Path = require('path');
 
-const configFilePath = rfr.resolve('/config/core.json');
+const CONFIG_PATH = Path.resolve('config/core.json');
+const CONFIG_EXISTS = Fs.existsSync(CONFIG_PATH);
 
 const regex = {
     fqdn: new RegExp(/^https?:\/\/(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,64}\/?$/),
@@ -113,8 +114,7 @@ _.forEach(params, (param, key) => {
 });
 
 // Check if the configuration file exists already
-const configExists = Fs.existsSync(configFilePath);
-if (configExists) console.log('Configuration file (core.json) exists.');
+if (CONFIG_EXISTS) console.log('Configuration file (core.json) exists.');
 
 // Interactive questioning of missing parameters
 Inquirer.prompt([
@@ -136,7 +136,7 @@ Inquirer.prompt([
         type: 'confirm',
         default: false,
         message: 'Overwrite existing configuration?',
-        when: () => !params.overwrite.value && configExists,
+        when: () => !params.overwrite.value && CONFIG_EXISTS,
     },
 ]).then(answers => {
     // Overwrite the values in the overly complicated params object
@@ -145,7 +145,7 @@ Inquirer.prompt([
     });
 
     // If file exists and no overwrite wanted error and exit.
-    if (!params.overwrite.value && configExists) {
+    if (!params.overwrite.value && CONFIG_EXISTS) {
         console.error('Configuration file already exists, no overwrite requested. Aborting.');
         process.exit();
     }
@@ -160,7 +160,7 @@ Inquirer.prompt([
             if (response.statusCode === 200) {
                 console.log('Writing configuration to file.');
 
-                Fs.writeFile(configFilePath, JSON.stringify(jsonBody, null, 4), err => {
+                Fs.writeFile(CONFIG_PATH, JSON.stringify(jsonBody, null, 4), err => {
                     if (err) {
                         console.error('Failed to write configuration file.');
                     } else {
