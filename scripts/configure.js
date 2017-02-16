@@ -168,9 +168,9 @@ Inquirer.prompt([
                     }
                 });
             } else if (response.statusCode === 403) {
-                if (_.get('error', jsonBody) === 'token_invalid') {
+                if (_.get(jsonBody, 'error') === 'token_invalid') {
                     console.error('The token you used is invalid.');
-                } else if (_.get('error', jsonBody) === 'token_expired') {
+                } else if (_.get(jsonBody, 'error') === 'token_expired') {
                     console.error('The token provided is expired.');
                 } else {
                     console.error('An unknown error occured!', body);
