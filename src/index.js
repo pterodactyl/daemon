@@ -138,10 +138,10 @@ Async.auto({
         // Log a fatal error and exit.
         // We need this to initialize successfully without any errors.
         Log.fatal({ err, additional: err }, 'A fatal error caused the daemon to stop abruptly.');
-        process.exit(1);
+    } else {
+        rfr('src/http/routes.js');
+        Log.info('Initialization Successful!');
     }
-    rfr('src/http/routes.js');
-    Log.info('Initialization Successful!');
 });
 
 process.on('uncaughtException', err => {

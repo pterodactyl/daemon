@@ -39,18 +39,11 @@ const Log = Bunyan.createLogger({
             stream: process.stdout,
         },
         {
-            level: Config.get('logger.level', 'info'),
             type: 'rotating-file',
-            path: Path.join(Config.get('logger.path', 'logs/'), 'info.log'),
+            level: Config.get('logger.level', 'info'),
+            path: Path.join(Config.get('logger.path', 'logs/'), 'wings.log'),
             period: Config.get('logger.period', '1d'),
             count: Config.get('logger.count', 3),
-        },
-        {
-            level: 'error',
-            type: 'rotating-file',
-            path: Path.join(Config.get('logger.path', 'logs/'), 'error.log'),
-            period: '1d',
-            count: 3,
         },
     ],
 });
