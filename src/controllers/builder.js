@@ -28,7 +28,6 @@ const RandomString = require('randomstring');
 const _ = require('lodash');
 
 const Log = rfr('src/helpers/logger.js');
-const Server = rfr('src/controllers/server.js');
 const ConfigHelper = rfr('src/helpers/config.js');
 const SFTPController = rfr('src/controllers/sftp.js');
 const InitializeHelper = rfr('src/helpers/initialize.js').Initialize;

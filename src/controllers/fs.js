@@ -196,7 +196,7 @@ class FileSystem {
             Async.series([
                 callback => {
                     Fs.copy(this.server.path(initial), this.server.path(ending), {
-                        clobber: opts.clobber || true,
+                        overwrite: opts.overwrite || true,
                         preserveTimestamps: opts.timestamps || false,
                     }, callback);
                 },
@@ -216,7 +216,7 @@ class FileSystem {
                     return next(new Error('You cannot copy a folder into itself.'));
                 }
                 Fs.copy(this.server.path(value), this.server.path(ending[key]), {
-                    clobber: _.get(opts, 'clobber', true),
+                    overwrite: _.get(opts, 'overwrite', true),
                     preserveTimestamps: _.get(opts, 'timestamps', false),
                 }, err => {
                     if (err) return callback(err);
@@ -249,7 +249,7 @@ class FileSystem {
             if (this.isSelf(ending, initial)) {
                 return next(new Error('You cannot move a file or folder into itself.'));
             }
-            Fs.move(this.server.path(initial), this.server.path(ending), { clobber: false }, err => {
+            Fs.move(this.server.path(initial), this.server.path(ending), { overwrite: false }, err => {
                 if (err && !_.startsWith(err.message, 'EEXIST:')) return next(err);
                 this.chown(ending, next);
             });
@@ -264,7 +264,7 @@ class FileSystem {
                 if (this.isSelf(ending[key], value)) {
                     return next(new Error('You cannot move a file or folder into itself.'));
                 }
-                Fs.move(this.server.path(value), this.server.path(ending[key]), { clobber: false }, err => {
+                Fs.move(this.server.path(value), this.server.path(ending[key]), { overwrite: false }, err => {
                     if (err && !_.startsWith(err.message, 'EEXIST:')) return callback(err);
                     this.chown(ending[key], callback);
                 });

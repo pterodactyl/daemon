@@ -28,6 +28,7 @@ const Path = require('path');
 const Util = require('util');
 const Fs = require('fs-extra');
 const _ = require('lodash');
+const Klaw = require('klaw');
 
 const Log = rfr('src/helpers/logger.js');
 
@@ -43,7 +44,7 @@ class Initialize {
      */
     init(next) {
         this.folders = [];
-        Fs.walk('./config/servers/').on('data', data => {
+        Klaw('./config/servers/').on('data', data => {
             this.folders.push(data.path);
         }).on('end', () => {
             Async.each(this.folders, (file, callback) => {

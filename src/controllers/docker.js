@@ -23,7 +23,6 @@
  * SOFTWARE.
  */
 const rfr = require('rfr');
-const Fs = require('fs-extra');
 const Dockerode = require('dockerode');
 const isStream = require('isstream');
 const Async = require('async');
