@@ -62,7 +62,7 @@ class WebSocket {
             activeSocket.on('send server log', () => {
                 this.server.fs.readEnd(this.server.service.object.log.location, (err, data) => {
                     if (err) return this.websocket.emit('console', 'There was an error while attempting to get the log file.');
-                    this.server.emit('console', data);
+                    this.websocket.emit('server log', data);
                 });
             });
 
