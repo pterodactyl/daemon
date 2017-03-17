@@ -136,7 +136,15 @@ class Pack {
             }
 
             Log.debug('Pack was not found on the system, or the hash was different. Downloading again.');
-            this.downloadPack(next);
+            if (results.file_exists) {
+                this.logger.debug('Removing old pack from the system...');
+                Fs.unlink(Path.join(Config.get('pack.cache', './packs'), this.pack, 'archive.tar.gz'), unlinkErr => {
+                    if (unlinkErr) return next(unlinkErr);
+                    this.downloadPack(next);
+                });
+            } else {
+                this.downloadPack(next);
+            }
         });
     }
 

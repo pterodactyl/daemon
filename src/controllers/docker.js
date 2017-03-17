@@ -337,6 +337,10 @@ class Docker {
             create_container: ['update_images', 'update_ports', 'set_environment', (r, callback) => {
                 this.server.log.debug('Creating new container...');
 
+                if (_.get(config, 'image').length < 1) {
+                    return callback(new Error('No docker image was passed to the script. Unable to create container!'));
+                }
+
                 // How Much Swap?
                 let swapSpace = 0;
                 if (config.swap < 0) {

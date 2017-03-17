@@ -15,6 +15,7 @@ src/services/**/*
 tmp/*
 daemon
 packs/**
+.vscode/**
 .DS_Store
 !config/.githold
 !config/servers/.githold

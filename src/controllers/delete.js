@@ -27,6 +27,7 @@ const Async = require('async');
 const Dockerode = require('dockerode');
 const Fs = require('fs-extra');
 const Path = require('path');
+const _ = require('lodash');
 
 const SFTPController = rfr('src/controllers/sftp.js');
 const ConfigHelper = rfr('src/helpers/config.js');
@@ -60,6 +61,11 @@ class Delete {
             // Delete the container (kills if running)
             delete_container: ['clear_object', (r, callback) => {
                 this.log.debug('Attempting to remove container...');
+                if (!_.get(this.json, 'container.id', false)) {
+                    this.log.warn('No container ID was defined in the server JSON, skipping container deletion step.');
+                    return callback();
+                }
+
                 const container = DockerController.getContainer(this.json.container.id);
                 container.remove({ v: true, force: true }, err => {
                     if (!err) this.log.debug('Removed container.');

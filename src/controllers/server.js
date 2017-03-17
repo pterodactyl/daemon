@@ -76,15 +76,24 @@ class Server extends EventEmitter {
         this.initContainer(err => {
             if (err) return next(err);
 
-            const Service = rfr(Util.format('src/services/%s/index.js', this.json.service.type));
-            this.service = new Service(this);
+            if (!_.isString(_.get(this.json, 'service.type', false))) {
+                return next(new Error('No service type was passed to the server configuration, unable to select a service.'));
+            }
 
-            this.pack = new PackSystem(this);
-            this.socketIO = new Websocket(this).init();
-            this.uploadSocket = new UploadSocket(this).init();
-            this.fs = new FileSystem(this);
+            const ServiceFilePath = Util.format('src/services/%s/index.js', this.json.service.type);
+            Fs.access(ServiceFilePath, Fs.constants.R_OK, accessErr => {
+                if (accessErr) return next(accessErr);
 
-            return next();
+                const Service = rfr(ServiceFilePath);
+                this.service = new Service(this);
+
+                this.pack = new PackSystem(this);
+                this.socketIO = new Websocket(this).init();
+                this.uploadSocket = new UploadSocket(this).init();
+                this.fs = new FileSystem(this);
+
+                return next();
+            });
         });
     }
 

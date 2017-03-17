@@ -4,10 +4,13 @@ This file is a running track of new features and fixes to each version of the da
 ## v0.4.0-pre.2
 ### Changed
 * Updated dependencies to latest versions.
+* `[pre.1]` — Server boot now checks if service files exist for the server and if not throws a fatal error.
+* `[pre.1]` — Packs are now deleted if the hashes are different and a new one is being downloaded.
 
 ### Fixed
 * Fixes potential bug with CPU math if no object is defined.
 * Fixes bug with test suite due to missing eslint rule.
+* Fixes crash that might occur if a server fails to install a docker container and is then deleted.
 
 ## v0.4.0-pre.1 (Candid Comodactylus)
 ### Added
