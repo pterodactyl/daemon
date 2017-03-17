@@ -12,6 +12,9 @@ This file is a running track of new features and fixes to each version of the da
 * Fixes bug with test suite due to missing eslint rule.
 * Fixes crash that might occur if a server fails to install a docker container and is then deleted.
 
+### Removed
+* Removes `mmmagic` dependency in favor of just checking the file extension as any potential mime bypassing is mitigated by low-level processes.
+
 ## v0.4.0-pre.1 (Candid Comodactylus)
 ### Added
 * Service configuration files are now retrieved from the panel the daemon is associated with rather than being locally managed. Any changes are automatically pulled on daemon boot.
