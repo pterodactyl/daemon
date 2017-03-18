@@ -1,6 +1,14 @@
 # Changelog
 This file is a running track of new features and fixes to each version of the daemon released starting with `v0.2.0`.
 
+## v0.4.0-pre.3
+### Fixed
+* `[pre.2]` — Fixes broken regex not detecting missing spaces in file parser text replacements.
+* `[pre.2]` — Address bug preventing editing of files via file manager in panel.
+
+### Changed
+* `[pre.2]` — Re-adds `mmmagic` dependency to address issues with file manager.
+
 ## v0.4.0-pre.2
 ### Changed
 * Updated dependencies to latest versions.
