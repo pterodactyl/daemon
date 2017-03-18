@@ -43,6 +43,7 @@ const UploadSocket = rfr('src/http/upload.js');
 const PackSystem = rfr('src/controllers/pack.js');
 const FileSystem = rfr('src/controllers/fs.js');
 const SFTPController = rfr('src/controllers/sftp.js');
+const OptionController = rfr('src/controllers/option.js');
 
 const SFTP = new SFTPController();
 const Config = new ConfigHelper();
@@ -70,6 +71,8 @@ class Server extends EventEmitter {
         this.buildInProgress = false;
         this.configLocation = Path.join(__dirname, '../../config/servers/', this.uuid, 'server.json');
 
+        this.blockBooting = _.get(this.json, 'service.block_boot', false);
+
         this.log = Log.child({ server: this.uuid });
         this.lastCrash = undefined;
 
@@ -91,6 +94,7 @@ class Server extends EventEmitter {
                 this.socketIO = new Websocket(this).init();
                 this.uploadSocket = new UploadSocket(this).init();
                 this.fs = new FileSystem(this);
+                this.option = new OptionController(this);
 
                 return next();
             });

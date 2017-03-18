@@ -140,6 +140,12 @@ Async.auto({
         Log.fatal({ err, additional: err }, 'A fatal error caused the daemon to abort the startup.');
         Log.error('You should forcibly quit this process and attempt to fix the issue.');
     } else {
+
+        // const Servers = rfr('src/helpers/initialize.js').Servers;
+        // Servers['e36e60a5-c8bd-4019-8f11-dc810f290f71'].option.install(intErr => {
+        //     Log.fatal(intErr);
+        // });
+
         rfr('src/http/routes.js');
         Log.info('Initialization Successful!');
     }
