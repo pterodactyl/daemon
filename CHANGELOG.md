@@ -6,6 +6,9 @@ This file is a running track of new features and fixes to each version of the da
 * Fixes issue with private docker registries being applied to all images on the system when pulling.
 * `[pre.3]` — Failed pack downloads/installs no longer cause the server to throw an error and fail installation.
 
+### Changed
+* Docker containers are now named after the SFTP username to ease finding those servers in the listing.
+
 ### Added
 * Servers can now auto-start on completion of the install process.
 

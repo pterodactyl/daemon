@@ -351,7 +351,7 @@ class Docker {
                 // Make the container
                 DockerController.createContainer({
                     Image: config.image,
-                    name: `${this.server.json.user}_${RandomString.generate(3)}`,
+                    name: this.server.json.user,
                     Hostname: 'container',
                     User: config.user.toString(),
                     AttachStdin: true,

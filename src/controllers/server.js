@@ -522,17 +522,18 @@ class Server extends EventEmitter {
         // but for the sake of double checking...
         if (this.buildInProgress !== true) this.buildInProgress = true;
         Async.auto({
-            rebuild: callback => {
-                this.log.debug('Rebuilding server container.');
+            destroy: callback => {
+                this.log.debug('Removing old server container.');
+                this.docker.destroy(_.get(this.json, 'container.id', 'undefined_container_00'), callback);
+            },
+            rebuild: ['destroy', (results, callback) => {
+                this.log.debug('Rebuilding server container...');
                 this.docker.build((err, data) => {
                     callback(err, data);
                 });
-            },
-            destroy: ['rebuild', (results, callback) => {
-                this.log.debug(`New server container created with ID ${results.rebuild.id.substr(0, 12)}, removing old container.`);
-                this.docker.destroy(_.get(this.json, 'container.id', 'undefined_container_00'), callback);
             }],
-            update_config: ['destroy', (results, callback) => {
+            update_config: ['rebuild', (results, callback) => {
+                this.log.debug(`New container successfully created with ID ${results.rebuild.id.substr(0, 12)}`);
                 this.log.debug('Containers successfully rotated, updating stored configuration.');
                 this.modifyConfig({
                     rebuild: false,
