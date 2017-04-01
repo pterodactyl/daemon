@@ -4,6 +4,7 @@ This file is a running track of new features and fixes to each version of the da
 ## v0.4.0-pre.4
 ### Fixes
 * Fixes issue with private docker registries being applied to all images on the system when pulling.
+* `[pre.3]` — Failed pack downloads/installs no longer cause the server to throw an error and fail installation.
 
 ### Added
 * Servers can now auto-start on completion of the install process.
