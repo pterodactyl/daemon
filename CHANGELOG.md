@@ -5,6 +5,9 @@ This file is a running track of new features and fixes to each version of the da
 ### Fixes
 * Fixes issue with private docker registries being applied to all images on the system when pulling.
 
+### Added
+* Servers can now auto-start on completion of the install process.
+
 ## v0.4.0-pre.3
 ### Fixed
 * `[pre.2]` — Fixes broken regex not detecting missing spaces in file parser text replacements.
