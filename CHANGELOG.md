@@ -11,6 +11,8 @@ This file is a running track of new features and fixes to each version of the da
 
 ### Added
 * Servers can now auto-start on completion of the install process.
+* Errors encountered when parsing files during pre-flight are now thrown to the console websocket to be displated to users.
+* Server status changes are now displayed in the console stream, as well as clearer docker connection updates.
 
 ## v0.4.0-pre.3
 ### Fixed

@@ -78,11 +78,15 @@ class Core {
     // Very quick function, surprisingly...
     onPreflight(next) {
         if (!_.get(this.object, 'configs', false)) {
-            return next(new Error('No configuration object was assigned to this service. Unable to continue.'));
+            this.server.log.debug('No configuration object was assigned to this service. Skipping preflight.');
+            return next();
         }
+
+        let lastFile;
 
         // Check each configuration file and set variables as needed.
         Async.forEachOf(this.object.configs, (data, file, callback) => {
+            lastFile = file;
             switch (_.get(data, 'parser', 'file')) {
             case 'file':
                 this.parser.file(file, _.get(data, 'find', {}), callback);
@@ -103,7 +107,12 @@ class Core {
                 return callback(new Error('Parser assigned to file is not valid.'));
             }
         }, err => {
-            if (err) return next(err);
+            if (err) {
+                this.server.emit('console', `${Ansi.style.red}(Daemon) ${err.name} while processing ${lastFile}`);
+                this.server.emit('console', `${Ansi.style.red}(Daemon) ${err.message}`);
+                return next(err);
+            }
+
             if (_.get(this.object, 'log.custom', false) === true) {
                 if (isStream.isWritable(this.logStream)) {
                     this.logStream.end(() => {
@@ -129,7 +138,6 @@ class Core {
     }
 
     onStart(next) {
-        this.onConsole(`${Ansi.style.green}(Daemon) Server detected as started.`);
         if (_.isFunction(next)) {
             return next();
         }
@@ -196,10 +204,6 @@ class Core {
 
     onStop(next) {
         Async.series([
-            callback => {
-                this.onConsole(`${Ansi.style.green}(Daemon) Server detected as stopped.`);
-                callback();
-            },
             callback => {
                 if (isStream.isWritable(this.logStream)) {
                     this.logStream.end(() => {
