@@ -1,7 +1,7 @@
 # Changelog
 This file is a running track of new features and fixes to each version of the daemon released starting with `v0.2.0`.
 
-## v0.4.0-pre.4
+## v0.4.0-beta.1 (Candid Comodactylus)
 ### Fixes
 * Fixes issue with private docker registries being applied to all images on the system when pulling.
 * `[pre.3]` — Failed pack downloads/installs no longer cause the server to throw an error and fail installation.
@@ -14,7 +14,7 @@ This file is a running track of new features and fixes to each version of the da
 * Errors encountered when parsing files during pre-flight are now thrown to the console websocket to be displated to users.
 * Server status changes are now displayed in the console stream, as well as clearer docker connection updates.
 
-## v0.4.0-pre.3
+## v0.4.0-pre.3 (Candid Comodactylus)
 ### Fixed
 * `[pre.2]` — Fixes broken regex not detecting missing spaces in file parser text replacements.
 * `[pre.2]` — Address bug preventing editing of files via file manager in panel.
@@ -22,7 +22,7 @@ This file is a running track of new features and fixes to each version of the da
 ### Changed
 * `[pre.2]` — Re-adds `mmmagic` dependency to address issues with file manager.
 
-## v0.4.0-pre.2
+## v0.4.0-pre.2 (Candid Comodactylus)
 ### Changed
 * Updated dependencies to latest versions.
 * `[pre.1]` — Server boot now checks if service files exist for the server and if not throws a fatal error.
