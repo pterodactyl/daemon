@@ -49,7 +49,7 @@ class AuthorizationMiddleware {
         }
 
         if (!this.token) {
-            this.res.send(403, { 'error': 'Missing required X-Access-Token header.' });
+            this.res.send(400, { 'error': 'Missing required X-Access-Token header.' });
             return false;
         }
 
@@ -66,7 +66,7 @@ class AuthorizationMiddleware {
         // Both 'c:*' and 'g:*' permissions use the same permission checking, but 'g:*' permissions
         // require that a server header also be sent with the request.
         if (!this.uuid) {
-            this.res.send(403, { 'error': 'Missing required X-Access-Server headers.' });
+            this.res.send(400, { 'error': 'Missing required X-Access-Server headers.' });
             return false;
         }
 
@@ -78,19 +78,16 @@ class AuthorizationMiddleware {
             }
 
             if (_.startsWith(perm, 's:')) {
-                if (_.includes(configKeys, this.token)) {
-                    return true;
-                }
-                if (Servers[this.uuid].hasPermission(perm, this.token)) {
+                if (_.includes(configKeys, this.token) || Servers[this.uuid].hasPermission(perm, this.token)) {
                     return true;
                 }
             }
 
-            this.res.send(403, { 'error': 'You do not have permission to perform this action aganist a server.' });
+            this.res.send(403, { 'error': 'You do not have permission to perform this action for this server.' });
             return false;
         }
 
-        this.res.send(403, { 'error': 'You do not have permission to perform that action on the system.' });
+        this.res.send(404, { 'error': 'Unknown server defined in X-Access-Server header.' });
         return false;
     }
 

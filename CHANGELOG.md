@@ -1,6 +1,10 @@
 # Changelog
 This file is a running track of new features and fixes to each version of the daemon released starting with `v0.2.0`.
 
+## v0.4.0-beta.1.1 (Candid Comodactylus)
+### Changed
+* Provide cleaner errors when a server is not found on the system. Return `HTTP/404` if server is missing, and `HTTP/400` if the headrs are invalid.
+
 ## v0.4.0-beta.1 (Candid Comodactylus)
 ### Fixes
 * Fixes issue with private docker registries being applied to all images on the system when pulling.
