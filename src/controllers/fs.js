@@ -27,10 +27,13 @@ const Async = require('async');
 const Path = require('path');
 const Chokidar = require('chokidar');
 const _ = require('lodash');
+const Mmm = require('mmmagic');
 const RandomString = require('randomstring');
 const Process = require('child_process');
 const Util = require('util');
-const Mime = require('mime');
+
+const Magic = Mmm.Magic;
+const Mime = new Magic(Mmm.MAGIC_MIME_TYPE);
 
 class FileSystem {
     constructor(server) {
@@ -223,6 +226,24 @@ class FileSystem {
         }
     }
 
+    stat(file, next) {
+        Fs.stat(this.server.path(file), (err, stat) => {
+            if (err) next(err);
+            Mime.detectFile(this.server.path(file), (mimeErr, result) => {
+                next(null, {
+                    'name': (Path.parse(this.server.path(file))).base,
+                    'created': stat.ctime,
+                    'modified': stat.mtime,
+                    'size': stat.size,
+                    'directory': stat.isDirectory(),
+                    'file': stat.isFile(),
+                    'symlink': stat.isSymbolicLink(),
+                    'mime': result || 'unknown',
+                });
+            });
+        });
+    }
+
     move(initial, ending, next) {
         if (!_.isArray(initial) && !_.isArray(ending)) {
             if (this.isSelf(ending, initial)) {
@@ -268,34 +289,37 @@ class FileSystem {
     }
 
     systemDecompress(file, to, next) {
-        let Exec;
-        const FileType = Mime.lookup(file);
-        if (FileType === 'application/x-gzip' || FileType === 'application/gzip') {
-            Exec = Process.spawn('tar', ['xzf', Path.basename(file), '-C', to], {
-                cwd: Path.dirname(file),
-                uid: this.server.json.build.user,
-                gid: this.server.json.build.user,
-            });
-        } else if (FileType === 'application/zip') {
-            Exec = Process.spawn('unzip', ['-q', '-o', Path.basename(file), '-d', to], {
-                cwd: Path.dirname(file),
-                uid: this.server.json.build.user,
-                gid: this.server.json.build.user,
-            });
-        } else {
-            return next(new Error(`Decompression of file failed: ${FileType} is not a decompessible Mimetype.`));
-        }
+        Mime.detectFile(file, (err, result) => {
+            if (err) return next(err);
 
-        Exec.on('error', execErr => {
-            this.server.log.error(execErr);
-            return next(new Error('There was an error while attempting to decompress this file.'));
-        });
-        Exec.on('exit', (code, signal) => {
-            if (code !== 0) {
-                return next(new Error(`Decompression of file exited with code ${code} signal ${signal}.`));
+            let Exec;
+            if (result === 'application/x-gzip' || result === 'application/gzip') {
+                Exec = Process.spawn('tar', ['xzf', Path.basename(file), '-C', to], {
+                    cwd: Path.dirname(file),
+                    uid: this.server.json.build.user,
+                    gid: this.server.json.build.user,
+                });
+            } else if (result === 'application/zip') {
+                Exec = Process.spawn('unzip', ['-q', '-o', Path.basename(file), '-d', to], {
+                    cwd: Path.dirname(file),
+                    uid: this.server.json.build.user,
+                    gid: this.server.json.build.user,
+                });
+            } else {
+                return next(new Error(`Decompression of file failed: ${result} is not a decompessible Mimetype.`));
             }
 
-            return next();
+            Exec.on('error', execErr => {
+                this.server.log.error(execErr);
+                return next(new Error('There was an error while attempting to decompress this file.'));
+            });
+            Exec.on('exit', (code, signal) => {
+                if (code !== 0) {
+                    return next(new Error(`Decompression of file exited with code ${code} signal ${signal}.`));
+                }
+
+                return next();
+            });
         });
     }
 
@@ -377,22 +401,31 @@ class FileSystem {
             },
             (files, callback) => {
                 Async.each(files, (item, eachCallback) => {
-                    const FilePath = this.server.path(Path.join(path, item));
-                    Fs.stat(FilePath, (err, stat) => {
-                        if (err) return eachCallback(err);
-
-                        responseFiles.push({
-                            'name': (Path.parse(FilePath)).base,
-                            'created': stat.ctime,
-                            'modified': stat.mtime,
-                            'size': stat.size,
-                            'directory': stat.isDirectory(),
-                            'file': stat.isFile(),
-                            'symlink': stat.isSymbolicLink(),
-                            'mime': (stat.isFile()) ? Mime.lookup(FilePath) : null,
-                        });
-                        return eachCallback();
-                    });
+                    Async.auto({
+                        do_stat: aCallback => {
+                            Fs.stat(Path.join(this.server.path(path), item), (statErr, stat) => {
+                                aCallback(statErr, stat);
+                            });
+                        },
+                        do_mime: aCallback => {
+                            Mime.detectFile(Path.join(this.server.path(path), item), (mimeErr, result) => {
+                                aCallback(mimeErr, result);
+                            });
+                        },
+                        do_push: ['do_stat', 'do_mime', (results, aCallback) => {
+                            responseFiles.push({
+                                'name': item,
+                                'created': results.do_stat.birthtime,
+                                'modified': results.do_stat.mtime,
+                                'size': results.do_stat.size,
+                                'directory': results.do_stat.isDirectory(),
+                                'file': results.do_stat.isFile(),
+                                'symlink': results.do_stat.isSymbolicLink(),
+                                'mime': results.do_mime || 'unknown',
+                            });
+                            aCallback();
+                        }],
+                    }, eachCallback);
                 }, callback);
             },
         ], err => {

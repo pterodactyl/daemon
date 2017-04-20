@@ -72,7 +72,17 @@ class DockerImage {
             }
         }
 
-        DockerController.pull(image, pullWithConfig, (err, stream) => {
+        const shouldUseAuth = _.some(Config.get('docker.registry.images', []), i => { // eslint-disable-line
+            if (_.endsWith(i, '*')) {
+                return _.startsWith(i, i.substr(0, i.length - 1));
+            } else if (_.startsWith(i, '*')) {
+                return _.endsWith(i, i.substr(1, i.length));
+            }
+
+            return i === image;
+        });
+
+        DockerController.pull(image, (shouldUseAuth) ? pullWithConfig : {}, (err, stream) => {
             if (err) return next(err);
             stream.setEncoding('utf8');
             stream.on('data', () => { _.noop(); });

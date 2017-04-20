@@ -88,6 +88,11 @@ class RouteController {
 
     postNewServer() {
         if (!Auth.allowed('c:create')) return;
+        const startOnCompletion = _.get(this.req.params, 'start_on_completion', false);
+        if (startOnCompletion) {
+            delete this.req.params.start_on_completion;
+        }
+
         const Builder = new BuilderController(this.req.params);
         this.res.send(202, { 'message': 'Server is being built now, this might take some time if the docker image doesn\'t exist on the system yet.' });
 
@@ -113,6 +118,13 @@ class RouteController {
                     Log.warn(requestErr, 'An error occured while attempting to alert the panel of server install status.', { code: (typeof response !== 'undefined') ? response.statusCode : null, responseBody: body });
                 } else {
                     Log.info('Notified remote panel of server install status.');
+
+                    if (startOnCompletion) {
+                        const Servers = rfr('src/helpers/initialize.js').Servers;
+                        Servers[data.uuid].start(startErr => {
+                            if (err) Log.error({ server: data.uuid, err: startErr }, 'There was an error while attempting to auto-start this server.');
+                        });
+                    }
                 }
             });
         });

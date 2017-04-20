@@ -117,7 +117,11 @@ class Pack {
                 }, (err, resp) => {
                     if (err) return callback(err);
                     if (resp.statusCode !== 200) {
-                        return callback(new Error(`Recieved a non-200 error code (${resp.statusCode}) when attempting to check a pack hash (${this.pack}).`));
+                        return callback({
+                            code: resp.statusCode,
+                            body: resp.body,
+                            pack: this.pack,
+                        });
                     }
 
                     const Results = JSON.parse(resp.body);
@@ -125,7 +129,12 @@ class Pack {
                 });
             }],
         }, (err, results) => {
-            if (err) return this.logger.fatal(err);
+            if (err) {
+                this.logger.error(err, `Recieved a non-200 error code (${err.code}) when attempting to check a pack hash (${err.pack}).`);
+
+                // Don't respond with error, packs are non-critical.
+                return next();
+            }
 
             if (results.file_exists) {
                 if (Cache.get(`pack.${this.pack}`) === results.remote_hash) {

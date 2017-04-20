@@ -163,6 +163,23 @@ class Server extends EventEmitter {
             }
         }
 
+        switch (status) {
+        case Status.OFF:
+            this.emit('console', `${Ansi.style.cyan}(Daemon) Server marked as ${Ansi.style.bold}OFF`);
+            break;
+        case Status.ON:
+            this.emit('console', `${Ansi.style.cyan}(Daemon) Server marked as ${Ansi.style.bold}ON`);
+            break;
+        case Status.STARTING:
+            this.emit('console', `${Ansi.style.cyan}(Daemon) Server marked as ${Ansi.style.bold}STARTING`);
+            break;
+        case Status.STOPPING:
+            this.emit('console', `${Ansi.style.cyan}(Daemon) Server marked as ${Ansi.style.bold}STOPPING`);
+            break;
+        default:
+            break;
+        }
+
         this.log.info(`Server status has been changed to ${inverted[status]}`);
         this.status = status;
         this.emit(`is:${inverted[status]}`);
@@ -217,18 +234,19 @@ class Server extends EventEmitter {
         Async.series([
             callback => {
                 this.log.debug('Initializing for boot sequence, running preflight checks.');
-                this.emit('console', `${Ansi.style.green}(Daemon) Server detected as booting.`);
+                this.emit('console', `${Ansi.style.green}(Daemon) Running server preflight.`);
                 this.preflight(callback);
             },
             callback => {
-                this.emit('console', `${Ansi.style.green}(Daemon) Server container started.`);
+                this.emit('console', `${Ansi.style.green}(Daemon) Starting server container.`);
                 this.docker.start(callback);
             },
             callback => {
-                this.emit('console', `${Ansi.style.green}(Daemon) Attached to server container.`);
+                this.emit('console', `${Ansi.style.green}(Daemon) Server container started. Attaching...`);
                 this.docker.attach(callback);
             },
             callback => {
+                this.emit('console', `${Ansi.style.green}(Daemon) Attached to server container.`);
                 this.service.onAttached(callback);
             },
         ], err => {
@@ -254,7 +272,7 @@ class Server extends EventEmitter {
 
     stop(next) {
         if (this.status === Status.OFF) {
-            return next(new Error('Server is already stopped.'));
+            return next();
         }
 
         this.setStatus(Status.STOPPING);
@@ -277,6 +295,7 @@ class Server extends EventEmitter {
         this.setStatus(Status.STOPPING);
         this.docker.kill(err => {
             this.setStatus(Status.OFF);
+            this.emit('console', `${Ansi.style['bg-red']}${Ansi.style.white}(Daemon) Server marked as ${Ansi.style.bold}KILLED.`);
             return next(err);
         });
     }
@@ -526,17 +545,18 @@ class Server extends EventEmitter {
         // but for the sake of double checking...
         if (this.buildInProgress !== true) this.buildInProgress = true;
         Async.auto({
-            rebuild: callback => {
-                this.log.debug('Rebuilding server container.');
+            destroy: callback => {
+                this.log.debug('Removing old server container.');
+                this.docker.destroy(_.get(this.json, 'container.id', 'undefined_container_00'), callback);
+            },
+            rebuild: ['destroy', (results, callback) => {
+                this.log.debug('Rebuilding server container...');
                 this.docker.build((err, data) => {
                     callback(err, data);
                 });
-            },
-            destroy: ['rebuild', (results, callback) => {
-                this.log.debug(`New server container created with ID ${results.rebuild.id.substr(0, 12)}, removing old container.`);
-                this.docker.destroy(_.get(this.json, 'container.id', 'undefined_container_00'), callback);
             }],
-            update_config: ['destroy', (results, callback) => {
+            update_config: ['rebuild', (results, callback) => {
+                this.log.debug(`New container successfully created with ID ${results.rebuild.id.substr(0, 12)}`);
                 this.log.debug('Containers successfully rotated, updating stored configuration.');
                 this.modifyConfig({
                     rebuild: false,
