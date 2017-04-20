@@ -91,7 +91,7 @@ class Option {
             },
             run: ['write_file', 'image', (results, callback) => {
                 this.server.log.debug('Running privileged docker container to perform the installation process.');
-                DockerController.run('alpine:3.4', ['ash', './mnt/install/install.sh'], process.stdout, {
+                DockerController.run(_.get(results.details, 'config.container', 'alpine:3.4'), [_.get(results.details, 'config.entry', 'ash'), './mnt/install/install.sh'], process.stdout, {
                     Tty: true,
                     AttachStdin: true,
                     AttachStdout: true,

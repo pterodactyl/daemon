@@ -188,11 +188,31 @@ class RouteController {
         }
     }
 
-    installPack() {
-        if (!Auth.allowed('c:install-pack')) return;
-        Auth.server().installPack(err => {
-            Responses.generic204(err);
+    reinstallServer() {
+        if (!Auth.allowed('c:install-server')) return;
+        Auth.server().reinstall(err => {
+            if (err) Log.error(err);
+
+            const HMAC = Crypto.createHmac('sha256', Config.get('keys.0'));
+            HMAC.update(Auth.serverUuid());
+
+            Request.post(Config.get('remote.installed'), {
+                form: {
+                    server: Auth.serverUuid(),
+                    signed: HMAC.digest('base64'),
+                    installed: (err) ? 'error' : 'installed',
+                },
+                followAllRedirects: true,
+                timeout: 5000,
+            }, (requestErr, response, body) => {
+                if (requestErr || response.statusCode !== 200) {
+                    Log.warn(requestErr, 'An error occured while attempting to alert the panel of server install status.', { code: (typeof response !== 'undefined') ? response.statusCode : null, responseBody: body });
+                } else {
+                    Log.info('Notified remote panel of server install status.');
+                }
+            });
         });
+        this.res.send(202, { 'message': 'Server is being reinstalled.' });
     }
 
     getServer() {

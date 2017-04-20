@@ -121,8 +121,8 @@ RestServer.put('/server', (req, res, next) => {
     return next();
 });
 
-RestServer.post('/server/install', (req, res, next) => {
-    Routes.installPack();
+RestServer.post('/server/reinstall', (req, res, next) => {
+    Routes.reinstallServer();
     return next();
 });
 

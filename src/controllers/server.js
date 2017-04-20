@@ -622,8 +622,18 @@ class Server extends EventEmitter {
         });
     }
 
-    installPack(next) {
-        this.pack.install(next);
+    reinstall(next) {
+        Async.series([
+            callback => {
+                this.pack.install(callback);
+            },
+            callback => {
+                if (_.get(this.json, 'service.skip_scripting', false)) {
+                    return callback();
+                }
+                this.option.install(callback);
+            },
+        ], next);
     }
 
 }

@@ -86,7 +86,7 @@ class Builder {
                 Initialize.setup(this.json, callback);
             }],
             install_pack: ['initialize', (results, callback) => {
-                results.initialize.installPack(callback);
+                results.initialize.pack.install(callback);
             }],
             run_scripts: ['install_pack', (results, callback) => {
                 if (_.get(this.json, 'service.skip_scripting', false)) {
