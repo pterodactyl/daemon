@@ -116,7 +116,13 @@ class Option {
                             Util.format('%s:/mnt/install', Path.join('/tmp/pterodactyl/', this.server.json.uuid)),
                         ],
                     },
-                }, (err, data) => {
+                }, (err, data, container) => {
+                    container.remove();
+
+                    if (err) {
+                        return callback(err);
+                    }
+
                     this.server.log.info('Completed installation process for server.');
                     this.server.blockBooting = false;
                     callback(err, data);
