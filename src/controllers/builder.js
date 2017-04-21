@@ -86,16 +86,18 @@ class Builder {
                 Initialize.setup(this.json, callback);
             }],
             install_pack: ['initialize', (results, callback) => {
+                results.initialize.blockStartup();
                 results.initialize.pack.install(callback);
             }],
             run_scripts: ['install_pack', (results, callback) => {
-                if (_.get(this.json, 'service.skip_scripting', false)) {
+                if (_.get(this.json, 'service.skip_scripts', false)) {
                     this.log.info('Skipping service option script run due to server configuration file.');
                     return callback();
                 }
                 results.initialize.option.install(callback);
             }],
-        }, err => {
+        }, (err, results) => {
+            results.initialize.blockStartup(false);
             next(err, this.json);
         });
     }

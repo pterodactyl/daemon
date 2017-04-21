@@ -190,7 +190,8 @@ class RouteController {
 
     reinstallServer() {
         if (!Auth.allowed('c:install-server')) return;
-        Auth.server().reinstall(err => {
+
+        Auth.server().reinstall(this.req.params, err => {
             if (err) Log.error(err);
 
             const HMAC = Crypto.createHmac('sha256', Config.get('keys.0'));
@@ -212,6 +213,7 @@ class RouteController {
                 }
             });
         });
+
         this.res.send(202, { 'message': 'Server is being reinstalled.' });
     }
 
