@@ -42,6 +42,7 @@ class Pack {
         this.pack = this.server.json.service.pack;
         this.archiveLocation = null;
         this.logger = Log;
+        this.packdata = null;
     }
 
     // Called when a server is started and marked as needing a pack update

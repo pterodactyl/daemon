@@ -43,6 +43,7 @@ const UploadSocket = rfr('src/http/upload.js');
 const PackSystem = rfr('src/controllers/pack.js');
 const FileSystem = rfr('src/controllers/fs.js');
 const SFTPController = rfr('src/controllers/sftp.js');
+const OptionController = rfr('src/controllers/option.js');
 
 const SFTP = new SFTPController();
 const Config = new ConfigHelper();
@@ -70,6 +71,8 @@ class Server extends EventEmitter {
         this.buildInProgress = false;
         this.configLocation = Path.join(__dirname, '../../config/servers/', this.uuid, 'server.json');
 
+        this.blockBooting = false;
+
         this.log = Log.child({ server: this.uuid });
         this.lastCrash = undefined;
 
@@ -91,6 +94,7 @@ class Server extends EventEmitter {
                 this.socketIO = new Websocket(this).init();
                 this.uploadSocket = new UploadSocket(this).init();
                 this.fs = new FileSystem(this);
+                this.option = new OptionController(this);
 
                 return next();
             });
@@ -193,6 +197,10 @@ class Server extends EventEmitter {
     start(next) {
         if (this.status !== Status.OFF) {
             return next(new Error('Server is already running.'));
+        }
+
+        if (this.blockBooting) {
+            return next(new Error('Server cannot be started, booting is blocked due to pack or service install.'));
         }
 
         // Set status early on to avoid super fast clickers
@@ -618,8 +626,66 @@ class Server extends EventEmitter {
         });
     }
 
-    installPack(next) {
-        this.pack.install(next);
+    blockStartup(shouldBlock) {
+        this.blockBooting = (shouldBlock !== false);
+        if (this.blockBooting) {
+            this.log.warn('Server booting is now BLOCKED.');
+        } else {
+            this.log.info('Server booting is now UNBLOCKED.');
+        }
+    }
+
+    reinstall(config, next) {
+        Async.series([
+            callback => {
+                this.blockStartup();
+                this.stop(callback);
+            },
+            callback => {
+                if (this.status !== Status.OFF) {
+                    this.once('is:OFF', callback);
+                } else {
+                    return callback();
+                }
+            },
+            callback => {
+                if (_.isObject(config) && !_.isEmpty(config)) {
+                    this.modifyConfig(config, false, callback);
+                } else {
+                    return callback();
+                }
+            },
+            callback => {
+                this.pack.install(callback);
+            },
+            callback => {
+                if (_.get(this.json, 'service.skip_scripts', false)) {
+                    return callback();
+                }
+                this.option.install(callback);
+            },
+            callback => {
+                if (!_.isString(_.get(this.json, 'service.type', false))) {
+                    return callback(new Error('No service type was passed to the server configuration, unable to select a service.'));
+                }
+
+                const ServiceFilePath = Util.format('src/services/%s/index.js', this.json.service.type);
+                Fs.access(ServiceFilePath, Fs.constants.R_OK, accessErr => {
+                    if (accessErr) return next(accessErr);
+
+                    const Service = rfr(ServiceFilePath);
+                    this.service = new Service(this);
+
+                    this.pack = new PackSystem(this);
+                    this.option = new OptionController(this);
+
+                    return callback();
+                });
+            },
+        ], err => {
+            this.blockStartup(false);
+            return next(err);
+        });
     }
 
 }
