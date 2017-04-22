@@ -29,7 +29,6 @@ const Async = require('async');
 const Util = require('util');
 const _ = require('lodash');
 const Carrier = require('carrier');
-const RandomString = require('randomstring');
 
 const Log = rfr('src/helpers/logger.js');
 const Status = rfr('src/helpers/status.js');
@@ -346,7 +345,7 @@ class Docker {
                 if (config.swap < 0) {
                     swapSpace = -1;
                 } else if (config.swap > 0 && config.memory > 0) {
-                    swapSpace = ((config.memory + config.swap) * 1000000);
+                    swapSpace = ((config.memory + config.swap) * 1000 * 1000);
                 }
                 // Make the container
                 DockerController.createContainer({
@@ -385,8 +384,8 @@ class Docker {
                         OomKillDisable: config.oom_disabled || false,
                         CpuQuota: (config.cpu > 0) ? (config.cpu * 1000) : -1,
                         CpuPeriod: (config.cpu > 0) ? 100000 : 0,
-                        Memory: this.hardlimit(config.memory) * 1000000,
-                        MemoryReservation: config.memory * 1000000,
+                        Memory: this.hardlimit(config.memory) * 1000 * 1000,
+                        MemoryReservation: config.memory * 1000 * 1000,
                         MemorySwap: swapSpace,
                         BlkioWeight: config.io,
                         Dns: Config.get('docker.dns', [
