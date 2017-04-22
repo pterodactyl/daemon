@@ -68,6 +68,25 @@ class FileSystem {
         });
     }
 
+    size(next) {
+        const Exec = Process.spawn('du', ['-hsb', this.server.path()], {});
+
+        Exec.stdout.on('data', data => {
+            next(null, parseInt(data.toString().split('\t')[0], 10));
+        });
+
+        Exec.on('error', execErr => {
+            this.server.log.error(execErr);
+            return next(new Error('There was an error while attempting to check the size of the server data folder.'));
+        });
+
+        Exec.on('exit', (code, signal) => {
+            if (code !== 0) {
+                return next(new Error(`Unable to determine size of server data folder, exited with code ${code} signal ${signal}.`));
+            }
+        });
+    }
+
     chown(file, next) {
         let chownTarget = file;
         if (!_.startsWith(chownTarget, this.server.path())) {

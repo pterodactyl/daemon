@@ -72,6 +72,7 @@ class Server extends EventEmitter {
         this.configLocation = Path.join(__dirname, '../../config/servers/', this.uuid, 'server.json');
 
         this.blockBooting = false;
+        this.currentDiskUsed = 0;
 
         this.log = Log.child({ server: this.uuid });
         this.lastCrash = undefined;
@@ -150,15 +151,20 @@ class Server extends EventEmitter {
 
         // Handle Internal Tracking
         if (status === Status.ON || status === Status.STARTING) {
-            if (_.isNull(this.intervals.process)) {
+            if (_.isNull(this.intervals.process) || _.isNull(this.intervals.diskUse)) {
+                // Go ahead and run since it will be a minute until it does anyways.
+                setTimeout(this.diskUse, 100, this);
                 this.intervals.process = setInterval(this.process, 2000, this);
+                this.intervals.diskUse = setInterval(this.diskUse, 60000, this);
             }
         } else if (status === Status.STOPPING || status === Status.OFF) {
-            if (!_.isNull(this.intervals.process)) {
+            if (!_.isNull(this.intervals.process) || !_.isNull(this.intervals.process)) {
                 // Server is stopping or stopped, lets clear the interval as well as any stored
                 // information about the process. Lets also detach the stats stream.
                 clearInterval(this.intervals.process);
+                clearInterval(this.intervals.diskUse);
                 this.intervals.process = null;
+                this.intervals.diskUse = null;
                 this.processData.process = {};
             }
         }
@@ -236,6 +242,25 @@ class Server extends EventEmitter {
         }
 
         Async.series([
+            callback => {
+                this.log.debug('Checking size of server folder before booting.');
+                this.emit('console', `${Ansi.style.yellow}(Daemon) Checking size of server data directory...`);
+                this.fs.size((err, size) => {
+                    if (err) return callback(err);
+
+                    // 10 MB overhead accounting.
+                    const humanReadable = Math.round(size / (1000 * 1000));
+                    this.currentDiskUsed = humanReadable;
+
+                    if ((size - (10 * 1000 * 1000)) > (this.json.build.disk * 1000 * 1000)) {
+                        this.emit('console', `${Ansi.style.yellow}(Daemon) Not enough disk space! ${humanReadable}M / ${this.json.build.disk}M`);
+                        return callback(new Error('There is not enough available disk space to start this server.'));
+                    }
+
+                    this.emit('console', `${Ansi.style.yellow}(Daemon) Disk Usage: ${humanReadable}M / ${this.json.build.disk}M`);
+                    return callback();
+                });
+            },
             callback => {
                 this.log.debug('Initializing for boot sequence, running preflight checks.');
                 this.emit('console', `${Ansi.style.green}(Daemon) Running server preflight.`);
@@ -419,6 +444,22 @@ class Server extends EventEmitter {
         return _.noop();
     }
 
+    diskUse(self) { // eslint-disable-line
+        if (self.status === Status.OFF) return;
+
+        self.fs.size((err, size) => {
+            if (err) return self.log.warn(err);
+
+            self.currentDiskUsed = Math.round(size / (1000 * 1000)); // eslint-disable-line
+            if ((size - (10 * 1000 * 1000)) > (self.json.build.disk * 1000 * 1000)) {
+                self.emit('console', `${Ansi.style.red}(Daemon) Server is violating disk space limits. Stopping process.`);
+                self.stop(stopErr => {
+                    self.log.error(stopErr);
+                });
+            }
+        });
+    }
+
     process(self) { // eslint-disable-line
         if (self.status === Status.OFF) return;
 
@@ -455,6 +496,10 @@ class Server extends EventEmitter {
                 cpu: {
                     cores: perCoreUsage,
                     total: parseFloat(totalUsage.toFixed(3).toString()),
+                },
+                disk: {
+                    used: self.currentDiskUsed,
+                    limit: self.json.build.disk,
                 },
             };
             self.emit('proc', self.processData.process);
