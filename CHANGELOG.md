@@ -6,6 +6,7 @@ This file is a running track of new features and fixes to each version of the da
 * Support for running service scripts when installing a server for the first time.
 * Support for reinstalling a server with a given service and option configuration.
 * Ability to use the `host` network stack if needed. Allows containers to access resources on `127.0.0.1` without having to do any routing. _This option should only be used in private environments as it allows a container access to the host network stack._
+* Support for working disk limits that pevent server booting, and stop a server automatically if it is found to be violating limits.
 
 ## v0.4.0-beta.1.1 (Candid Comodactylus)
 ### Changed
