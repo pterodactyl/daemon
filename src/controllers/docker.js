@@ -393,9 +393,6 @@ class Docker {
                             '8.8.8.8',
                             '8.8.4.4',
                         ]),
-                        ExtraHosts: [
-                            `container:${Config.get('docker.interface')}`,
-                        ],
                         LogConfig: {
                             Type: Config.get('docker.policy.container.log_driver', 'none'),
                         },
@@ -419,7 +416,7 @@ class Docker {
                             'sys_chroot',
                             'setfcap',
                         ]),
-                        NetworkMode: 'pterodactyl_nw',
+                        NetworkMode: Config.get('docker.network.name', 'pterodactyl_nw'),
                     },
                 }, (err, container) => {
                     callback(err, container);

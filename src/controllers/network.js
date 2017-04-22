@@ -97,6 +97,17 @@ class Network {
         DockerNetwork.inspect((err, data) => {
             if (err) return next(err);
 
+            if (_.get(data, 'Driver') === 'host') {
+                Log.warn('Detected daemon configuation using HOST NETWORK for server containers. This can expose the host network stack to programs running in containers!');
+                Log.info('Gateway detected as 127.0.0.1 - using host network.');
+                Config.modify({
+                    docker: {
+                        interface: '127.0.0.1',
+                    },
+                }, next);
+                return;
+            }
+
             if (!_.get(data, 'IPAM.Config[0].Gateway', false)) {
                 return next(new Error('No gateway could be found for pterodactyl0.'));
             }
