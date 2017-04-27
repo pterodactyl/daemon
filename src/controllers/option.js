@@ -97,16 +97,15 @@ class Option {
                     this.processLogger.close();
                     this.processLogger = undefined;
                     return callback();
-                } else {
-                    return callback();
                 }
+                return callback();
             },
             setup_stream: ['close_stream', (results, callback) => {
                 const ProcessDate = new Date().getTime();
-                const LoggingLocation = Path.join(this.server.configDataLocation, 'logs/', `install-${ProcessDate}.log`);
+                const LoggingLocation = Path.join(this.server.configDataLocation, 'install.log');
                 this.server.log.info('Writing output of installation process to file.', { file: LoggingLocation });
                 this.processLogger = createOutputStream(LoggingLocation, {
-                    mode: '0644',
+                    mode: '0o644',
                     defaultEncoding: 'utf8',
                 });
                 return callback();

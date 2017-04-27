@@ -158,7 +158,7 @@ class Core {
                         Async.series([
                             callback => {
                                 this.logStream = createOutputStream(LogFile, {
-                                    mode: '0755',
+                                    mode: '0o644',
                                     defaultEncoding: 'utf8',
                                 });
                                 return callback();
