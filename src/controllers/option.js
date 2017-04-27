@@ -30,6 +30,8 @@ const Fs = require('fs-extra');
 const Path = require('path');
 const Util = require('util');
 const _ = require('lodash');
+const isStream = require('isstream');
+const createOutputStream = require('create-output-stream');
 
 const ConfigHelper = rfr('src/helpers/config.js');
 const ImageHelper = rfr('src/helpers/image.js');
@@ -42,6 +44,7 @@ const DockerController = new Dockerode({
 class Option {
     constructor(server) {
         this.server = server;
+        this.processLogger = undefined;
     }
 
     pull(next) {
@@ -89,9 +92,28 @@ class Option {
                 this.server.log.debug('Pulling alpine:3.4 image if it is not already on the system.');
                 ImageHelper.pull('alpine:3.4', callback);
             },
+            close_stream: callback => {
+                if (isStream.isWritable(this.processLogger)) {
+                    this.processLogger.close();
+                    this.processLogger = undefined;
+                    return callback();
+                } else {
+                    return callback();
+                }
+            },
+            setup_stream: ['close_stream', (results, callback) => {
+                const ProcessDate = new Date().getTime();
+                const LoggingLocation = Path.join(this.server.configDataLocation, 'logs/', `install-${ProcessDate}.log`);
+                this.server.log.info('Writing output of installation process to file.', { file: LoggingLocation });
+                this.processLogger = createOutputStream(LoggingLocation, {
+                    mode: '0644',
+                    defaultEncoding: 'utf8',
+                });
+                return callback();
+            }],
             run: ['write_file', 'image', (results, callback) => {
                 this.server.log.debug('Running privileged docker container to perform the installation process.');
-                DockerController.run(_.get(results.details, 'config.container', 'alpine:3.4'), [_.get(results.details, 'config.entry', 'ash'), './mnt/install/install.sh'], process.stdout, {
+                DockerController.run(_.get(results.details, 'config.container', 'alpine:3.4'), [_.get(results.details, 'config.entry', 'ash'), './mnt/install/install.sh'], this.processLogger, {
                     Tty: true,
                     AttachStdin: true,
                     AttachStdout: true,
@@ -128,15 +150,18 @@ class Option {
                     callback(err, data);
                 });
             }],
+            close_logger: ['run', (results, callback) => {
+                if (isStream.isWritable(this.processLogger)) {
+                    this.processLogger.close();
+                    this.processLogger = undefined;
+                }
+                return callback();
+            }],
             chown: ['run', (results, callback) => {
                 this.server.log.debug('Properly chowning all server files and folders after installation.');
                 this.server.fs.chown('/', callback);
             }],
         }, next);
-    }
-
-    update() {
-
     }
 }
 

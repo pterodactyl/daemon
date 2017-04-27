@@ -69,7 +69,8 @@ class Server extends EventEmitter {
         this.shouldRestart = false;
         this.knownWrite = false;
         this.buildInProgress = false;
-        this.configLocation = Path.join(__dirname, '../../config/servers/', this.uuid, 'server.json');
+        this.configDataLocation = Path.join(__dirname, '../../config/servers/', this.uuid);
+        this.configLocation = Path.join(this.configDataLocation, 'server.json');
 
         this.blockBooting = false;
         this.currentDiskUsed = 0;
