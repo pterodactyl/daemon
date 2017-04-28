@@ -159,7 +159,7 @@ class Server extends EventEmitter {
                 this.intervals.diskUse = setInterval(this.diskUse, 60000, this);
             }
         } else if (status === Status.STOPPING || status === Status.OFF) {
-            if (!_.isNull(this.intervals.process) || !_.isNull(this.intervals.process)) {
+            if (!_.isNull(this.intervals.process) || !_.isNull(this.intervals.diskUse)) {
                 // Server is stopping or stopped, lets clear the interval as well as any stored
                 // information about the process. Lets also detach the stats stream.
                 clearInterval(this.intervals.process);
