@@ -88,10 +88,11 @@ class Option {
                     encoding: 'utf8',
                 }, callback);
             }],
-            image: callback => {
-                this.server.log.debug('Pulling alpine:3.4 image if it is not already on the system.');
-                ImageHelper.pull('alpine:3.4', callback);
-            },
+            image: ['details', (results, callback) => {
+                const PullImage = _.get(results.details, 'config.container', 'alpine:3.4');
+                this.server.log.debug(`Pulling ${PullImage} image if it is not already on the system.`);
+                ImageHelper.pull(PullImage, callback);
+            }],
             close_stream: callback => {
                 if (isStream.isWritable(this.processLogger)) {
                     this.processLogger.close();
@@ -101,7 +102,6 @@ class Option {
                 return callback();
             },
             setup_stream: ['close_stream', (results, callback) => {
-                const ProcessDate = new Date().getTime();
                 const LoggingLocation = Path.join(this.server.configDataLocation, 'install.log');
                 this.server.log.info('Writing output of installation process to file.', { file: LoggingLocation });
                 this.processLogger = createOutputStream(LoggingLocation, {
