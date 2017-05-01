@@ -206,7 +206,7 @@ RestServer.del(/^\/server\/file\/f\/(.+)/, (req, res, next) => {
     return next();
 });
 
-RestServer.get(/^\/server\/file\/download\/([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})/, (req, res, next) => {
+RestServer.get('/server/file/download/:token', (req, res, next) => {
     Routes.downloadServerFile();
     return next();
 });

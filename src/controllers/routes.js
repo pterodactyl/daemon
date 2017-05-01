@@ -379,7 +379,7 @@ class RouteController {
     downloadServerFile() {
         Request.post(`${Config.get('remote.base')}/daemon/download`, {
             form: {
-                token: this.req.params[0],
+                token: this.req.params.token,
             },
             timeout: 5000,
         }, (err, response, body) => {
