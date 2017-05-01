@@ -105,11 +105,14 @@ class RouteController {
             const HMAC = Crypto.createHmac('sha256', Config.get('keys.0'));
             HMAC.update(data.uuid);
 
-            Request.post(`${Config.get('remote.base')}/daemon/installed`, {
+            Request.post(`${Config.get('remote.base')}/daemon/install`, {
                 form: {
                     server: data.uuid,
                     signed: HMAC.digest('base64'),
                     installed: (err) ? 'error' : 'installed',
+                },
+                headers: {
+                    'X-Access-Node': Config.get('keys.0'),
                 },
                 followAllRedirects: true,
                 timeout: 5000,
@@ -197,11 +200,14 @@ class RouteController {
             const HMAC = Crypto.createHmac('sha256', Config.get('keys.0'));
             HMAC.update(Auth.serverUuid());
 
-            Request.post(`${Config.get('remote.base')}/daemon/installed`, {
+            Request.post(`${Config.get('remote.base')}/daemon/install`, {
                 form: {
                     server: Auth.serverUuid(),
                     signed: HMAC.digest('base64'),
                     installed: (err) ? 'error' : 'installed',
+                },
+                headers: {
+                    'X-Access-Node': Config.get('keys.0'),
                 },
                 followAllRedirects: true,
                 timeout: 5000,
@@ -381,6 +387,9 @@ class RouteController {
             form: {
                 token: this.req.params.token,
             },
+            headers: {
+                'X-Access-Node': Config.get('keys.0'),
+            },
             timeout: 5000,
         }, (err, response, body) => {
             if (err) {
@@ -418,7 +427,7 @@ class RouteController {
                     return this.res.send(500, { 'error': 'An unexpected error occured while attempting to process this request.' });
                 }
             } else {
-                return this.res.send(502, { 'error': 'An error occured while attempting to authenticate with an upstream provider.', res_code: response.statusCode });
+                return this.res.send(502, { 'error': 'An error occured while attempting to authenticate with an upstream provider.', res_code: response.statusCode, res_body: JSON.parse(body) });
             }
         });
     }
