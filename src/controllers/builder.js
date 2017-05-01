@@ -97,8 +97,11 @@ class Builder {
                 results.initialize.option.install(callback);
             }],
         }, (err, results) => {
-            results.initialize.blockStartup(false);
-            next(err, this.json);
+            if (_.isFunction(results.initialize.blockStartup)) {
+                results.initialize.blockStartup(false);
+            }
+
+            return next(err, this.json);
         });
     }
 }

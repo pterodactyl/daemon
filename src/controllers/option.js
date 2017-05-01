@@ -138,7 +138,7 @@ class Option {
                         ],
                     },
                 }, (err, data, container) => {
-                    if (_.isObject(container) && _.isFunction(container.remove)) {
+                    if (_.isObject(container) && _.isFunction(_.get(container, 'remove', null))) {
                         container.remove();
                     }
 
