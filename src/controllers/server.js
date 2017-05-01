@@ -154,7 +154,7 @@ class Server extends EventEmitter {
         if (status === Status.ON || status === Status.STARTING) {
             if (_.isNull(this.intervals.process) || _.isNull(this.intervals.diskUse)) {
                 // Go ahead and run since it will be a minute until it does anyways.
-                setTimeout(this.diskUse, 100, this);
+                setTimeout(this.diskUse, 2000, this);
                 this.intervals.process = setInterval(this.process, 2000, this);
                 this.intervals.diskUse = setInterval(this.diskUse, 60000, this);
             }
