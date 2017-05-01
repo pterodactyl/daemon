@@ -105,7 +105,7 @@ class RouteController {
             const HMAC = Crypto.createHmac('sha256', Config.get('keys.0'));
             HMAC.update(data.uuid);
 
-            Request.post(Config.get('remote.installed'), {
+            Request.post(`${Config.get('remote.base')}/daemon/installed`, {
                 form: {
                     server: data.uuid,
                     signed: HMAC.digest('base64'),
@@ -197,7 +197,7 @@ class RouteController {
             const HMAC = Crypto.createHmac('sha256', Config.get('keys.0'));
             HMAC.update(Auth.serverUuid());
 
-            Request.post(Config.get('remote.installed'), {
+            Request.post(`${Config.get('remote.base')}/daemon/installed`, {
                 form: {
                     server: Auth.serverUuid(),
                     signed: HMAC.digest('base64'),
@@ -377,11 +377,7 @@ class RouteController {
     }
 
     downloadServerFile() {
-        if (!Config.get('remote.download')) {
-            return this.res.send(501, { 'error': 'This action has not been properly configured on the daemon.' });
-        }
-
-        Request.post(Config.get('remote.download'), {
+        Request.post(`${Config.get('remote.base')}/daemon/download`, {
             form: {
                 token: this.req.params[0],
             },

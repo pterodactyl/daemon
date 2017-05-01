@@ -8,6 +8,9 @@ This file is a running track of new features and fixes to each version of the da
 * Ability to use the `host` network stack if needed. Allows containers to access resources on `127.0.0.1` without having to do any routing. _This option should only be used in private environments as it allows a container access to the host network stack._
 * Support for working disk limits that pevent server booting, and stop a server automatically if it is found to be violating limits.
 
+### Changed
+* Use `/daemon` for all calls to the panel, rather than `/remote`.
+
 ## v0.4.0-beta.1.1 (Candid Comodactylus)
 ### Changed
 * Provide cleaner errors when a server is not found on the system. Return `HTTP/404` if server is missing, and `HTTP/400` if the headrs are invalid.
