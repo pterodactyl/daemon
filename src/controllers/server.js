@@ -355,7 +355,7 @@ class Server extends EventEmitter {
         }
 
         // Prevent a user sending a stop command manually from crashing the server.
-        if (_.startsWith(command.trim().replace(/^\/*/, ''), this.service.object.stop)) {
+        if (_.startsWith(_.replace(_.trim(command), /^\/*/, ''), this.service.object.stop)) {
             this.setStatus(Status.STOPPING);
         }
 
@@ -428,7 +428,7 @@ class Server extends EventEmitter {
         const dataPath = Path.join(Config.get('sftp.path', '/srv/daemon-data'), this.json.user, '/data');
         let returnPath = dataPath;
 
-        if (!_.isUndefined(location) && location.replace(/\s+/g, '').length > 0) {
+        if (!_.isUndefined(location) && _.replace(location, /\s+/g, '').length > 0) {
             returnPath = Path.join(dataPath, Path.normalize(Querystring.unescape(location)));
         }
 
@@ -527,7 +527,7 @@ class Server extends EventEmitter {
         if (!_.isUndefined(newObject.build)) {
             _.forEach(newObject.build, (obj, ident) => {
                 if (_.endsWith(ident, '|overwrite')) {
-                    const item = ident.split('|')[0];
+                    const item = _.split(ident, '|')[0];
                     newObject.build[item] = obj;
                     delete newObject.build[ident];
                 }
@@ -555,7 +555,7 @@ class Server extends EventEmitter {
                 callback();
             },
             write_config: ['set_knownwrite', (results, callback) => {
-                Fs.outputJson(this.configLocation, newObject, err => {
+                Fs.outputJson(this.configLocation, newObject, { spaces: 2 }, err => {
                     if (!err) this.json = newObject;
                     return callback(err);
                 });

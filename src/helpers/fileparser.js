@@ -43,9 +43,9 @@ class FileParser {
     getReplacement(replacement) {
         return replacement.replace(/{{\s?(\S+)\s?}}/g, ($0, $1) => { // eslint-disable-line
             if (_.startsWith($1, 'server')) {
-                return _.reduce(($1.replace('server.', '')).split('.'), (o, i) => o[i], this.server.json);
+                return _.reduce(_.split(_.replace($1, 'server.', ''), '.'), (o, i) => o[i], this.server.json);
             } else if (_.startsWith($1, 'config')) {
-                return Config.get($1.replace('config.', ''));
+                return Config.get(_.replace($1, 'config.', ''));
             }
             return $0;
         });
@@ -63,7 +63,7 @@ class FileParser {
                         if (_.startsWith(err.message, 'ENOENT: no such file or directory')) return next();
                         return next(err);
                     }
-                    return callback(null, data.toString().split('\n'));
+                    return callback(null, _.split(data.toString(), '\n'));
                 });
             },
             (lines, callback) => {
@@ -124,7 +124,7 @@ class FileParser {
                         // Find & Replace
                         newValue = _.get(data, element);
                         _.forEach(replacement, (rep, find) => {
-                            newValue = newValue.replace(find, this.getReplacement(rep));
+                            newValue = _.replace(newValue, find, this.getReplacement(rep));
                         });
                     } else {
                         newValue = replacement;
@@ -200,7 +200,7 @@ class FileParser {
                         // Find & Replace
                         newValue = _.get(data, element);
                         _.forEach(replacement, (rep, find) => {
-                            newValue = newValue.replace(find, this.getReplacement(rep));
+                            newValue = _.replace(newValue, find, this.getReplacement(rep));
                         });
                     } else {
                         newValue = replacement;
@@ -214,7 +214,7 @@ class FileParser {
                     eCallback();
                 }, callback);
             }, () => {
-                Fs.writeJson(this.server.path(file), data, next);
+                Fs.writeJson(this.server.path(file), data, { spaces: 2 }, next);
             });
         });
     }

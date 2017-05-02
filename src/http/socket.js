@@ -109,7 +109,7 @@ class WebSocket {
         this.server.on('console', output => {
             const data = output.toString();
             // Is this data even worth dealing with?
-            if ((data.replace(/\s+/g, '')).length > 1) {
+            if (_.replace(data, /\s+/g, '').length > 1) {
                 this.websocket.emit('console', {
                     'line': data,
                 });

@@ -52,7 +52,7 @@ class FileSystem {
                         // Try to overwrite those changes with the old config.
                         this.server.log.warn(err, 'An error was detected with the changed file, attempting to undo the changes.');
                         this.server.knownWrite = true;
-                        Fs.writeJson(this.server.configLocation, this.server.json, writeErr => {
+                        Fs.writeJson(this.server.configLocation, this.server.json, { spaces: 2 }, writeErr => {
                             if (!writeErr) {
                                 this.server.log.debug('Successfully undid those remote changes.');
                             } else {
@@ -72,7 +72,7 @@ class FileSystem {
         const Exec = Process.spawn('du', ['-hsb', this.server.path()], {});
 
         Exec.stdout.on('data', data => {
-            next(null, parseInt(data.toString().split('\t')[0], 10));
+            next(null, parseInt(_.split(data.toString(), '\t')[0], 10));
         });
 
         Exec.on('error', execErr => {

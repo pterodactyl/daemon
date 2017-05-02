@@ -58,7 +58,7 @@ class Config {
     get(key, defaultResponse) {
         let getObject;
         try {
-            getObject = _.reduce(key.split('.'), (o, i) => o[i], Cache.get('config'));
+            getObject = _.reduce(_.split(key, '.'), (o, i) => o[i], Cache.get('config'));
         } catch (ex) { _.noop(); }
 
         if (!_.isUndefined(getObject)) {
@@ -73,7 +73,7 @@ class Config {
             throw new Error('Invalid JSON was passed to Builder.');
         }
 
-        Fs.writeJson('./config/core.json', json, err => {
+        Fs.writeJson('./config/core.json', json, { spaces: 2 }, err => {
             if (!err) Cache.put('config', json);
             return next(err);
         });
@@ -88,7 +88,7 @@ class Config {
         });
         const modifiedJson = deepExtend(Cache.get('config'), object);
 
-        Fs.writeJson('./config/core.json', modifiedJson, err => {
+        Fs.writeJson('./config/core.json', modifiedJson, { spaces: 2 }, err => {
             if (err) return next(err);
 
             Cache.put('config', modifiedJson);

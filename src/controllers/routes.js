@@ -239,7 +239,7 @@ class RouteController {
     postServerCommand() {
         if (!Auth.allowed('s:command')) return;
         if (!_.isUndefined(this.req.params.command)) {
-            if (_.startsWith(this.req.params.command.trim().replace(/^\/*/, ''), Auth.server().service.object.stop)) {
+            if (_.startsWith(_.replace(_.trim(this.req.params.command), /^\/*/, ''), Auth.server().service.object.stop)) {
                 if (!Auth.allowed('s:power:stop')) return;
             }
             Auth.server().command(this.req.params.command, err => {
