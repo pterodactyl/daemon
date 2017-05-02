@@ -27,6 +27,7 @@ const Dockerode = require('dockerode');
 const _ = require('lodash');
 
 const LoadConfig = rfr('src/helpers/config.js');
+const Log = rfr('src/helpers/logger.js');
 
 const Config = new LoadConfig();
 const DockerController = new Dockerode({
@@ -84,9 +85,22 @@ class DockerImage {
 
         DockerController.pull(image, (shouldUseAuth) ? pullWithConfig : {}, (err, stream) => {
             if (err) return next(err);
+
+            let SendOutput;
             stream.setEncoding('utf8');
-            stream.on('data', () => { _.noop(); });
-            stream.on('end', next);
+            stream.on('data', () => {
+                if (_.isNil(SendOutput)) {
+                    SendOutput = setInterval(() => {
+                        Log.debug(`Pulling image ${image} ... this could take a few minutes.`);
+                    }, 5 * 1000);
+                }
+            });
+            stream.on('end', streamErr => {
+                if (!_.isNil(SendOutput)) {
+                    clearInterval(SendOutput);
+                }
+                return next(streamErr);
+            });
             stream.on('error', next);
         });
     }
