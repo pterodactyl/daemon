@@ -274,7 +274,10 @@ class SFTP {
                         exec.inspect((inspectErr, data) => {
                             if (inspectErr) return next(inspectErr);
                             if (data.ExitCode !== 0) {
-                                return next(new Error('Docker returned a non-zero exit code when attempting to execute a SFTP command.'));
+                                return next(new Error('Docker returned a non-zero exit code when attempting to execute a SFTP command.'), {
+                                    exec: command,
+                                    code: data.ExitCode,
+                                });
                             }
                             return next(null, uidResponse);
                         });
