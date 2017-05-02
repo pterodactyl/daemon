@@ -90,9 +90,15 @@ class DockerImage {
             stream.setEncoding('utf8');
             stream.on('data', () => {
                 if (_.isNil(SendOutput)) {
+                    Log.info(`Pulling image ${image} ... this could take a few minutes.`);
+                    const TimeInterval = (Config.get('logger.level', 'info') === 'debug') ? 2 : 10;
                     SendOutput = setInterval(() => {
-                        Log.debug(`Pulling image ${image} ... this could take a few minutes.`);
-                    }, 5 * 1000);
+                        if (Config.get('logger.level', 'info') === 'debug') {
+                            Log.debug(`Pulling image ${image} ... this could take a few minutes.`);
+                        } else {
+                            Log.info(`Pulling image ${image} ... this could take a few minutes.`);
+                        }
+                    }, TimeInterval * 1000);
                 }
             });
             stream.on('end', streamErr => {
