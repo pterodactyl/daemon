@@ -1,7 +1,7 @@
 # Changelog
 This file is a running track of new features and fixes to each version of the daemon released starting with `v0.2.0`.
 
-## v0.4.0-beta.2 (Candid Comodactylus)
+## v0.4.0-rc.1 (Candid Comodactylus)
 ### Added
 * Support for running service scripts when installing a server for the first time.
 * Support for reinstalling a server with a given service and option configuration.
