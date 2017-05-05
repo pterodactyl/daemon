@@ -84,7 +84,7 @@ class Option {
 
                 this.server.log.debug('Writing temporary file to be handed into the Docker container.');
                 Fs.outputFile(Path.join('/tmp/pterodactyl/', this.server.json.uuid, '/install.sh'), results.details.scripts.install, {
-                    mode: '0o766',
+                    mode: '0o644',
                     encoding: 'utf8',
                 }, callback);
             }],
@@ -110,9 +110,13 @@ class Option {
                 });
                 return callback();
             }],
-            run: ['write_file', 'image', (results, callback) => {
+            suspend: ['image', (results, callback) => {
+                this.server.log.info('Temporarily suspending server to avoid mishaps...');
+                this.server.suspend(callback);
+            }],
+            run: ['setup_stream', 'write_file', 'image', (results, callback) => {
                 this.server.log.debug('Running privileged docker container to perform the installation process.');
-                DockerController.run(_.get(results.details, 'config.container', 'alpine:3.4'), [_.get(results.details, 'config.entry', 'ash'), './mnt/install/install.sh'], this.processLogger, {
+                DockerController.run(_.get(results.details, 'config.container', 'alpine:3.4'), [_.get(results.details, 'config.entry', 'ash'), './mnt/install/install.sh'], (Config.get('logger.level', 'info') === 'debug') ? process.stdout : this.processLogger, {
                     Tty: true,
                     AttachStdin: true,
                     AttachStdout: true,
@@ -158,11 +162,18 @@ class Option {
                 }
                 return callback();
             }],
+            remove_install_script: ['run', (results, callback) => {
+                Fs.unlink(Path.join('/tmp/pterodactyl/', this.server.json.uuid, '/install.sh'), callback);
+            }],
             chown: ['run', (results, callback) => {
                 this.server.log.debug('Properly chowning all server files and folders after installation.');
                 this.server.fs.chown('/', callback);
             }],
-        }, next);
+        }, err => {
+            this.server.unsuspend(() => { _.noop(); });
+
+            return next(err);
+        });
     }
 }
 
