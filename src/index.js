@@ -27,6 +27,7 @@ const Async = require('async');
 const Proc = require('child_process');
 const Request = require('request');
 const compareVersions = require('compare-versions');
+const Fs = require('fs-extra');
 
 const Log = rfr('src/helpers/logger.js');
 const Package = rfr('package.json');
@@ -86,6 +87,11 @@ Async.auto({
             Log.warn('Unable to check if this daemon is up to date! Invalid status code returned.');
             return callback();
         });
+    },
+    check_structure: callback => {
+        Fs.ensureDirSync('config/credentials');
+        Fs.ensureDirSync('config/servers');
+        callback();
     },
     check_network: callback => {
         Log.info('Checking container networking environment...');
