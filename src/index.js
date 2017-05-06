@@ -34,7 +34,7 @@ const Package = rfr('package.json');
 Log.info('+ ------------------------------------ +');
 Log.info(`| Running Pterodactyl Daemon v${Package.version}    |`);
 Log.info('|        https://pterodactyl.io        |');
-Log.info('|  Copyright 2015 - 2016 Dane Everitt  |');
+Log.info('|  Copyright 2015 - 2017 Dane Everitt  |');
 Log.info('+ ------------------------------------ +');
 Log.info('Loading modules, this could take a few seconds.');
 
@@ -122,7 +122,12 @@ Async.auto({
     configure_perms: ['init_servers', (r, callback) => {
         const Servers = rfr('src/helpers/initialize.js').Servers;
         Async.each(Servers, (Server, loopCallback) => {
-            Server.setPermissions(loopCallback);
+            Server.setPermissions(err => {
+                if (err) {
+                    Server.log.warn('Unable to assign permissions on startup for this server. Are all of the files in the correct location?');
+                }
+                loopCallback();
+            });
         }, callback);
     }],
     init_websocket: ['init_servers', (r, callback) => {
