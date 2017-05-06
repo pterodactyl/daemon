@@ -78,6 +78,11 @@ class AuthorizationMiddleware {
             }
 
             if (_.startsWith(perm, 's:')) {
+                if (Servers[this.uuid].isSuspended()) {
+                    this.res.send(403, { 'error': 'This server is suspended and cannot be accessed with this token.' });
+                    return false;
+                }
+
                 if (_.includes(configKeys, this.token) || Servers[this.uuid].hasPermission(perm, this.token)) {
                     return true;
                 }

@@ -117,15 +117,16 @@ class Server extends EventEmitter {
         });
     }
 
+    isSuspended() {
+        return (_.get(this.json, 'suspended', 0) === 1);
+    }
+
     hasPermission(perm, token) {
         if (!_.isUndefined(perm) && !_.isUndefined(token)) {
             if (!_.isUndefined(this.json.keys) && token in this.json.keys) {
                 if (_.includes(this.json.keys[token], perm) || _.includes(this.json.keys[token], 's:*')) {
                     // Check Suspension Status
-                    if (_.get(this.json, 'suspended', 0) === 0) {
-                        return true;
-                    }
-                    return false;
+                    return !this.isSuspended();
                 }
             }
         }
