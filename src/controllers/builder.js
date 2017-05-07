@@ -96,12 +96,12 @@ class Builder {
                 }
                 results.initialize.option.install(callback);
             }],
-        }, (err, results) => {
-            if (_.isFunction(results.initialize.blockStartup)) {
+            unblock_boot: ['run_scripts', (results, callback) => {
                 results.initialize.blockStartup(false);
-            }
-
-            return next(err, this.json);
+                return callback();
+            }],
+        }, err => {
+            next(err, this.json);
         });
     }
 }
