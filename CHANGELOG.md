@@ -1,7 +1,41 @@
 # Changelog
 This file is a running track of new features and fixes to each version of the daemon released starting with `v0.2.0`.
 
-## v0.4.0-rc.1 (Candid Comodactylus)
+## v0.4.0 (Candid Comodactylus)
+### Fixed
+* Fixes a race condition that would cause duplicate socket streams for data output and generally confuse both the panel and daemon.
+* Fixes a race condition when booting SFTP subsystem container.
+* `socketio-file-upload` bumped to `0.6.0` in order to address a potential issue in file uploads in Chrome.
+* Fixes potential bug with CPU math if no object is defined.
+* Fixes bug with test suite due to missing eslint rule.
+* Fixes crash that might occur if a server fails to install a docker container and is then deleted.
+* Fixes issue with private docker registries being applied to all images on the system when pulling.
+
+### Changed
+* Minor version updates to multiple dependencies (no change in daemon function).
+* SFTP subsystem now looking for container based on assigned ID and if a container is not found it will also attempt to locate it by image name before trying to create a new container.
+* Updated dependencies to latest versions.
+* Docker containers are now named after the SFTP username to ease finding those servers in the listing.
+* Provide cleaner errors when a server is not found on the system. Return `HTTP/404` if server is missing, and `HTTP/400` if the headrs are invalid.
+* Use `/daemon` for all calls to the panel, rather than `/remote`.
+
+### Added
+* Service configuration files are now retrieved from the panel the daemon is associated with rather than being locally managed. Any changes are automatically pulled on daemon boot.
+* Daemon configuration is now possible using `npm run-script configure` to contact remote panel and collect the configuration file.
+* Support for sending commands and receiving server log over websockets.
+* Servers can now auto-start on completion of the install process.
+* Errors encountered when parsing files during pre-flight are now thrown to the console websocket to be displated to users.
+* Server status changes are now displayed in the console stream, as well as clearer docker connection updates.
+* Support for running service scripts when installing a server for the first time.
+* Support for reinstalling a server with a given service and option configuration.
+* Ability to use the `host` network stack if needed. Allows containers to access resources on `127.0.0.1` without having to do any routing. _This option should only be used in private environments as it allows a container access to the host network stack._
+* Support for working disk limits that pevent server booting, and stop a server automatically if it is found to be violating limits.
+
+### Removed
+* Gamedig removed due to lack of updates and multiple security vulnerabilities in dependencies.
+* Removed unused `is-json` dependency.
+
+## v0.4.0-rc.1
 ### Added
 * Support for running service scripts when installing a server for the first time.
 * Support for reinstalling a server with a given service and option configuration.
@@ -11,11 +45,11 @@ This file is a running track of new features and fixes to each version of the da
 ### Changed
 * Use `/daemon` for all calls to the panel, rather than `/remote`.
 
-## v0.4.0-beta.1.1 (Candid Comodactylus)
+## v0.4.0-beta.1.1
 ### Changed
 * Provide cleaner errors when a server is not found on the system. Return `HTTP/404` if server is missing, and `HTTP/400` if the headrs are invalid.
 
-## v0.4.0-beta.1 (Candid Comodactylus)
+## v0.4.0-beta.1
 ### Fixes
 * Fixes issue with private docker registries being applied to all images on the system when pulling.
 * `[pre.3]` — Failed pack downloads/installs no longer cause the server to throw an error and fail installation.
@@ -28,7 +62,7 @@ This file is a running track of new features and fixes to each version of the da
 * Errors encountered when parsing files during pre-flight are now thrown to the console websocket to be displated to users.
 * Server status changes are now displayed in the console stream, as well as clearer docker connection updates.
 
-## v0.4.0-pre.3 (Candid Comodactylus)
+## v0.4.0-pre.3
 ### Fixed
 * `[pre.2]` — Fixes broken regex not detecting missing spaces in file parser text replacements.
 * `[pre.2]` — Address bug preventing editing of files via file manager in panel.
@@ -36,7 +70,7 @@ This file is a running track of new features and fixes to each version of the da
 ### Changed
 * `[pre.2]` — Re-adds `mmmagic` dependency to address issues with file manager.
 
-## v0.4.0-pre.2 (Candid Comodactylus)
+## v0.4.0-pre.2
 ### Changed
 * Updated dependencies to latest versions.
 * `[pre.1]` — Server boot now checks if service files exist for the server and if not throws a fatal error.
@@ -50,7 +84,7 @@ This file is a running track of new features and fixes to each version of the da
 ### Removed
 * Removes `mmmagic` dependency in favor of just checking the file extension as any potential mime bypassing is mitigated by low-level processes.
 
-## v0.4.0-pre.1 (Candid Comodactylus)
+## v0.4.0-pre.1
 ### Added
 * Service configuration files are now retrieved from the panel the daemon is associated with rather than being locally managed. Any changes are automatically pulled on daemon boot.
 * Daemon configuration is now possible using `npm run-script configure` to contact remote panel and collect the configuration file.
