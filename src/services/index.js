@@ -85,7 +85,7 @@ class Core {
         let lastFile;
 
         // Check each configuration file and set variables as needed.
-        Async.forEachOf(this.object.configs, (data, file, callback) => {
+        Async.forEachOf(_.get(this.object, 'configs', {}), (data, file, callback) => {
             lastFile = file;
             switch (_.get(data, 'parser', 'file')) {
             case 'file':
@@ -113,7 +113,7 @@ class Core {
                 return next(err);
             }
 
-            if (_.get(this.object, 'log.custom', false) === true) {
+            if (_.get(this.object, 'log.custom', false)) {
                 if (isStream.isWritable(this.logStream)) {
                     this.logStream.end(() => {
                         this.logStream = false;
@@ -174,7 +174,7 @@ class Core {
             },
             () => {
                 // Started
-                if (_.includes(data, this.object.startup.done)) {
+                if (_.includes(data, _.get(this.object, 'startup.done', null))) {
                     Async.series([
                         callback => {
                             this.onStart(callback);

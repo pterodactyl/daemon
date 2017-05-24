@@ -1,6 +1,10 @@
 # Changelog
 This file is a running track of new features and fixes to each version of the daemon released starting with `v0.2.0`.
 
+## v0.4.1 (Candid Comodactylus)
+### Fixed
+* Fixed bug causing `undefined startup` when using an invalid service tag, or general loading issues.
+
 ## v0.4.0 (Candid Comodactylus)
 ### Fixed
 * Fixes a race condition that would cause duplicate socket streams for data output and generally confuse both the panel and daemon.
