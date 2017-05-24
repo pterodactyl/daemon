@@ -673,19 +673,23 @@ class Server extends EventEmitter {
         });
     }
 
-    blockStartup(shouldBlock) {
+    blockStartup(shouldBlock, next) {
         this.blockBooting = (shouldBlock !== false);
         if (this.blockBooting) {
             this.log.warn('Server booting is now BLOCKED.');
         } else {
             this.log.info('Server booting is now UNBLOCKED.');
         }
+
+        return next();
     }
 
     reinstall(config, next) {
         Async.series([
             callback => {
-                this.blockStartup();
+                this.blockStartup(true, callback);
+            },
+            callback => {
                 this.stop(callback);
             },
             callback => {
@@ -729,10 +733,10 @@ class Server extends EventEmitter {
                     return callback();
                 });
             },
-        ], err => {
-            this.blockStartup(false);
-            return next(err);
-        });
+            callback => {
+                this.blockStartup(false, callback);
+            },
+        ], next);
     }
 
 }

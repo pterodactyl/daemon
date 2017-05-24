@@ -85,8 +85,10 @@ class Builder {
             initialize: ['set_uid', 'verify_ip', (results, callback) => {
                 Initialize.setup(this.json, callback);
             }],
-            install_pack: ['initialize', (results, callback) => {
-                results.initialize.blockStartup();
+            block_boot: ['initialize', (results, callback) => {
+                results.initialize.blockStartup(true, callback);
+            }],
+            install_pack: ['block_boot', (results, callback) => {
                 results.initialize.pack.install(callback);
             }],
             run_scripts: ['install_pack', (results, callback) => {
@@ -97,8 +99,7 @@ class Builder {
                 results.initialize.option.install(callback);
             }],
             unblock_boot: ['run_scripts', (results, callback) => {
-                results.initialize.blockStartup(false);
-                return callback();
+                results.initialize.blockStartup(false, callback);
             }],
         }, err => {
             next(err, this.json);
