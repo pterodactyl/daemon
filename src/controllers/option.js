@@ -78,8 +78,7 @@ class Option {
             write_file: ['details', (results, callback) => {
                 if (_.isNil(_.get(results.details, 'scripts.install', null))) {
                     // No script defined, skip the rest.
-                    this.server.log.warn('No installation script was defined for this service, skipping rest of process.');
-                    return next();
+                    return callback(new Error('E_NOSCRIPT: No installation script was defined for this service, skipping rest of process'));
                 }
 
                 this.server.log.debug('Writing temporary file to be handed into the Docker container.');
@@ -88,19 +87,19 @@ class Option {
                     encoding: 'utf8',
                 }, callback);
             }],
-            image: ['details', (results, callback) => {
+            image: ['write_file', (results, callback) => {
                 const PullImage = _.get(results.details, 'config.container', 'alpine:3.4');
                 this.server.log.debug(`Pulling ${PullImage} image if it is not already on the system.`);
                 ImageHelper.pull(PullImage, callback);
             }],
-            close_stream: callback => {
+            close_stream: ['write_file', callback => {
                 if (isStream.isWritable(this.processLogger)) {
                     this.processLogger.close();
                     this.processLogger = undefined;
                     return callback();
                 }
                 return callback();
-            },
+            }],
             setup_stream: ['close_stream', (results, callback) => {
                 const LoggingLocation = Path.join(this.server.configDataLocation, 'install.log');
                 this.server.log.info('Writing output of installation process to file.', { file: LoggingLocation });
@@ -114,7 +113,7 @@ class Option {
                 this.server.log.info('Temporarily suspending server to avoid mishaps...');
                 this.server.suspend(callback);
             }],
-            run: ['setup_stream', 'write_file', 'image', (results, callback) => {
+            run: ['setup_stream', 'image', (results, callback) => {
                 this.server.log.debug('Running privileged docker container to perform the installation process.');
                 DockerController.run(_.get(results.details, 'config.container', 'alpine:3.4'), [_.get(results.details, 'config.entry', 'ash'), './mnt/install/install.sh'], (Config.get('logger.level', 'info') === 'debug') ? process.stdout : this.processLogger, {
                     Tty: true,
@@ -171,6 +170,12 @@ class Option {
             }],
         }, err => {
             this.server.unsuspend(() => { _.noop(); });
+
+            // No script, no need to kill everything.
+            if (err && _.startsWith(err.message, 'E_NOSCRIPT')) {
+                this.server.log.info(err.message);
+                return next();
+            }
 
             return next(err);
         });
