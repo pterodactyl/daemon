@@ -100,7 +100,7 @@ class RouteController {
         // We do need to monitor for errors and negatiate with
         // the panel if they do occur.
         Builder.init((err, data) => {
-            if (err) Log.error(err);
+            if (err) Log.fatal('A fatal error was encountered while attempting to create a server.', err);
 
             const HMAC = Crypto.createHmac('sha256', Config.get('keys.0'));
             HMAC.update(data.uuid);
@@ -121,13 +121,13 @@ class RouteController {
                     Log.warn(requestErr, 'An error occured while attempting to alert the panel of server install status.', { code: (typeof response !== 'undefined') ? response.statusCode : null, responseBody: body });
                 } else {
                     Log.info('Notified remote panel of server install status.');
+                }
 
-                    if (startOnCompletion) {
-                        const Servers = rfr('src/helpers/initialize.js').Servers;
-                        Servers[data.uuid].start(startErr => {
-                            if (err) Log.error({ server: data.uuid, err: startErr }, 'There was an error while attempting to auto-start this server.');
-                        });
-                    }
+                if (startOnCompletion && !err) {
+                    const Servers = rfr('src/helpers/initialize.js').Servers;
+                    Servers[data.uuid].start(startErr => {
+                        if (err) Log.error({ server: data.uuid, err: startErr }, 'There was an error while attempting to auto-start this server.');
+                    });
                 }
             });
         });

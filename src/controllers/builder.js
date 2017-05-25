@@ -31,6 +31,7 @@ const Log = rfr('src/helpers/logger.js');
 const ConfigHelper = rfr('src/helpers/config.js');
 const SFTPController = rfr('src/controllers/sftp.js');
 const InitializeHelper = rfr('src/helpers/initialize.js').Initialize;
+const DeleteController = rfr('src/controllers/delete.js');
 
 const Initialize = new InitializeHelper();
 const Config = new ConfigHelper();
@@ -103,6 +104,14 @@ class Builder {
             }],
         }, err => {
             next(err, this.json);
+
+            // Delete the server if there was an error causing this builder to abort.
+            if (err) {
+                const Delete = new DeleteController(this.json);
+                Delete.delete(deleteError => {
+                    if (deleteError) Log.error(deleteError);
+                });
+            }
         });
     }
 }

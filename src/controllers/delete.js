@@ -76,8 +76,8 @@ class Delete {
             delete_config: ['clear_object', (r, callback) => {
                 this.log.debug('Attempting to remove configuration files...');
                 Fs.remove(Path.join('./config/servers', this.json.uuid), err => {
-                    if (!err) this.log.debug('Removed configuration folder.');
-                    return callback(err);
+                    if (!err) this.log.debug('Removed configuration folder.', err);
+                    return callback();
                 });
             }],
             // Delete the SFTP user and files.
@@ -93,7 +93,8 @@ class Delete {
             }],
         }, err => {
             if (err) Log.fatal(err);
-            this.log.info('Server deleted.');
+            if (!err) this.log.info('Server deleted.');
+
             return next(err);
         });
     }
