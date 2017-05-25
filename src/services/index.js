@@ -37,7 +37,7 @@ const Status = rfr('src/helpers/status.js');
 const FileParserHelper = rfr('src/helpers/fileparser.js');
 
 class Core {
-    constructor(server, config = null) {
+    constructor(server, config = null, next) {
         this.server = server;
         this.json = server.json;
         this.config = config || rfr(Util.format('src/services/%s/main.json', this.json.service.type));
@@ -48,19 +48,24 @@ class Core {
         this.parser = new FileParserHelper(this.server);
 
         // Find our data on initialization.
-        _.forEach(this.config, (element, option) => {
+        Async.eachOf(this.config, (element, option, callback) => {
             if (this.service.option === option) {
                 // Handle "symlink" in the configuration for plugins...
                 this.object = element;
-                const deepExtend = extendify({
-                    inPlace: false,
-                    arrays: 'replace',
-                });
+
                 if (!_.isUndefined(element.symlink) && !_.isUndefined(this.config[element.symlink])) {
+                    const deepExtend = extendify({
+                        inPlace: false,
+                        arrays: 'replace',
+                    });
+
                     this.object = deepExtend(this.config[element.symlink], element);
+                    return callback();
                 }
             }
-        });
+
+            return callback();
+        }, next);
     }
 
     doQuery(next) {

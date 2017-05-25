@@ -71,6 +71,7 @@ class Server extends EventEmitter {
         this.buildInProgress = false;
         this.configDataLocation = Path.join(__dirname, '../../config/servers/', this.uuid);
         this.configLocation = Path.join(this.configDataLocation, 'server.json');
+        this.containerInitialized = false;
 
         this.blockBooting = false;
         this.currentDiskUsed = 0;
@@ -86,20 +87,26 @@ class Server extends EventEmitter {
             }
 
             const ServiceFilePath = Util.format('src/services/%s/index.js', this.json.service.type);
-            Fs.access(ServiceFilePath, Fs.constants.R_OK, accessErr => {
-                if (accessErr) return next(accessErr);
+            Async.series([
+                callback => {
+                    Fs.access(ServiceFilePath, Fs.constants.R_OK, callback);
+                },
+                callback => {
+                    const Service = rfr(ServiceFilePath);
+                    this.service = new Service(this, null, callback);
+                },
+                callback => {
+                    this.pack = new PackSystem(this);
+                    this.socketIO = new Websocket(this).init();
+                    this.uploadSocket = new UploadSocket(this).init();
+                    this.fs = new FileSystem(this);
+                    this.option = new OptionController(this);
 
-                const Service = rfr(ServiceFilePath);
-                this.service = new Service(this);
-
-                this.pack = new PackSystem(this);
-                this.socketIO = new Websocket(this).init();
-                this.uploadSocket = new UploadSocket(this).init();
-                this.fs = new FileSystem(this);
-                this.option = new OptionController(this);
-
-                return next();
-            });
+                    this.containerInitialized = true;
+                    console.log('yes');
+                    return callback();
+                },
+            ], next);
         });
     }
 
@@ -155,7 +162,11 @@ class Server extends EventEmitter {
         if (status === Status.ON || status === Status.STARTING) {
             if (_.isNull(this.intervals.process) || _.isNull(this.intervals.diskUse)) {
                 // Go ahead and run since it will be a minute until it does anyways.
-                setTimeout(this.diskUse, 2000, this);
+                // Only run if the container is all initialized and ready to go though.
+                if (this.containerInitialized) {
+                    setTimeout(this.diskUse, 2000, this);
+                }
+
                 this.intervals.process = setInterval(this.process, 2000, this);
                 this.intervals.diskUse = setInterval(this.diskUse, 60000, this);
             }

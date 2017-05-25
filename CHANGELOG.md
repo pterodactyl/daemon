@@ -4,6 +4,11 @@ This file is a running track of new features and fixes to each version of the da
 ## v0.4.1 (Candid Comodactylus)
 ### Fixed
 * Fixed bug causing `undefined startup` when using an invalid service tag, or general loading issues.
+* Fixes potential race condition when booting daemon that would lead to services being incomplete when attemting to load all data.
+* Fixes installation process hanging when no script is defined for a service option.
+
+### Changed
+* Cleaner handling of errors when attemping to create a new server. If an error occurs the daemon will self-clean and remove the broken server.
 
 ## v0.4.0 (Candid Comodactylus)
 ### Fixed
