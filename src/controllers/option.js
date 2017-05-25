@@ -92,7 +92,7 @@ class Option {
                 this.server.log.debug(`Pulling ${PullImage} image if it is not already on the system.`);
                 ImageHelper.pull(PullImage, callback);
             }],
-            close_stream: ['write_file', callback => {
+            close_stream: ['write_file', (results, callback) => {
                 if (isStream.isWritable(this.processLogger)) {
                     this.processLogger.close();
                     this.processLogger = undefined;
