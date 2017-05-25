@@ -103,7 +103,6 @@ class Server extends EventEmitter {
                     this.option = new OptionController(this);
 
                     this.containerInitialized = true;
-                    console.log('yes');
                     return callback();
                 },
             ], next);
