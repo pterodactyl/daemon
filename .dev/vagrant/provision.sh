@@ -1,6 +1,7 @@
 #!/bin/bash
 
 echo "Provisioning development environment for Pterodactyl Panel."
+cp /srv/daemon/.dev/vagrant/motd.txt /etc/motd
 
 echo "Install docker"
 curl -sSL https://get.docker.com/ | sh
