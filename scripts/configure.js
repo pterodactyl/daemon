@@ -35,7 +35,7 @@ const CONFIG_EXISTS = Fs.existsSync(CONFIG_PATH);
 
 const regex = {
     fqdn: new RegExp(/^https?:\/\/(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,64}\/?$/),
-    ipv4: new RegExp(/((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.|$)){4}/),
+    ipv4: new RegExp(/^(?:https?:\/\/)?(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(?:\.|\/?$)){4}/),
 };
 
 const params = {
