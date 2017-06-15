@@ -31,7 +31,6 @@ const Socket = require('socket.io').listen(RestServer.server);
 class WebSocket {
     constructor(server) {
         this.server = server;
-        this.token = null;
         this.websocket = Socket.of(`/ws/${this.server.json.uuid}`);
 
         // Standard Websocket Permissions
@@ -40,8 +39,7 @@ class WebSocket {
                 return next(new Error('You must pass the correct handshake values.'));
             }
 
-            this.token = params.handshake.query.token;
-            if (!this.server.hasPermission('s:console', this.token)) {
+            if (!this.server.hasPermission('s:console', params.handshake.query.token)) {
                 return next(new Error('You do not have permission to access this socket (ws).'));
             }
             return next();
@@ -52,7 +50,7 @@ class WebSocket {
         // Send Initial Status when Websocket is connected to
         this.websocket.on('connection', activeSocket => {
             activeSocket.on('send command', data => {
-                if (this.server.hasPermission('s:command', this.token)) {
+                if (this.server.hasPermission('s:command', activeSocket.handshake.query.token)) {
                     this.server.command(data, () => {
                         _.noop();
                     });
@@ -62,7 +60,7 @@ class WebSocket {
             activeSocket.on('send server log', () => {
                 this.server.fs.readEnd(this.server.service.object.log.location, (err, data) => {
                     if (err) return this.websocket.emit('console', 'There was an error while attempting to get the log file.');
-                    this.websocket.emit('server log', data);
+                    activeSocket.emit('server log', data);
                 });
             });
 
@@ -71,7 +69,7 @@ class WebSocket {
                 case 'start':
                 case 'on':
                 case 'boot':
-                    if (this.server.hasPermission('s:power:start', this.token)) {
+                    if (this.server.hasPermission('s:power:start', activeSocket.handshake.query.token)) {
                         this.server.start(() => { _.noop(); });
                     }
                     break;
@@ -79,19 +77,19 @@ class WebSocket {
                 case 'stop':
                 case 'end':
                 case 'quit':
-                    if (this.server.hasPermission('s:power:stop', this.token)) {
+                    if (this.server.hasPermission('s:power:stop', activeSocket.handshake.query.token)) {
                         this.server.stop(() => { _.noop(); });
                     }
                     break;
                 case 'restart':
                 case 'reload':
-                    if (this.server.hasPermission('s:power:restart', this.token)) {
+                    if (this.server.hasPermission('s:power:restart', activeSocket.handshake.query.token)) {
                         this.server.restart(() => { _.noop(); });
                     }
                     break;
                 case 'kill':
                 case '^C':
-                    if (this.server.hasPermission('s:power:kill', this.token)) {
+                    if (this.server.hasPermission('s:power:kill', activeSocket.handshake.query.token)) {
                         this.server.kill(() => { _.noop(); });
                     }
                     break;
