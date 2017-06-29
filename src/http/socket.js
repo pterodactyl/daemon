@@ -98,7 +98,7 @@ class WebSocket {
                 }
             });
 
-            this.websocket.emit('initial status', {
+            activeSocket.emit('initial status', {
                 'status': this.server.status,
             });
         });
