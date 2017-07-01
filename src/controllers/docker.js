@@ -168,7 +168,7 @@ class Docker {
 
         this.container.exec({ Cmd: command, AttachStdin: true, AttachStdout: true, Tty: true }, (err, exec) => {
             if (err) return next(err);
-            exec.start((execErr, stream) => {
+            exec.start({ stdin: true }, (execErr, stream) => {
                 if (!execErr && stream) {
                     stream.setEncoding('utf8');
 
