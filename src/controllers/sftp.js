@@ -262,7 +262,7 @@ class SFTP {
             Tty: true,
         }, (err, exec) => {
             if (err) return next(err);
-            exec.start((execErr, stream) => {
+            exec.start({ stdin: true }, (execErr, stream) => {
                 if (!execErr && stream) {
                     stream.setEncoding('utf8');
                     stream.on('data', data => {
