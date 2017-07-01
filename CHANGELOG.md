@@ -1,6 +1,18 @@
 # Changelog
 This file is a running track of new features and fixes to each version of the daemon released starting with `v0.2.0`.
 
+### v0.4.3
+### Fixed
+* Fixes a bug that would throw a `setStatus` undefined error when deleting a failed install server.
+
+### Changed
+* Updated Socket.io to v2.0.3, will require `Panel@0.6.4` as a minimum supported version to work correctly.
+* Updated dependencies to latest versions as well as verified support for Nodejs v8.
+
+## v0.4.2
+### Fixed
+* Fixes security hole which set the active socket permissions to the last user to request the socket, potentially allowing users without permissions to access different console options.
+
 ## v0.4.1 (Candid Comodactylus)
 ### Fixed
 * Fixed bug causing `undefined startup` when using an invalid service tag, or general loading issues.
