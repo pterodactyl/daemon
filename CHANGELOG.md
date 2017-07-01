@@ -4,6 +4,7 @@ This file is a running track of new features and fixes to each version of the da
 ### v0.4.3
 ### Fixed
 * Fixes a bug that would throw a `setStatus` undefined error when deleting a failed install server.
+* Fixes bug in private registry verification function that wasn't using authentication correctly on wildcards.
 
 ### Changed
 * Updated Socket.io to v2.0.3, will require `Panel@0.6.4` as a minimum supported version to work correctly.

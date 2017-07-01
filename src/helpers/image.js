@@ -75,9 +75,9 @@ class DockerImage {
 
         const shouldUseAuth = _.some(Config.get('docker.registry.images', []), i => { // eslint-disable-line
             if (_.endsWith(i, '*')) {
-                return _.startsWith(i, i.substr(0, i.length - 1));
+                return _.startsWith(image, i.substr(0, i.length - 1));
             } else if (_.startsWith(i, '*')) {
-                return _.endsWith(i, i.substr(1, i.length));
+                return _.endsWith(image, i.substr(1, i.length));
             }
 
             return i === image;
