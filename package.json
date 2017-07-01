@@ -64,9 +64,9 @@
     "properties-parser": "0.3.1",
     "randomstring": "1.1.5",
     "request": "2.81.0",
-    "restify": "4.3.0",
+    "restify": "^4.3.1",
     "rfr": "1.2.3",
-    "socket.io": "2.0.3",
+    "socket.io": "^2.0.3",
     "socketio-file-upload": "0.6.0",
     "yargs": "8.0.2"
   }
