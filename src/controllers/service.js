@@ -105,7 +105,7 @@ class Service {
         Log.debug(`Pulling updated service file: ${file}`);
         Request({
             method: 'GET',
-            url: `${Config.get('remote.base')}/daemon/services/pull/${file}`,
+            url: `${Config.get('remote.base')}/daemon/services/pull/${file}/`,
             headers: {
                 'X-Access-Node': Config.get('keys.0'),
             },
