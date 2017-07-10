@@ -195,20 +195,19 @@ class FileSystem {
     }
 
     delete(path, next) {
-        // Safety - prevent deleting the main folder.
-        if (Path.resolve(this.server.path(path)) === this.server.path()) {
-            return next(new Error('You cannot delete your home folder.'));
-        }
-
         var res = path.split(",")
-
         var i;
+
         for (i = 0; i < res.length; i++) {
+            // Safety - prevent deleting the main folder.
+            if (Path.resolve(this.server.path(res[i])) === this.server.path()) {
+                return next(new Error('You cannot delete your home folder.'));
+            }
+
             Fs.remove(this.server.path(res[i]));
         }
 
         next();
-
     }
 
     copy(initial, ending, opts, next) {
