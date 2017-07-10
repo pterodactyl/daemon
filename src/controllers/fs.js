@@ -199,7 +199,16 @@ class FileSystem {
         if (Path.resolve(this.server.path(path)) === this.server.path()) {
             return next(new Error('You cannot delete your home folder.'));
         }
-        Fs.remove(this.server.path(path), next);
+
+        var res = path.split(",")
+
+        var i;
+        for (i = 0; i < res.length; i++) {
+            Fs.remove(this.server.path(res[i]));
+        }
+
+        next();
+
     }
 
     copy(initial, ending, opts, next) {
