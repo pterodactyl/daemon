@@ -194,18 +194,16 @@ class FileSystem {
         }
     }
 
-    delete(path, next) {
-        var res = path.split(",")
-        var i;
-
-        for (i = 0; i < res.length; i++) {
+    delete(items, next) {
+        Async.eachOfLimit(items, 5, (value, callback) => {
             // Safety - prevent deleting the main folder.
-            if (Path.resolve(this.server.path(res[i])) === this.server.path()) {
+            if (Path.resolve(this.server.path(value)) === this.server.path()) {
                 return next(new Error('You cannot delete your home folder.'));
             }
-
-            Fs.remove(this.server.path(res[i]));
-        }
+            Fs.remove(this.server.path(value), err => {
+                if (err) return callback(err);
+            });
+        }, next);
 
         next();
     }
