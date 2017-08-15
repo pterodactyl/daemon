@@ -166,6 +166,11 @@ RestServer.post('/server/file/copy', (req, res, next) => {
     return next();
 });
 
+RestServer.del(/^\/server\/file\/f\/(.+)/, (req, res, next) => {
+    Routes.deleteServerFile();
+    return next();
+});
+
 RestServer.post('/server/file/delete', (req, res, next) => {
     Routes.postFileDelete();
     return next();
@@ -173,11 +178,6 @@ RestServer.post('/server/file/delete', (req, res, next) => {
 
 RestServer.post(/^\/server\/file\/(move|rename)/, (req, res, next) => {
     Routes.postFileMove();
-    return next();
-});
-
-RestServer.post('/server/fil/delete', (req, res, next) => {
-    Routes.postFileDelete();
     return next();
 });
 

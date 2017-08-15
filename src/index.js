@@ -28,7 +28,9 @@ const Proc = require('child_process');
 const Request = require('request');
 const compareVersions = require('compare-versions');
 const Fs = require('fs-extra');
+const _ = require('lodash');
 
+const Docker = rfr('src/controllers/docker.js');
 const Log = rfr('src/helpers/logger.js');
 const Package = rfr('package.json');
 
@@ -57,61 +59,41 @@ Log.info('Modules loaded, starting Pterodactyl Daemon...');
 Async.auto({
     check_version: callback => {
         if (Package.version === '0.0.0-canary') {
-            Log.info('Pterodactyl Daemon is up-to-date running a nightly build.');
-            return callback();
+            return callback(null, 'Pterodactyl Daemon is up-to-date running a nightly build.');
         }
 
         Request.get('https://cdn.pterodactyl.io/releases/latest.json', {
             timeout: 5000,
         }, (err, response, body) => {
             if (err) {
-                Log.warn('An error occurred while attempting to check the latest daemon release version.');
-                return callback();
+                return callback(null, ['An error occurred while attempting to check the latest daemon release version.']);
             }
 
             if (response.statusCode === 200) {
                 const json = JSON.parse(body);
 
                 if (compareVersions(Package.version, json.daemon) >= 0) {
-                    Log.info('Pterodactyl Daemon is up-to-date!');
-                    return callback();
+                    return callback(null, 'Pterodactyl Daemon is up-to-date!');
                 }
 
-                Log.warn('+ ----- WARNING! ----- +');
-                Log.warn(`Pterodactyl Daemon is not up-to-date! You are running version ${Package.version} and the latest version is ${json.daemon}.`);
-                Log.warn(`Find out more here: https://github.com/Pterodactyl/Daemon/releases/v${json.daemon}`);
-                Log.warn('+ -------------------- +');
-                return callback();
+                return callback(null, [
+                    '+ ---------------------------- WARNING! ---------------------------- +',
+                    'Pterodactyl Daemon is not up-to-date!',
+                    '',
+                    `Installed: v${Package.version}`,
+                    `   Stable: v${json.daemon}`,
+                    `  Release: https://github.com/Pterodactyl/Daemon/releases/v${json.daemon}`,
+                    '+ ------------------------------------------------------------------ +',
+                ]);
             }
 
-            Log.warn('Unable to check if this daemon is up to date! Invalid status code returned.');
-            return callback();
+            return callback(null, ['Unable to check if this daemon is up to date! Invalid status code returned.']);
         });
     },
     check_structure: callback => {
         Fs.ensureDirSync('config/credentials');
         Fs.ensureDirSync('config/servers');
         callback();
-    },
-    check_network: callback => {
-        Log.info('Checking container networking environment...');
-        Network.init(callback);
-    },
-    setup_network: ['start_sftp', 'check_network', (r, callback) => {
-        Log.info('Checking pterodactyl0 interface and setting configuration values.');
-        Network.interface(callback);
-    }],
-    setup_timezone: ['setup_network', (r, callback) => {
-        Log.info('Configuring timezone file location...');
-        Timezone.configure(callback);
-    }],
-    start_sftp: callback => {
-        Log.info('Attempting to start SFTP service container...');
-        SFTP.startService(err => {
-            if (err) return callback(err);
-            Log.info('SFTP container successfully booted.');
-            return callback();
-        });
     },
     check_tar: callback => {
         Proc.exec('tar --help', {}, callback);
@@ -121,7 +103,30 @@ Async.auto({
         Proc.exec('unzip --help', {}, callback);
         Log.debug('Unzip module found on server.');
     },
-    init_servers: ['check_services', 'setup_network', (r, callback) => {
+    check_services: ['check_structure', 'check_tar', 'check_zip', (r, callback) => {
+        Service.boot(callback);
+    }],
+    check_network: ['check_structure', 'check_tar', 'check_zip', (r, callback) => {
+        Log.info('Checking container networking environment...');
+        Network.init(callback);
+    }],
+    setup_timezone: ['check_network', (r, callback) => {
+        Log.info('Configuring timezone file location...');
+        Timezone.configure(callback);
+    }],
+    setup_network: ['check_network', (r, callback) => {
+        Log.info('Checking pterodactyl0 interface and setting configuration values.');
+        Network.interface(callback);
+    }],
+    start_sftp: ['setup_network', 'setup_timezone', (r, callback) => {
+        Log.info('Attempting to start SFTP service container...');
+        SFTP.startService(err => {
+            if (err) return callback(err);
+            Log.info('SFTP container successfully booted.');
+            return callback();
+        });
+    }],
+    init_servers: ['check_services', 'start_sftp', (r, callback) => {
         Log.info('Attempting to load servers and initialize daemon...');
         Initialize.init(callback);
     }],
@@ -141,18 +146,31 @@ Async.auto({
         Stats.init();
         return callback();
     }],
-    check_services: callback => {
-        Service.boot(callback);
-    },
-}, err => {
+}, (err, results) => {
     if (err) {
         // Log a fatal error and exit.
         // We need this to initialize successfully without any errors.
         Log.fatal({ err, additional: err }, 'A fatal error caused the daemon to abort the startup.');
-        Log.error('You should forcibly quit this process and attempt to fix the issue.');
+        if (err.code === 'ECONNREFUSED') {
+            Log.fatal('+ ------------------------------------ +');
+            Log.fatal('|  Docker is not running!              |');
+            Log.fatal('|                                      |');
+            Log.fatal('|  Unable to locate a suitable socket  |');
+            Log.fatal('|  at path specified in configuration. |');
+            Log.fatal('+ ------------------------------------ +');
+        }
+
+        Log.error('You should forcibly quit this process (CTRL+C) and attempt to fix the issue.');
     } else {
         rfr('src/http/routes.js');
-        Log.info('Initialization Successful!');
+
+        if (!_.isUndefined(results.check_version)) {
+            if (_.isString(results.check_version)) {
+                Log.info(results.check_version);
+            } else if (_.isArray(results.check_version)) {
+                _.each(results.check_version, line => { Log.warn(line); });
+            }
+        }
     }
 });
 

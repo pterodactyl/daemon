@@ -18,6 +18,7 @@ packs/**
 .vagrant/
 .vscode/**
 .DS_Store
+.idea/**
 !config/.githold
 !config/servers/.githold
 !config/credentials/.githold

@@ -49,16 +49,22 @@ class Option {
 
     pull(next) {
         this.server.log.debug('Contacting panel to determine scripts to run for option processes.');
+
+        const endpoint = `${Config.get('remote.base')}/daemon/details/option/${this.server.json.uuid}`;
         Request({
             method: 'GET',
-            url: `${Config.get('remote.base')}/daemon/details/option/${this.server.json.uuid}`,
+            url: endpoint,
             headers: {
                 'X-Access-Node': Config.get('keys.0'),
             },
         }, (err, resp) => {
             if (err) return next(err);
             if (resp.statusCode !== 200) {
-                return next(new Error(`Recieved a non-200 error code (${resp.statusCode}) when attempting to check scripts for server.`));
+                const error = new Error('Recieved a non-200 error code when attempting to check scripts for server.');
+                error.responseCode = resp.statusCode;
+                error.requestURL = endpoint;
+                error.meta = err;
+                return next(err);
             }
 
             const Results = JSON.parse(resp.body);
@@ -78,7 +84,9 @@ class Option {
             write_file: ['details', (results, callback) => {
                 if (_.isNil(_.get(results.details, 'scripts.install', null))) {
                     // No script defined, skip the rest.
-                    return callback(new Error('E_NOSCRIPT: No installation script was defined for this service, skipping rest of process'));
+                    const error = new Error('No installation script was defined for this service, skipping rest of process.');
+                    error.code = 'E_NOSCRIPT';
+                    return error;
                 }
 
                 this.server.log.debug('Writing temporary file to be handed into the Docker container.');
@@ -172,7 +180,7 @@ class Option {
             this.server.unsuspend(() => { _.noop(); });
 
             // No script, no need to kill everything.
-            if (err && _.startsWith(err.message, 'E_NOSCRIPT')) {
+            if (err && err.code === 'E_NOSCRIPT') {
                 this.server.log.info(err.message);
                 return next();
             }

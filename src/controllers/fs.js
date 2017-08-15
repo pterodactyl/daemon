@@ -194,18 +194,22 @@ class FileSystem {
         }
     }
 
-    delete(items, next) {
-        Async.eachOfLimit(items, 5, (value, callback) => {
+    rm(path, next) {
+        if (_.isString(path)) {
+            // Safety - prevent deleting the main folder.
+            if (Path.resolve(this.server.path(path)) === this.server.path()) {
+                return next(new Error('You cannot delete your home folder.'));
+            }
+            Fs.remove(this.server.path(path), next);
+        }
+
+        Async.eachOfLimit(path, 5, (value, callback) => {
             // Safety - prevent deleting the main folder.
             if (Path.resolve(this.server.path(value)) === this.server.path()) {
                 return next(new Error('You cannot delete your home folder.'));
             }
-            Fs.remove(this.server.path(value), err => {
-                if (err) return callback(err);
-            });
+            Fs.remove(this.server.path(value), callback);
         }, next);
-
-        next();
     }
 
     copy(initial, ending, opts, next) {

@@ -1,7 +1,23 @@
 # Changelog
 This file is a running track of new features and fixes to each version of the daemon released starting with `v0.2.0`.
 
-### v0.4.3
+## v0.4.4
+### Fixed
+* Fixes a bug with certain NGINX configurations that would cause a 404 error when attempting to access a service's configuration files.
+* Should fix a bug causing servers to not be created correctly on first daemon boot due to a missing SFTP docker container.
+
+### Added
+* Adds support for deleting multiple files at once via the API. This currently is not used by anything, but paves a path for a future panel update.
+* Adds support for `yarn` package installer, but does not require this installation method.
+* Added more verbose error logging when there is an issue connecting to the panel to help with debugging issues.
+* Added support for Nodejs `v8`
+
+### Changed
+* Cleaned up boot order to be more logical and output information in the correct order.
+* Added a cleaner error message if docker does not appear to be running rather than a confusing stack trace.
+* Updated multiple dependencies to the latest version.
+
+## v0.4.3
 ### Fixed
 * Fixes a bug that would throw a `setStatus` undefined error when deleting a failed install server.
 * Fixes bug in private registry verification function that wasn't using authentication correctly on wildcards.

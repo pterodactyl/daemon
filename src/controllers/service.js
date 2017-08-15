@@ -80,9 +80,10 @@ class Service {
     }
 
     getServices(next) {
+        const endpoint = `${Config.get('remote.base')}/daemon/services`;
         Request({
             method: 'GET',
-            url: `${Config.get('remote.base')}/daemon/services`,
+            url: endpoint,
             headers: {
                 'X-Access-Node': Config.get('keys.0'),
             },
@@ -90,7 +91,10 @@ class Service {
             if (err) return next(err);
 
             if (response.statusCode !== 200) {
-                return next(new Error(`Error while attempting to fetch list of services (HTTP/${response.statusCode})`));
+                const error = new Error('Error while attempting to fetch list of services from the panel.');
+                error.responseCode = response.statusCode;
+                error.requestURL = endpoint;
+                return next(error);
             }
 
             try {

@@ -29,7 +29,6 @@ const extendify = require('extendify');
 const Cache = require('memory-cache');
 
 class Config {
-
     constructor() {
         if (_.isNull(Cache.get('config'))) {
             Cache.put('config', this.raw());

@@ -307,9 +307,16 @@ class RouteController {
         });
     }
 
+    deleteServerFile() {
+        if (!Auth.allowed('s:files:delete')) return;
+        Auth.server().fs.rm(this.req.params[0], err => {
+            Responses.generic204(err);
+        });
+    }
+
     postFileDelete() {
         if (!Auth.allowed('s:files:delete')) return;
-        Auth.server().fs.delete(this.req.params.items, err => {
+        Auth.server().fs.rm(this.req.params.items, err => {
             Responses.generic204(err);
         });
     }

@@ -40,12 +40,14 @@ const DockerController = new Dockerode({
     socketPath: Config.get('docker.socket', '/var/run/docker.sock'),
 });
 
+let dockerContainer;
+
 class SFTP {
     constructor(init) {
         if (_.isUndefined(init)) {
-            this.container = DockerController.getContainer(Config.get('sftp.container'));
+            dockerContainer = DockerController.getContainer(Config.get('sftp.container'));
         } else {
-            this.container = undefined;
+            dockerContainer = undefined;
         }
     }
 
@@ -66,7 +68,7 @@ class SFTP {
             callback => {
                 DockerController.createContainer({
                     Image: SFTP_DOCKER_IMAGE,
-                    Hostname: 'ptdlsftp',
+                    Hostname: 'ptdl-sftp',
                     AttachStdin: true,
                     AttachStdout: true,
                     AttachStderr: true,
@@ -74,7 +76,7 @@ class SFTP {
                     Tty: true,
                     Mounts: [
                         {
-                            Source: Config.get('sftp.path', '/srv/data'),
+                            Source: Config.get('sftp.path', '/srv/daemon-data'),
                             Destination: '/sftp-root',
                             RW: true,
                         },
@@ -89,12 +91,13 @@ class SFTP {
                     },
                     HostConfig: {
                         Binds: [
-                            Util.format('%s:/sftp-root', Config.get('sftp.path', '/srv/data')),
+                            Util.format('%s:/sftp-root', Config.get('sftp.path', '/srv/daemon-data')),
                             Util.format('%s:/creds', Path.join(Path.dirname(require.main.filename), '../config/credentials')),
                         ],
                         PortBindings: {
                             '22/tcp': [
                                 {
+                                    'HostIp': Config.get('sftp.address', '0.0.0.0').toString(),
                                     'HostPort': Config.get('sftp.port', '2022').toString(),
                                 },
                             ],
@@ -145,10 +148,11 @@ class SFTP {
                         }
 
                         if (!_.isUndefined(foundContainer)) {
-                            this.container = DockerController.getContainer(foundContainer.Id);
+                            dockerContainer = DockerController.getContainer(foundContainer.Id);
+
                             Config.modify({
                                 'sftp': {
-                                    'container': this.container.id,
+                                    'container': dockerContainer.id,
                                 },
                             }, callback);
                         } else {
@@ -160,11 +164,11 @@ class SFTP {
                 }
             },
             callback => {
-                if (_.isUndefined(this.container)) {
+                if (_.isUndefined(dockerContainer)) {
                     Log.warn('Unable to locate a suitable SFTP container in the configuration, creating one now.');
                     this.buildContainer(err => {
                         if (err) return callback(err);
-                        this.container = DockerController.getContainer(Config.get('sftp.container'));
+                        dockerContainer = DockerController.getContainer(Config.get('sftp.container'));
                         return callback();
                     });
                 } else {
@@ -172,7 +176,7 @@ class SFTP {
                 }
             },
             callback => {
-                this.container.start(err => {
+                dockerContainer.start(err => {
                     // Container is already running, we can just continue on and pretend we started it just now.
                     if (err && _.includes(err.message, 'container already started')) {
                         return callback();
@@ -255,7 +259,7 @@ class SFTP {
      */
     doExec(command, next) {
         let uidResponse = null;
-        this.container.exec({
+        dockerContainer.exec({
             Cmd: command,
             AttachStdin: true,
             AttachStdout: true,
@@ -275,6 +279,7 @@ class SFTP {
                             if (inspectErr) return next(inspectErr);
                             if (data.ExitCode !== 0) {
                                 return next(new Error('Docker returned a non-zero exit code when attempting to execute a SFTP command.'), {
+                                    meta: data,
                                     exec: command,
                                     code: data.ExitCode,
                                 });

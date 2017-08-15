@@ -108,14 +108,22 @@ class Pack {
                 if (!results.file_exists) return callback();
 
                 this.logger.debug('Checking remote host for valid pack checksum.');
+                const endpoint = `${Config.get('remote.base')}/daemon/packs/pull/${this.pack}/hash`;
                 Request({
                     method: 'GET',
-                    url: `${Config.get('remote.base')}/daemon/packs/pull/${this.pack}/hash`,
+                    url: endpoint,
                     headers: {
                         'X-Access-Node': Config.get('keys.0'),
                     },
                 }, (err, resp) => {
-                    if (err) return callback(err);
+                    if (err) {
+                        const error = new Error('Recieved a non-200 error code while attempting to pull the hash for a service pack.');
+                        error.responseCode = resp.statusCode;
+                        error.requestURL = endpoint;
+                        error.meta = err;
+                        return callback(error);
+                    }
+
                     if (resp.statusCode !== 200) {
                         return callback({
                             code: resp.statusCode,
@@ -172,21 +180,26 @@ class Pack {
             },
             callback => {
                 Log.debug('Downloading pack...');
+                const endpoint = `${Config.get('remote.base')}/daemon/packs/pull/${this.pack}`;
                 Request({
                     method: 'GET',
-                    url: `${Config.get('remote.base')}/daemon/packs/pull/${this.pack}`,
+                    url: endpoint,
                     headers: {
                         'X-Access-Node': Config.get('keys.0'),
                     },
                 })
-                .on('error', next)
-                .on('response', response => {
-                    if (response.statusCode !== 200) {
-                        return next(new Error(`Recieved non-200 response (${response.statusCode}) from panel for pack ${this.pack}`));
-                    }
-                })
-                .pipe(Fs.createWriteStream(this.archiveLocation))
-                .on('close', callback);
+                    .on('error', next)
+                    .on('response', response => {
+                        if (response.statusCode !== 200) {
+                            const error = new Error('Recieved a non-200 error code while attempting to pull the hash for a service pack.');
+                            error.responseCode = response.statusCode;
+                            error.requestURL = endpoint;
+                            error.pack = this.pack;
+                            return next(error);
+                        }
+                    })
+                    .pipe(Fs.createWriteStream(this.archiveLocation))
+                    .on('close', callback);
             },
             callback => {
                 Log.debug('Generating checksum...');
