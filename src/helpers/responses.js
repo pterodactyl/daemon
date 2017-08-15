@@ -43,7 +43,6 @@ class Responses {
             'type': this.req.contentType,
         });
     }
-
 }
 
 module.exports = Responses;

@@ -36,7 +36,6 @@ const Server = rfr('src/controllers/server.js');
 const Servers = {};
 
 class Initialize {
-
     /**
      * Initializes all servers on the system and loads them into memory for NodeJS.
      * @param  {Function} next [description]

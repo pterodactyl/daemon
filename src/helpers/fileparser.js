@@ -35,7 +35,6 @@ const ConfigHelper = rfr('src/helpers/config.js');
 const Config = new ConfigHelper();
 
 class FileParser {
-
     constructor(server) {
         this.server = server;
     }
@@ -252,7 +251,6 @@ class FileParser {
             },
         ], next);
     }
-
 }
 
 module.exports = FileParser;

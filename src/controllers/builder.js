@@ -38,7 +38,6 @@ const Config = new ConfigHelper();
 const SFTP = new SFTPController();
 
 class Builder {
-
     constructor(json) {
         if (!json || !_.isObject(json) || json === null || !_.keys(json).length) {
             throw new Error('Invalid JSON was passed to Builder.');

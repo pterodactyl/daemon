@@ -111,7 +111,6 @@ class AuthorizationMiddleware {
     allServers() {
         return Servers;
     }
-
 }
 
 module.exports = AuthorizationMiddleware;

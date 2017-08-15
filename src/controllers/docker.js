@@ -29,7 +29,6 @@ const Async = require('async');
 const Util = require('util');
 const _ = require('lodash');
 const Carrier = require('carrier');
-const Fs = require('fs-extra');
 
 const Log = rfr('src/helpers/logger.js');
 const Status = rfr('src/helpers/status.js');

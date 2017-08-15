@@ -30,7 +30,6 @@ const compareVersions = require('compare-versions');
 const Fs = require('fs-extra');
 const _ = require('lodash');
 
-const Docker = rfr('src/controllers/docker.js');
 const Log = rfr('src/helpers/logger.js');
 const Package = rfr('package.json');
 
@@ -168,7 +167,7 @@ Async.auto({
             if (_.isString(results.check_version)) {
                 Log.info(results.check_version);
             } else if (_.isArray(results.check_version)) {
-                _.each(results.check_version, line => { Log.warn(line); });
+                _.forEach(results.check_version, line => { Log.warn(line); });
             }
         }
     }

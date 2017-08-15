@@ -38,7 +38,6 @@ const DockerController = new Dockerode({
 const NETWORK_NAME = Config.get('docker.network.name', 'pterodactyl_nw');
 
 class Network {
-
     // Initalization Sequence for Networking
     // Called when Daemon boots.
     init(next) {

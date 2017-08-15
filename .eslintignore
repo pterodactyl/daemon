@@ -1,7 +1,5 @@
-# Ignore lib folder since those files are compiled by babel
-lib/*.js
-
 # Ignore JSON Files
 **/*.json
 
+src/services/**/*.js
 node_modules

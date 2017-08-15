@@ -49,7 +49,6 @@ const SFTP = new SFTPController();
 const Config = new ConfigHelper();
 
 class Server extends EventEmitter {
-
     constructor(json, next) {
         super();
 
@@ -748,7 +747,6 @@ class Server extends EventEmitter {
             },
         ], next);
     }
-
 }
 
 module.exports = Server;

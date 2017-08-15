@@ -54,7 +54,7 @@ class Delete {
                 const Servers = rfr('src/helpers/initialize.js').Servers;
 
                 // Prevent crash detection
-                if (! _.isUndefined(Servers[this.json.uuid]) && _.isFunction(Servers[this.json.uuid].setStatus)) {
+                if (!_.isUndefined(Servers[this.json.uuid]) && _.isFunction(Servers[this.json.uuid].setStatus)) {
                     Servers[this.json.uuid].setStatus(Status.OFF);
                 }
 

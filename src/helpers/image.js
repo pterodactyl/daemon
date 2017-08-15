@@ -35,7 +35,6 @@ const DockerController = new Dockerode({
 });
 
 class DockerImage {
-
     /**
      * Determines if an image exists.
      * @return boolean
