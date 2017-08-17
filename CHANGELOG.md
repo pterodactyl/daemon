@@ -1,7 +1,12 @@
 # Changelog
 This file is a running track of new features and fixes to each version of the daemon released starting with `v0.2.0`.
 
-## v0.4.4
+## v0.4.5
+### Fixed
+* Fixes a bug that caused newly created nodes to fail during the server creation process due to a missing timezone file location in the configuration. [`#593`](https://github.com/Pterodactyl/Panel/issues/593)
+* Fixes an error thrown when deleting a file via the API. [`#587`](https://github.com/Pterodactyl/Panel/issues/587)
+
+## v0.4.4 (Candid Comodactylus)
 ### Fixed
 * Fixes a bug with certain NGINX configurations that would cause a 404 error when attempting to access a service's configuration files.
 * Should fix a bug causing servers to not be created correctly on first daemon boot due to a missing SFTP docker container.
@@ -17,7 +22,7 @@ This file is a running track of new features and fixes to each version of the da
 * Added a cleaner error message if docker does not appear to be running rather than a confusing stack trace.
 * Updated multiple dependencies to the latest version.
 
-## v0.4.3
+## v0.4.3 (Candid Comodactylus)
 ### Fixed
 * Fixes a bug that would throw a `setStatus` undefined error when deleting a failed install server.
 * Fixes bug in private registry verification function that wasn't using authentication correctly on wildcards.
@@ -26,7 +31,7 @@ This file is a running track of new features and fixes to each version of the da
 * Updated Socket.io to v2.0.3, will require `Panel@0.6.4` as a minimum supported version to work correctly.
 * Updated dependencies to latest versions as well as verified support for Nodejs v8.
 
-## v0.4.2
+## v0.4.2 (Candid Comodactylus)
 ### Fixed
 * Fixes security hole which set the active socket permissions to the last user to request the socket, potentially allowing users without permissions to access different console options.
 
