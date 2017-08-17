@@ -113,11 +113,11 @@ Async.auto({
         Log.info('Configuring timezone file location...');
         Timezone.configure(callback);
     }],
-    setup_network: ['check_network', (r, callback) => {
+    setup_network: ['check_network', 'setup_timezone', (r, callback) => {
         Log.info('Checking pterodactyl0 interface and setting configuration values.');
         Network.interface(callback);
     }],
-    start_sftp: ['setup_network', 'setup_timezone', (r, callback) => {
+    start_sftp: ['setup_network', (r, callback) => {
         Log.info('Attempting to start SFTP service container...');
         SFTP.startService(err => {
             if (err) return callback(err);
