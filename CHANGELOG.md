@@ -2,6 +2,9 @@
 This file is a running track of new features and fixes to each version of the daemon released starting with `v0.2.0`.
 
 ### v0.5.0
+### Fixed
+* Fixes `Cannot get length of undefined` errors that would occasionally plauge certain servers on the daemon.
+
 ### Changed
 * Authentication now uses dynamically changing tokens issued by the Panel.
 
