@@ -25,6 +25,7 @@
 const rfr = require('rfr');
 const _ = require('lodash');
 
+const Log = rfr('src/helpers/logger.js');
 const Servers = rfr('src/helpers/initialize.js').Servers;
 const LoadConfig = rfr('src/helpers/config.js');
 
@@ -35,31 +36,31 @@ class AuthorizationMiddleware {
         this.token = token;
         this.uuid = uuid;
         this.res = res;
+
+        this.masterKeys = Config.get('keys');
     }
 
     init(next) {
         return next();
     }
 
-    allowed(perm) {
-        const configKeys = Config.get('keys');
-
-        if (!_.isObject(configKeys)) {
-            return false;
+    allowed(perm, next) {
+        if (!_.isObject(this.masterKeys)) {
+            return next(null, false);
         }
 
         if (!this.token) {
             this.res.send(400, { 'error': 'Missing required X-Access-Token header.' });
-            return false;
+            return next(null, false);
         }
 
         // Master Controller; permissions not reliant on a specific server being defined.
         if (_.startsWith(perm, 'c:')) {
-            if (_.includes(configKeys, this.token)) {
-                return true;
+            if (_.includes(this.masterKeys, this.token)) {
+                return next(null, true);
             }
             this.res.send(403, { 'error': 'You do not have permission to perform this action aganist the system.' });
-            return false;
+            return next(null, false);
         }
 
         // All other permissions controllers, do rely on a specific server being defined.
@@ -67,33 +68,57 @@ class AuthorizationMiddleware {
         // require that a server header also be sent with the request.
         if (!this.uuid) {
             this.res.send(400, { 'error': 'Missing required X-Access-Server headers.' });
-            return false;
+            return next(null, false);
         }
 
         if (!_.isUndefined(Servers[this.uuid])) {
             if (_.startsWith(perm, 'g:')) {
-                if (_.includes(configKeys, this.token)) {
-                    return true;
+                if (_.includes(this.masterKeys, this.token)) {
+                    return next(null, true);
                 }
-            }
-
-            if (_.startsWith(perm, 's:')) {
+            } else if (_.startsWith(perm, 's:')) {
                 if (Servers[this.uuid].isSuspended()) {
                     this.res.send(403, { 'error': 'This server is suspended and cannot be accessed with this token.' });
-                    return false;
+                    return next(null, false);
                 }
 
-                if (_.includes(configKeys, this.token) || Servers[this.uuid].hasPermission(perm, this.token)) {
-                    return true;
+                if (_.includes(this.masterKeys, this.token)) {
+                    return next(null, true);
                 }
+
+                Servers[this.uuid].hasPermission(perm, this.token, (err, hasPermission, code) => {
+                    if (err) {
+                        Log.error(err);
+
+                        this.res.send(500, { 'error': 'Internal server error.' });
+                        return next(null, false);
+                    }
+
+                    if (hasPermission) {
+                        return next(null, true);
+                    }
+
+                    if (code === 'uuidDoesNotMatch') {
+                        this.res.send(404, { 'error': 'Unable to locate the requested server for that token.' });
+                        return next(null, false);
+                    } else if (code === 'isSuspended') {
+                        this.res.send(403, { 'error': 'This server is suspended.' });
+                        return next(null, false);
+                    }
+
+                    this.res.send(403, { 'error': 'You do not have permission to perform this action for this server.' });
+                    return next(null, false);
+                });
+            } else {
+                console.log('pointB');
+                this.res.send(403, { 'error': 'You do not have permission to perform this action for this server.' });
+                return next(null, false);
             }
-
-            this.res.send(403, { 'error': 'You do not have permission to perform this action for this server.' });
-            return false;
+        } else {
+            console.log('pointA');
+            this.res.send(404, { 'error': 'Unknown server defined in X-Access-Server header.' });
+            return next(null, false);
         }
-
-        this.res.send(404, { 'error': 'Unknown server defined in X-Access-Server header.' });
-        return false;
     }
 
     server() {

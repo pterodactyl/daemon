@@ -39,10 +39,13 @@ class WebSocket {
                 return next(new Error('You must pass the correct handshake values.'));
             }
 
-            if (!this.server.hasPermission('s:console', params.handshake.query.token)) {
-                return next(new Error('You do not have permission to access this socket (ws).'));
-            }
-            return next();
+            this.server.hasPermission('s:console', params.handshake.query.token, (err, hasPermission) => {
+                if (err || !hasPermission) {
+                    return next(new Error('You do not have permission to access this socket (ws).'));
+                }
+
+                return next();
+            });
         });
     }
 
@@ -50,17 +53,27 @@ class WebSocket {
         // Send Initial Status when Websocket is connected to
         this.websocket.on('connection', activeSocket => {
             activeSocket.on('send command', data => {
-                if (this.server.hasPermission('s:command', activeSocket.handshake.query.token)) {
+                this.server.hasPermission('s:command', activeSocket.handshake.query.token, (err, hasPermission) => {
+                    if (err || !hasPermission) {
+                        return;
+                    }
+
                     this.server.command(data, () => {
                         _.noop();
                     });
-                }
+                });
             });
 
             activeSocket.on('send server log', () => {
-                this.server.fs.readEnd(this.server.service.object.log.location, (err, data) => {
-                    if (err) return this.websocket.emit('console', 'There was an error while attempting to get the log file.');
-                    activeSocket.emit('server log', data);
+                this.server.hasPermission('s:console', activeSocket.handshake.query.token, (err, hasPermission) => {
+                    if (err || !hasPermission) {
+                        return;
+                    }
+
+                    this.server.fs.readEnd(this.server.service.object.log.location, (readErr, readData) => {
+                        if (readErr) return this.websocket.emit('console', 'There was an error while attempting to get the log file.');
+                        activeSocket.emit('server log', readData);
+                    });
                 });
             });
 
@@ -69,29 +82,45 @@ class WebSocket {
                 case 'start':
                 case 'on':
                 case 'boot':
-                    if (this.server.hasPermission('s:power:start', activeSocket.handshake.query.token)) {
+                    this.server.hasPermission('s:power:start', activeSocket.handshake.query.token, (err, hasPermission) => {
+                        if (err || !hasPermission) {
+                            return;
+                        }
+
                         this.server.start(() => { _.noop(); });
-                    }
+                    });
                     break;
                 case 'off':
                 case 'stop':
                 case 'end':
                 case 'quit':
-                    if (this.server.hasPermission('s:power:stop', activeSocket.handshake.query.token)) {
+                    this.server.hasPermission('s:power:stop', activeSocket.handshake.query.token, (err, hasPermission) => {
+                        if (err || !hasPermission) {
+                            return;
+                        }
+
                         this.server.stop(() => { _.noop(); });
-                    }
+                    });
                     break;
                 case 'restart':
                 case 'reload':
-                    if (this.server.hasPermission('s:power:restart', activeSocket.handshake.query.token)) {
+                    this.server.hasPermission('s:power:restart', activeSocket.handshake.query.token, (err, hasPermission) => {
+                        if (err || !hasPermission) {
+                            return;
+                        }
+
                         this.server.restart(() => { _.noop(); });
-                    }
+                    });
                     break;
                 case 'kill':
                 case '^C':
-                    if (this.server.hasPermission('s:power:kill', activeSocket.handshake.query.token)) {
+                    this.server.hasPermission('s:power:kill', activeSocket.handshake.query.token, (err, hasPermission) => {
+                        if (err || !hasPermission) {
+                            return;
+                        }
+
                         this.server.kill(() => { _.noop(); });
-                    }
+                    });
                     break;
                 default:
                     break;

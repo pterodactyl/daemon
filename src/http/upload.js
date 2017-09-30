@@ -42,10 +42,14 @@ class Upload {
             if (!params.handshake.query.token) {
                 return next(new Error('You must pass the correct handshake values.'));
             }
-            if (!this.server.hasPermission('s:files:upload', params.handshake.query.token)) {
-                return next(new Error('You do not have permission to upload files to this server.'));
-            }
-            return next();
+
+            this.server.hasPermission('s:files:upload', params.handshake.query.token, (err, hasPermission) => {
+                if (err || !hasPermission) {
+                    return next(new Error('You do not have permission to upload files to this server.'));
+                }
+
+                return next();
+            });
         });
     }
 

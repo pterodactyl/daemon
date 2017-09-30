@@ -1,7 +1,11 @@
 # Changelog
 This file is a running track of new features and fixes to each version of the daemon released starting with `v0.2.0`.
 
-## v0.4.5
+### v0.5.0
+### Changed
+* Authentication now uses dynamically changing tokens issued by the Panel.
+
+## v0.4.5 (Candid Comodactylus)
 ### Fixed
 * Fixes a bug that caused newly created nodes to fail during the server creation process due to a missing timezone file location in the configuration. [`#593`](https://github.com/Pterodactyl/Panel/issues/593)
 * Fixes an error thrown when deleting a file via the API. [`#587`](https://github.com/Pterodactyl/Panel/issues/587)

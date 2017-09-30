@@ -33,6 +33,8 @@ const Fs = require('fs-extra');
 const extendify = require('extendify');
 const Util = require('util');
 const Ansi = require('ansi-escape-sequences');
+const Request = require('request');
+const Cache = require('memory-cache');
 
 const Log = rfr('src/helpers/logger.js');
 const Docker = rfr('src/controllers/docker.js');
@@ -126,16 +128,57 @@ class Server extends EventEmitter {
         return (_.get(this.json, 'suspended', 0) === 1);
     }
 
-    hasPermission(perm, token) {
-        if (!_.isUndefined(perm) && !_.isUndefined(token)) {
-            if (!_.isUndefined(this.json.keys) && token in this.json.keys) {
-                if (_.includes(this.json.keys[token], perm) || _.includes(this.json.keys[token], 's:*')) {
-                    // Check Suspension Status
-                    return !this.isSuspended();
+    hasPermission(perm, token, next) {
+        const tokenData = Cache.get(`auth:token:${token}`);
+        if (_.isNull(tokenData)) {
+            this.validateToken(token, (err, data) => {
+                if (err) return next(err);
+
+                if (_.get(data, 'server') !== this.uuid) {
+                    return next(null, false, 'uuidDoesNotMatch');
                 }
+
+                Cache.put(`auth:token:${token}`, data, data.expires_at);
+
+                return this.validatePermission(data, perm, next);
+            });
+        } else {
+            return this.validatePermission(tokenData, perm, next);
+        }
+    }
+
+    validatePermission(data, permission, next) {
+        if (!_.isUndefined(permission)) {
+            if (_.includes(data.permissions, permission) || _.includes(data.permissions, 's:*')) {
+                // Check Suspension Status
+                return next(null, !this.isSuspended(), 'isSuspended');
             }
         }
-        return false;
+        return next(null, false, 'isUndefined');
+    }
+
+    validateToken(token, next) {
+        Request.get({
+            url: `${Config.get('remote.base')}/api/remote/authenticate/${token}`,
+            headers: {
+                'Authorization': `Bearer ${Config.get('keys.0')}`,
+            },
+        }, (err, response, body) => {
+            if (err) {
+                return next(err);
+            }
+
+            if (response.statusCode !== 200) {
+                return next(new Error(`Panel returned a non-200 response code (${response.statusCode}) while attempting to authenticate a token.`));
+            }
+
+            const data = JSON.parse(body);
+            return next(null, {
+                expires: _.get(data, 'data.attributes.expires_in'),
+                server: _.get(data, 'data.id'),
+                permissions: _.get(data, 'data.attributes.permissions'),
+            });
+        });
     }
 
     setPermissions(next) {
