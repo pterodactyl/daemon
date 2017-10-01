@@ -110,12 +110,10 @@ class AuthorizationMiddleware {
                     return next(null, false);
                 });
             } else {
-                console.log('pointB');
                 this.res.send(403, { 'error': 'You do not have permission to perform this action for this server.' });
                 return next(null, false);
             }
         } else {
-            console.log('pointA');
             this.res.send(404, { 'error': 'Unknown server defined in X-Access-Server header.' });
             return next(null, false);
         }

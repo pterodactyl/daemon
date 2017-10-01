@@ -7,6 +7,7 @@ This file is a running track of new features and fixes to each version of the da
 
 ### Changed
 * Authentication now uses dynamically changing tokens issued by the Panel.
+* All API routes now prefixed with `v1/`
 
 ## v0.4.5 (Candid Comodactylus)
 ### Fixed

@@ -35,7 +35,7 @@ const Config = new ConfigHelper();
 class Upload {
     constructor(server) {
         this.server = server;
-        this.websocket = Socket.of(`/upload/${this.server.json.uuid}`);
+        this.websocket = Socket.of(`/v1/upload/${this.server.json.uuid}`);
 
         // Standard Websocket Permissions
         this.websocket.use((params, next) => {

@@ -67,7 +67,7 @@ RestServer.on('uncaughtException', (req, res, route, err) => {
     }
 });
 
-RestServer.get('/', (req, res, next) => {
+RestServer.get('/v1', (req, res, next) => {
     Routes.getIndex();
     return next();
 });
@@ -75,12 +75,12 @@ RestServer.get('/', (req, res, next) => {
 /**
  * Save New Configuration for Daemon; also updates the config across the program for immediate changes.
  */
-RestServer.put('/config', (req, res, next) => {
+RestServer.put('/v1/config', (req, res, next) => {
     Routes.putConfig();
     return next();
 });
 
-RestServer.patch('/config', (req, res, next) => {
+RestServer.patch('/v1/config', (req, res, next) => {
     Routes.patchConfig();
     return next();
 });
@@ -88,17 +88,17 @@ RestServer.patch('/config', (req, res, next) => {
 /**
  * Big Picture Actions
  */
-RestServer.get('/servers', (req, res, next) => {
+RestServer.get('/v1/servers', (req, res, next) => {
     Routes.getAllServers();
     return next();
 });
 
-RestServer.post('/servers', (req, res, next) => {
+RestServer.post('/v1/servers', (req, res, next) => {
     Routes.postNewServer();
     return next();
 });
 
-RestServer.del('/servers', (req, res, next) => {
+RestServer.del('/v1/servers', (req, res, next) => {
     Routes.deleteServer();
     return next();
 });
@@ -106,117 +106,117 @@ RestServer.del('/servers', (req, res, next) => {
 /**
  * Server Actions
  */
-RestServer.get('/server', (req, res, next) => {
+RestServer.get('/v1/server', (req, res, next) => {
     Routes.getServer();
     return next();
 });
 
-RestServer.patch('/server', (req, res, next) => {
+RestServer.patch('/v1/server', (req, res, next) => {
     Routes.updateServerConfig();
     return next();
 });
 
-RestServer.put('/server', (req, res, next) => {
+RestServer.put('/v1/server', (req, res, next) => {
     Routes.updateServerConfig();
     return next();
 });
 
-RestServer.post('/server/reinstall', (req, res, next) => {
+RestServer.post('/v1/server/reinstall', (req, res, next) => {
     Routes.reinstallServer();
     return next();
 });
 
-RestServer.post('/server/password', (req, res, next) => {
+RestServer.post('/v1/server/password', (req, res, next) => {
     Routes.setSFTPPassword();
     return next();
 });
 
-RestServer.post('/server/rebuild', (req, res, next) => {
+RestServer.post('/v1/server/rebuild', (req, res, next) => {
     Routes.rebuildServer();
     return next();
 });
 
-RestServer.put('/server/power', (req, res, next) => {
+RestServer.put('/v1/server/power', (req, res, next) => {
     Routes.putServerPower();
     return next();
 });
 
-RestServer.post('/server/command', (req, res, next) => {
+RestServer.post('/v1/server/command', (req, res, next) => {
     Routes.postServerCommand();
     return next();
 });
 
-RestServer.get('/server/log', (req, res, next) => {
+RestServer.get('/v1/server/log', (req, res, next) => {
     Routes.getServerLog();
     return next();
 });
 
-RestServer.get(/^\/server\/directory\/?(.+)*/, (req, res, next) => {
+RestServer.get(/^\/v1\/server\/directory\/?(.+)*/, (req, res, next) => {
     Routes.getServerDirectory();
     return next();
 });
 
-RestServer.post('/server/file/folder', (req, res, next) => {
+RestServer.post('/v1/server/file/folder', (req, res, next) => {
     Routes.postFileFolder();
     return next();
 });
 
-RestServer.post('/server/file/copy', (req, res, next) => {
+RestServer.post('/v1/server/file/copy', (req, res, next) => {
     Routes.postFileCopy();
     return next();
 });
 
-RestServer.del(/^\/server\/file\/f\/(.+)/, (req, res, next) => {
+RestServer.del(/^\/v1\/server\/file\/f\/(.+)/, (req, res, next) => {
     Routes.deleteServerFile();
     return next();
 });
 
-RestServer.post('/server/file/delete', (req, res, next) => {
+RestServer.post('/v1/server/file/delete', (req, res, next) => {
     Routes.postFileDelete();
     return next();
 });
 
-RestServer.post(/^\/server\/file\/(move|rename)/, (req, res, next) => {
+RestServer.post(/^\/v1\/server\/file\/(move|rename)/, (req, res, next) => {
     Routes.postFileMove();
     return next();
 });
 
-RestServer.post('/server/file/compress', (req, res, next) => {
+RestServer.post('/v1/server/file/compress', (req, res, next) => {
     Routes.postFileCompress();
     return next();
 });
 
-RestServer.post('/server/file/decompress', (req, res, next) => {
+RestServer.post('/v1/server/file/decompress', (req, res, next) => {
     Routes.postFileDecompress();
     return next();
 });
 
-RestServer.get(/^\/server\/file\/stat\/(.+)/, (req, res, next) => {
+RestServer.get(/^\/v1\/server\/file\/stat\/(.+)/, (req, res, next) => {
     Routes.getServerFileStat();
     return next();
 });
 
-RestServer.get(/^\/server\/file\/f\/(.+)/, (req, res, next) => {
+RestServer.get(/^\/v1\/server\/file\/f\/(.+)/, (req, res, next) => {
     Routes.getServerFile();
     return next();
 });
 
-RestServer.post('/server/file/save', (req, res, next) => {
+RestServer.post('/v1/server/file/save', (req, res, next) => {
     Routes.postServerFile();
     return next();
 });
 
-RestServer.get('/server/file/download/:token', (req, res, next) => {
+RestServer.get('/v1/server/file/download/:token', (req, res, next) => {
     Routes.downloadServerFile();
     return next();
 });
 
-RestServer.post('/server/suspend', (req, res, next) => {
+RestServer.post('/v1/server/suspend', (req, res, next) => {
     Routes.postServerSuspend();
     return next();
 });
 
-RestServer.post('/server/unsuspend', (req, res, next) => {
+RestServer.post('/v1/server/unsuspend', (req, res, next) => {
     Routes.postServerUnsuspend();
     return next();
 });

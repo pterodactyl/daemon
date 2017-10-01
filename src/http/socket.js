@@ -31,7 +31,7 @@ const Socket = require('socket.io').listen(RestServer.server);
 class WebSocket {
     constructor(server) {
         this.server = server;
-        this.websocket = Socket.of(`/ws/${this.server.json.uuid}`);
+        this.websocket = Socket.of(`/v1/ws/${this.server.json.uuid}`);
 
         // Standard Websocket Permissions
         this.websocket.use((params, next) => {

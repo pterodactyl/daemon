@@ -35,7 +35,7 @@ const Config = new ConfigHelper();
 
 class Stats {
     constructor() {
-        this.statSocket = Socket.of('/stats/');
+        this.statSocket = Socket.of('/v1/stats/');
         this.statSocket.use((params, next) => {
             if (!params.handshake.query.token) {
                 return next(new Error('You must pass the correct handshake values.'));

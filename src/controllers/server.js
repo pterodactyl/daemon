@@ -168,6 +168,14 @@ class Server extends EventEmitter {
                 return next(err);
             }
 
+            if (response.statusCode === 404) {
+                return next(null, {
+                    expires: 0,
+                    server: null,
+                    permissions: [],
+                });
+            }
+
             if (response.statusCode !== 200) {
                 return next(new Error(`Panel returned a non-200 response code (${response.statusCode}) while attempting to authenticate a token.`));
             }
