@@ -533,6 +533,9 @@ class Server extends EventEmitter {
         // We need previous cycle information as well.
         if (_.isUndefined(self.docker.procData.precpu_stats.cpu_usage)) return;
 
+        // This sometimes doesn't exist, possibly due to another race condition?
+        if (_.isUndefined(self.docker.procData.cpu_stats.cpu_usage.percpu_usage)) return;
+
         const perCoreUsage = [];
         const priorCycle = self.docker.procData.precpu_stats;
         const cycle = self.docker.procData.cpu_stats;
