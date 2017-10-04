@@ -4,6 +4,8 @@ This file is a running track of new features and fixes to each version of the da
 ### v0.5.0
 ### Fixed
 * Fixes `Cannot get length of undefined` errors that would occasionally plauge certain servers on the daemon.
+* Fixes `write after end` error caused by race condition.
+* Fixes error caused by missing per cpu usage data.
 
 ### Changed
 * Authentication now uses dynamically changing tokens issued by the Panel.

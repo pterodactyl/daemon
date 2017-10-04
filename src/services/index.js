@@ -44,6 +44,7 @@ class Core {
         this.service = this.json.service;
         this.object = undefined;
         this.logStream = undefined;
+        this.logStreamClosing = false;
 
         this.parser = new FileParserHelper(this.server);
 
@@ -119,9 +120,11 @@ class Core {
             }
 
             if (_.get(this.object, 'log.custom', false)) {
-                if (isStream.isWritable(this.logStream)) {
+                if (!this.logStreamClosing && isStream.isWritable(this.logStream)) {
+                    this.logStreamClosing = true;
                     this.logStream.end(() => {
                         this.logStream = false;
+                        this.logStreamClosing = false;
                     });
                 }
                 Fs.remove(this.server.path(_.get(this.object, 'log.location', 'logs/latest.log')), removeErr => {
@@ -156,9 +159,9 @@ class Core {
             () => {
                 // Custom Log?
                 if (_.get(this.object, 'log.custom', false) === true) {
-                    if (isStream.isWritable(this.logStream)) {
+                    if (!this.logStreamClosing && isStream.isWritable(this.logStream)) {
                         this.logStream.write(`${data}\n`);
-                    } else {
+                    } else if(!this.logStreamClosing) { // Don't recreate the stream when its supposed to close.
                         const LogFile = this.server.path(_.get(this.object, 'log.location', 'logs/latest.log'));
                         Async.series([
                             callback => {
@@ -210,9 +213,11 @@ class Core {
     onStop(next) {
         Async.series([
             callback => {
-                if (isStream.isWritable(this.logStream)) {
+                if (!this.logStreamClosing && isStream.isWritable(this.logStream)) {
+                    this.logStreamClosing = true;
                     this.logStream.end(() => {
                         this.logStream = false;
+                        this.logStreamClosing = false;
                         callback();
                     });
                 } else {
