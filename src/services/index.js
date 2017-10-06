@@ -33,6 +33,7 @@ const Util = require('util');
 const createOutputStream = require('create-output-stream');
 const Ansi = require('ansi-escape-sequences');
 
+const Log = rfr('src/helpers/logger.js');
 const Status = rfr('src/helpers/status.js');
 const FileParserHelper = rfr('src/helpers/fileparser.js');
 
@@ -40,58 +41,41 @@ class Core {
     constructor(server, config = null, next) {
         this.server = server;
         this.json = server.json;
-        this.config = config || rfr(Util.format('src/services/%s/main.json', this.json.service.type));
+
+        try {
+            this.config = config || rfr(Util.format('src/services/configs/%s.json', this.json.service.option));
+        } catch (ex) {
+            if (ex.code === 'MODULE_NOT_FOUND') {
+                this.server.log.error('Could not locate a service option configuration for this server. Please rebuild this server.');
+                this.config = {};
+            } else {
+                throw ex;
+            }
+        }
+
         this.service = this.json.service;
-        this.object = undefined;
         this.logStream = undefined;
         this.logStreamClosing = false;
 
         this.parser = new FileParserHelper(this.server);
 
-        // Find our data on initialization.
-        Async.eachOf(this.config, (element, option, callback) => {
-            if (this.service.option === option) {
-                // Handle "symlink" in the configuration for plugins...
-                this.object = element;
-
-                if (!_.isUndefined(element.symlink) && !_.isUndefined(this.config[element.symlink])) {
-                    const deepExtend = extendify({
-                        inPlace: false,
-                        arrays: 'replace',
-                    });
-
-                    this.object = deepExtend(this.config[element.symlink], element);
-                    return callback();
-                }
-            }
-
-            return callback();
-        }, next);
+        return next();
     }
 
     doQuery(next) {
         return next(null);
     }
 
-    // Forgive me padrè for I have sinned. Badly.
-    //
-    // This is some incredibly messy code. As best I can describe, it
-    // loop through each listed config file, and then uses regex to search
-    // and replace values with values from the config file.
-    //
-    // This is all done with parallel functions, so every listed file
-    // is opened, and then all of the lines are run at the same time.
-    // Very quick function, surprisingly...
     onPreflight(next) {
-        if (!_.get(this.object, 'configs', false)) {
-            this.server.log.debug('No configuration object was assigned to this service. Skipping preflight.');
-            return next();
+        if (_.isEmpty(this.config)) {
+            this.server.emit('console', `${Ansi.style['bg-red']}${Ansi.style.white}[Pterodactyl Daemon] No service configuration located. This server cannot be started.`);
+            return next(new Error('A server cannot be started if there is no configuration loaded for the service option.'));
         }
 
         let lastFile;
 
         // Check each configuration file and set variables as needed.
-        Async.forEachOf(_.get(this.object, 'configs', {}), (data, file, callback) => {
+        Async.forEachOf(_.get(this.config, 'configs', {}), (data, file, callback) => {
             lastFile = file;
             switch (_.get(data, 'parser', 'file')) {
             case 'file':
@@ -114,12 +98,12 @@ class Core {
             }
         }, err => {
             if (err) {
-                this.server.emit('console', `${Ansi.style.red}(Daemon) ${err.name} while processing ${lastFile}`);
-                this.server.emit('console', `${Ansi.style.red}(Daemon) ${err.message}`);
+                this.server.emit('console', `${Ansi.style.red}[Pterodactyl Daemon] ${err.name} while processing ${lastFile}`);
+                this.server.emit('console', `${Ansi.style.red}[Pterodactyl Daemon] ${err.message}`);
                 return next(err);
             }
 
-            if (_.get(this.object, 'log.custom', false)) {
+            if (_.get(this.config, 'log.custom', false)) {
                 if (!this.logStreamClosing && isStream.isWritable(this.logStream)) {
                     this.logStreamClosing = true;
                     this.logStream.end(() => {
@@ -127,7 +111,7 @@ class Core {
                         this.logStreamClosing = false;
                     });
                 }
-                Fs.remove(this.server.path(_.get(this.object, 'log.location', 'logs/latest.log')), removeErr => {
+                Fs.remove(this.server.path(_.get(this.config, 'log.location', 'logs/latest.log')), removeErr => {
                     if (removeErr && !_.includes(removeErr.message, 'ENOENT: no such file or directory')) {
                         return next(removeErr);
                     }
@@ -158,11 +142,11 @@ class Core {
             },
             () => {
                 // Custom Log?
-                if (_.get(this.object, 'log.custom', false) === true) {
+                if (_.get(this.config, 'log.custom', false) === true) {
                     if (!this.logStreamClosing && isStream.isWritable(this.logStream)) {
                         this.logStream.write(`${data}\n`);
                     } else if(!this.logStreamClosing) { // Don't recreate the stream when its supposed to close.
-                        const LogFile = this.server.path(_.get(this.object, 'log.location', 'logs/latest.log'));
+                        const LogFile = this.server.path(_.get(this.config, 'log.location', 'logs/latest.log'));
                         Async.series([
                             callback => {
                                 this.logStream = createOutputStream(LogFile, {
@@ -182,7 +166,7 @@ class Core {
             },
             () => {
                 // Started
-                if (_.includes(data, _.get(this.object, 'startup.done', null))) {
+                if (_.includes(data, _.get(this.config, 'startup.done', null))) {
                     Async.series([
                         callback => {
                             this.onStart(callback);
@@ -195,12 +179,12 @@ class Core {
                 }
 
                 // Stopped; Don't trigger crash
-                if (this.server.status !== Status.ON && !_.isUndefined(this.object.startup.userInteraction)) {
-                    Async.each(this.object.startup.userInteraction, string => {
+                if (this.server.status !== Status.ON && _.isArray(_.get(this.config, 'startup.userInteraction'))) {
+                    Async.each(_.get(this.config, 'startup.userInteraction'), string => {
                         if (_.includes(data, string)) {
                             this.server.log.info('Server detected as requiring user interaction, stopping now.');
                             this.server.setStatus(Status.STOPPING);
-                            this.server.command(this.object.stop, err => {
+                            this.server.command(_.get(this.config, 'stop'), err => {
                                 if (err) this.server.log.warn(err);
                             });
                         }

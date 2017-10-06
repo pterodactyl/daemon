@@ -46,6 +46,7 @@ const PackSystem = rfr('src/controllers/pack.js');
 const FileSystem = rfr('src/controllers/fs.js');
 const SFTPController = rfr('src/controllers/sftp.js');
 const OptionController = rfr('src/controllers/option.js');
+const ServiceCore = rfr('src/services/index.js');
 
 const SFTP = new SFTPController();
 const Config = new ConfigHelper();
@@ -87,14 +88,9 @@ class Server extends EventEmitter {
                 return next(new Error('No service type was passed to the server configuration, unable to select a service.'));
             }
 
-            const ServiceFilePath = Util.format('src/services/%s/index.js', this.json.service.type);
             Async.series([
                 callback => {
-                    Fs.access(ServiceFilePath, Fs.constants.R_OK, callback);
-                },
-                callback => {
-                    const Service = rfr(ServiceFilePath);
-                    this.service = new Service(this, null, callback);
+                    this.service = new ServiceCore(this, null, callback);
                 },
                 callback => {
                     this.pack = new PackSystem(this);
@@ -233,16 +229,16 @@ class Server extends EventEmitter {
 
         switch (status) {
         case Status.OFF:
-            this.emit('console', `${Ansi.style.cyan}(Daemon) Server marked as ${Ansi.style.bold}OFF`);
+            this.emit('console', `${Ansi.style.cyan}[Pterodactyl Daemon] Server marked as ${Ansi.style.bold}OFF`);
             break;
         case Status.ON:
-            this.emit('console', `${Ansi.style.cyan}(Daemon) Server marked as ${Ansi.style.bold}ON`);
+            this.emit('console', `${Ansi.style.cyan}[Pterodactyl Daemon] Server marked as ${Ansi.style.bold}ON`);
             break;
         case Status.STARTING:
-            this.emit('console', `${Ansi.style.cyan}(Daemon) Server marked as ${Ansi.style.bold}STARTING`);
+            this.emit('console', `${Ansi.style.cyan}[Pterodactyl Daemon] Server marked as ${Ansi.style.bold}STARTING`);
             break;
         case Status.STOPPING:
-            this.emit('console', `${Ansi.style.cyan}(Daemon) Server marked as ${Ansi.style.bold}STOPPING`);
+            this.emit('console', `${Ansi.style.cyan}[Pterodactyl Daemon] Server marked as ${Ansi.style.bold}STOPPING`);
             break;
         default:
             break;
@@ -279,7 +275,7 @@ class Server extends EventEmitter {
                 Async.waterfall([
                     callback => {
                         this.buildInProgress = true;
-                        this.emit('console', `${Ansi.style.cyan}(Daemon) Your server container needs to be rebuilt. This should only take a few seconds, but could take a few minutes. You do not need to do anything else while this occurs. Your server will automatically continue with startup once this process is completed.`);
+                        this.emit('console', `${Ansi.style.cyan}[Pterodactyl Daemon] Your server container needs to be rebuilt. This should only take a few seconds, but could take a few minutes. You do not need to do anything else while this occurs. Your server will automatically continue with startup once this process is completed.`);
                         callback();
                     },
                     callback => {
@@ -292,13 +288,13 @@ class Server extends EventEmitter {
                 ], err => {
                     if (err) {
                         this.setStatus(Status.OFF);
-                        this.emit('console', `${Ansi.style.red}(Daemon) An error was encountered while attempting to rebuild this container.`);
+                        this.emit('console', `${Ansi.style.red}[Pterodactyl Daemon] An error was encountered while attempting to rebuild this container.`);
                         this.buildInProgress = false;
                         Log.error(err);
                     }
                 });
             } else {
-                this.emit('console', `${Ansi.style.cyan}(Daemon) Please wait while your server is being rebuilt.`);
+                this.emit('console', `${Ansi.style.cyan}[Pterodactyl Daemon] Please wait while your server is being rebuilt.`);
             }
             return next(new Error('Server is currently queued for a container rebuild. Your request has been accepted and will be processed once the rebuild is complete.'));
         }
@@ -306,7 +302,7 @@ class Server extends EventEmitter {
         Async.series([
             callback => {
                 this.log.debug('Checking size of server folder before booting.');
-                this.emit('console', `${Ansi.style.yellow}(Daemon) Checking size of server data directory...`);
+                this.emit('console', `${Ansi.style.yellow}[Pterodactyl Daemon] Checking size of server data directory...`);
                 this.fs.size((err, size) => {
                     if (err) return callback(err);
 
@@ -315,29 +311,29 @@ class Server extends EventEmitter {
                     this.currentDiskUsed = humanReadable;
 
                     if (this.json.build.disk > 0 && (size - (10 * 1000 * 1000)) > (this.json.build.disk * 1000 * 1000)) {
-                        this.emit('console', `${Ansi.style.yellow}(Daemon) Not enough disk space! ${humanReadable}M / ${this.json.build.disk}M`);
+                        this.emit('console', `${Ansi.style.yellow}[Pterodactyl Daemon] Not enough disk space! ${humanReadable}M / ${this.json.build.disk}M`);
                         return callback(new Error('There is not enough available disk space to start this server.'));
                     }
 
-                    this.emit('console', `${Ansi.style.yellow}(Daemon) Disk Usage: ${humanReadable}M / ${this.json.build.disk}M`);
+                    this.emit('console', `${Ansi.style.yellow}[Pterodactyl Daemon] Disk Usage: ${humanReadable}M / ${this.json.build.disk}M`);
                     return callback();
                 });
             },
             callback => {
                 this.log.debug('Initializing for boot sequence, running preflight checks.');
-                this.emit('console', `${Ansi.style.green}(Daemon) Running server preflight.`);
+                this.emit('console', `${Ansi.style.green}[Pterodactyl Daemon] Running server preflight.`);
                 this.preflight(callback);
             },
             callback => {
-                this.emit('console', `${Ansi.style.green}(Daemon) Starting server container.`);
+                this.emit('console', `${Ansi.style.green}[Pterodactyl Daemon] Starting server container.`);
                 this.docker.start(callback);
             },
             callback => {
-                this.emit('console', `${Ansi.style.green}(Daemon) Server container started. Attaching...`);
+                this.emit('console', `${Ansi.style.green}[Pterodactyl Daemon] Server container started. Attaching...`);
                 this.docker.attach(callback);
             },
             callback => {
-                this.emit('console', `${Ansi.style.green}(Daemon) Attached to server container.`);
+                this.emit('console', `${Ansi.style.green}[Pterodactyl Daemon] Attached to server container.`);
                 this.service.onAttached(callback);
             },
         ], err => {
@@ -366,6 +362,11 @@ class Server extends EventEmitter {
             return next();
         }
 
+        if (_.isUndefined(_.get(this.service, 'config.stop'))) {
+            this.emit('console', `${Ansi.style.red}[Pterodactyl Daemon] No stop configuration is defined for this service.`);
+            return next();
+        }
+
         this.setStatus(Status.STOPPING);
         // So, technically docker sends a SIGTERM to the process when this is run.
         // This works out fine normally, however, there are times when a container might take
@@ -375,7 +376,7 @@ class Server extends EventEmitter {
         // So, what we will do is send a stop command, and then sit there and wait
         // until the container stops because the process stopped, at which point the crash
         // detection will not fire since we set the status to STOPPING.
-        this.command(this.service.object.stop, next);
+        this.command(_.get(this.service, 'config.stop'), next);
     }
 
     kill(next) {
@@ -386,7 +387,7 @@ class Server extends EventEmitter {
         this.setStatus(Status.STOPPING);
         this.docker.kill(err => {
             this.setStatus(Status.OFF);
-            this.emit('console', `${Ansi.style['bg-red']}${Ansi.style.white}(Daemon) Server marked as ${Ansi.style.bold}KILLED.`);
+            this.emit('console', `${Ansi.style['bg-red']}${Ansi.style.white}[Pterodactyl Daemon] Server marked as ${Ansi.style.bold}KILLED.`);
             return next(err);
         });
     }
@@ -416,7 +417,7 @@ class Server extends EventEmitter {
         }
 
         // Prevent a user sending a stop command manually from crashing the server.
-        if (_.startsWith(_.replace(_.trim(command), /^\/*/, ''), this.service.object.stop)) {
+        if (_.startsWith(_.replace(_.trim(command), /^\/*/, ''), _.get(this.service, 'config.stop'))) {
             this.setStatus(Status.STOPPING);
         }
 
@@ -466,13 +467,13 @@ class Server extends EventEmitter {
                 if (moment(this.lastCrash).add(60, 'seconds').isAfter(moment())) {
                     this.setCrashTime();
                     this.log.warn('Server detected as crashed but has crashed within the last 60 seconds, aborting reboot.');
-                    this.emit('console', `${Ansi.style.red}(Daemon) Server detected as crashed! Unable to reboot due to crash within last 60 seconds.`);
+                    this.emit('console', `${Ansi.style.red}[Pterodactyl Daemon] Server detected as crashed! Unable to reboot due to crash within last 60 seconds.`);
                     return;
                 }
             }
 
             this.log.warn('Server detected as crashed! Attempting server reboot.');
-            this.emit('console', `${Ansi.style.red}(Daemon) Server detected as crashed! Attempting to reboot server now.`);
+            this.emit('console', `${Ansi.style.red}[Pterodactyl Daemon] Server detected as crashed! Attempting to reboot server now.`);
             this.setCrashTime();
 
             this.start(startError => {
@@ -514,7 +515,7 @@ class Server extends EventEmitter {
 
             self.currentDiskUsed = Math.round(size / (1000 * 1000)); // eslint-disable-line
             if (self.json.build.disk > 0 && (size - (10 * 1000 * 1000)) > (self.json.build.disk * 1000 * 1000)) {
-                self.emit('console', `${Ansi.style.red}(Daemon) Server is violating disk space limits. Stopping process.`);
+                self.emit('console', `${Ansi.style.red}[Pterodactyl Daemon] Server is violating disk space limits. Stopping process.`);
                 self.stop(stopErr => {
                     self.log.error(stopErr);
                 });
@@ -651,7 +652,7 @@ class Server extends EventEmitter {
 
     updateCGroups(next) {
         this.log.debug('Updating some container resource limits prior to rebuild.');
-        this.emit('console', `${Ansi.style.yellow}(Daemon) Your server has had some resource limits modified, you may need to restart to apply them.\n`);
+        this.emit('console', `${Ansi.style.yellow}[Pterodactyl Daemon] Your server has had some resource limits modified, you may need to restart to apply them.\n`);
         this.docker.update(next);
     }
 

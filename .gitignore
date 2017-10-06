@@ -11,7 +11,6 @@ build/Release
 node_modules
 config/**/*
 lib/*
-src/services/**/*
 tmp/*
 daemon
 packs/**
@@ -19,6 +18,7 @@ packs/**
 .vscode/**
 .DS_Store
 .idea/**
+src/services/configs/*.json
 !config/.githold
 !config/servers/.githold
 !config/credentials/.githold
