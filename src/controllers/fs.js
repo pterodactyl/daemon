@@ -396,7 +396,10 @@ class FileSystem {
     }
 
     systemCompress(files, archive, next) {
-        const Exec = Process.spawn('tar', ['czf', archive, files.join(' ')], {
+        const args = ['tar', 'czf'];
+        for(let file of files) args.push(file);
+        
+        const Exec = Process.spawn('tar', args, {
             cwd: this.server.path(),
             uid: this.server.json.build.user,
             gid: this.server.json.build.user,
