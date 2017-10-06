@@ -31,10 +31,10 @@ const Querystring = require('querystring');
 const Path = require('path');
 const Fs = require('fs-extra');
 const extendify = require('extendify');
-const Util = require('util');
 const Ansi = require('ansi-escape-sequences');
 const Request = require('request');
 const Cache = require('memory-cache');
+const Randomstring = require('randomstring');
 
 const Log = rfr('src/helpers/logger.js');
 const Docker = rfr('src/controllers/docker.js');
@@ -288,9 +288,12 @@ class Server extends EventEmitter {
                 ], err => {
                     if (err) {
                         this.setStatus(Status.OFF);
-                        this.emit('console', `${Ansi.style.red}[Pterodactyl Daemon] An error was encountered while attempting to rebuild this container.`);
+                        const errorIdToken = Randomstring.generate(20);
+                        this.emit('console', `${Ansi.style.red}[Pterodactyl Daemon] An error was encountered while attempting to rebuild this container. Please contact your administrator for assistance. PTDL:ERR_ID:${errorIdToken}`);
                         this.buildInProgress = false;
-                        Log.error(err);
+                        this.log.error(err, {
+                            errorId: errorIdToken,
+                        });
                     }
                 });
             } else {
@@ -349,7 +352,11 @@ class Server extends EventEmitter {
                     return next(new Error('Server container was not found and needs to be rebuilt. Your request has been accepted and will be processed once the rebuild is complete.'));
                 }
 
-                this.log.error(err);
+                const errorIdToken = Randomstring.generate(20);
+                this.emit('console', `${Ansi.style.red}[Pterodactyl Daemon] Oh dear, it seems something has gone horribly wrong while attempting to boot this server. Please contact your administrator for assistance. PTDL:ERR_ID:${errorIdToken}`);
+                this.log.error(err, {
+                    errorId: errorIdToken,
+                });
                 return next(err);
             }
 
@@ -652,7 +659,7 @@ class Server extends EventEmitter {
 
     updateCGroups(next) {
         this.log.debug('Updating some container resource limits prior to rebuild.');
-        this.emit('console', `${Ansi.style.yellow}[Pterodactyl Daemon] Your server has had some resource limits modified, you may need to restart to apply them.\n`);
+        this.emit('console', `${Ansi.style.yellow}[Pterodactyl Daemon] Your server has had some resource limits modified, you may need to restart to apply them.`);
         this.docker.update(next);
     }
 
@@ -682,7 +689,10 @@ class Server extends EventEmitter {
                     },
                 }, false, callback);
             }],
-            init_container: ['update_config', (results, callback) => {
+            init_service: ['update_config', (results, callback) => {
+                this.service = new ServiceCore(this, null, callback);
+            }],
+            init_container: ['init_service', (results, callback) => {
                 this.initContainer(callback);
             }],
         }, err => {
@@ -781,22 +791,17 @@ class Server extends EventEmitter {
                 this.option.install(callback);
             },
             callback => {
-                if (!_.isString(_.get(this.json, 'service.type', false))) {
+                if (!_.isString(_.get(this.json, 'service', false))) {
                     return callback(new Error('No service type was passed to the server configuration, unable to select a service.'));
                 }
 
-                const ServiceFilePath = Util.format('src/services/%s/index.js', this.json.service.type);
-                Fs.access(ServiceFilePath, Fs.constants.R_OK, accessErr => {
-                    if (accessErr) return next(accessErr);
+                this.service = new ServiceCore(this, null, callback);
+            },
+            callback => {
+                this.pack = new PackSystem(this);
+                this.option = new OptionController(this);
 
-                    const Service = rfr(ServiceFilePath);
-                    this.service = new Service(this);
-
-                    this.pack = new PackSystem(this);
-                    this.option = new OptionController(this);
-
-                    return callback();
-                });
+                return callback();
             },
             callback => {
                 this.blockStartup(false, callback);

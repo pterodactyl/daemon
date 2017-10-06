@@ -16,6 +16,7 @@ invalid service option configuration.
 * Authentication now uses dynamically changing tokens issued by the Panel.
 * All API routes now prefixed with `v1/`.
 * Service options now use the new panel structure and are stored in `src/services/configs/<uuid>.json`. All existing servers will need to be updated, the panel ships with a command to do this.
+* Rebuilding a server now allows the service to be changed on the fly and re-applied.
 
 ## v0.4.5 (Candid Comodactylus)
 ### Fixed
