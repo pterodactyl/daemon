@@ -26,14 +26,12 @@ const rfr = require('rfr');
 const Async = require('async');
 const _ = require('lodash');
 const Fs = require('fs-extra');
-const extendify = require('extendify');
 const isStream = require('isstream');
 const Path = require('path');
 const Util = require('util');
 const createOutputStream = require('create-output-stream');
 const Ansi = require('ansi-escape-sequences');
 
-const Log = rfr('src/helpers/logger.js');
 const Status = rfr('src/helpers/status.js');
 const FileParserHelper = rfr('src/helpers/fileparser.js');
 
@@ -43,10 +41,10 @@ class Core {
         this.json = server.json;
 
         try {
-            this.config = config || rfr(Util.format('src/services/configs/%s.json', this.json.service.option));
+            this.config = config || rfr(Util.format('src/services/configs/%s.json', this.json.service.egg));
         } catch (ex) {
             if (ex.code === 'MODULE_NOT_FOUND') {
-                this.server.log.error('Could not locate a service option configuration for this server. Please rebuild this server.');
+                this.server.log.error('Could not locate an Egg configuration for this server. Please rebuild this server.');
                 this.config = {};
             } else {
                 throw ex;
@@ -68,8 +66,8 @@ class Core {
 
     onPreflight(next) {
         if (_.isEmpty(this.config)) {
-            this.server.emit('console', `${Ansi.style['bg-red']}${Ansi.style.white}[Pterodactyl Daemon] No service configuration located. This server cannot be started.`);
-            return next(new Error('A server cannot be started if there is no configuration loaded for the service option.'));
+            this.server.emit('console', `${Ansi.style['bg-red']}${Ansi.style.white}[Pterodactyl Daemon] No Egg configuration located. This server cannot be started.`);
+            return next(new Error('A server cannot be started if there is no configuration loaded for the Egg.'));
         }
 
         let lastFile;

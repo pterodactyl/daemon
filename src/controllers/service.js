@@ -38,7 +38,7 @@ class Service {
     boot(next) {
         Async.auto({
             services: callback => {
-                Log.info('Contacting panel to retrieve a list of currrent services available to the node.');
+                Log.info('Contacting panel to retrieve a list of currrent Eggs available to the node.');
                 this.getServices(callback);
             },
             compare: ['services', (results, callback) => {
@@ -78,7 +78,7 @@ class Service {
     }
 
     getServices(next) {
-        const endpoint = `${Config.get('remote.base')}/api/remote/options`;
+        const endpoint = `${Config.get('remote.base')}/api/remote/eggs`;
         Request({
             method: 'GET',
             url: endpoint,
@@ -89,7 +89,7 @@ class Service {
             if (err) return next(err);
 
             if (response.statusCode !== 200) {
-                const error = new Error('Error while attempting to fetch list of service options from the panel.');
+                const error = new Error('Error while attempting to fetch list of Eggs from the panel.');
                 error.responseCode = response.statusCode;
                 error.requestURL = endpoint;
                 return next(error);
@@ -104,10 +104,10 @@ class Service {
     }
 
     pullFile(uuid, next) {
-        Log.debug(`Pulling updated option file: ${uuid}`);
+        Log.debug(`Pulling updated Egg file: ${uuid}`);
         Request({
             method: 'GET',
-            url: `${Config.get('remote.base')}/api/remote/options/${uuid}`,
+            url: `${Config.get('remote.base')}/api/remote/eggs/${uuid}`,
             headers: {
                 'Authorization': `Bearer ${Config.get('keys.0')}`,
             },
@@ -115,10 +115,10 @@ class Service {
             if (err) return next(err);
 
             if (response.statusCode !== 200) {
-                return next(new Error(`Error while attempting to fetch updated service option file (HTTP/${response.statusCode})`));
+                return next(new Error(`Error while attempting to fetch updated Egg file (HTTP/${response.statusCode})`));
             }
 
-            Log.debug(`Saving updated service option file: ${uuid}`);
+            Log.debug(`Saving updated Egg file: ${uuid}`);
             Fs.outputFile(`./src/services/configs/${uuid}.json`, body, next);
         });
     }
