@@ -166,7 +166,12 @@ class Docker {
             return next(new Error('An active stream is already in use for this container.'));
         }
 
-        this.container.exec({ Cmd: command, AttachStdin: true, AttachStdout: true, Tty: true }, (err, exec) => {
+        this.container.exec({
+            Cmd: command,
+            AttachStdin: true,
+            AttachStdout: true,
+            Tty: true,
+        }, (err, exec) => {
             if (err) return next(err);
             exec.start({ stdin: true }, (execErr, stream) => {
                 if (!execErr && stream) {
@@ -215,7 +220,12 @@ class Docker {
             return next(new Error('An active stream is already in use for this container.'));
         }
 
-        this.container.attach({ stream: true, stdin: true, stdout: true, stderr: true }, (err, stream) => {
+        this.container.attach({
+            stream: true,
+            stdin: true,
+            stdout: true,
+            stderr: true,
+        }, (err, stream) => {
             if (err) return next(err);
             this.stream = stream;
             this.stream.setEncoding('utf8');

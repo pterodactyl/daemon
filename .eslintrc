@@ -17,6 +17,7 @@
       "lodash/import-scope": 0,
       "no-multi-assign": 2,
       "arrow-parens": [2, "as-needed"],
-      "class-methods-use-this": 0
+      "class-methods-use-this": 0,
+      "prefer-destructuring": 0
   }
 }
