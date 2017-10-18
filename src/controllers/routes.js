@@ -512,7 +512,7 @@ class RouteController {
 
                         // Get necessary information for the download.
                         const Filename = Path.basename(json.path);
-                        const Mimetype = Mime.lookup(json.path);
+                        const Mimetype = Mime.getType(json.path);
                         const File = Server[json.server].path(json.path);
                         const Stat = Fs.statSync(File);
                         this.res.writeHead(200, {
