@@ -38,33 +38,31 @@ class Service {
     boot(next) {
         Async.auto({
             services: callback => {
-                Log.info('Contacting panel to retrieve a list of currrent services available to the node.');
+                Log.info('Contacting panel to retrieve a list of currrent Eggs available to the node.');
                 this.getServices(callback);
             },
             compare: ['services', (results, callback) => {
                 Log.info('Checking current files aganist panel response.');
 
                 const needsUpdate = [];
-                Async.eachOf(results.services, (hashes, service, eCallback) => {
-                    Async.eachOf(hashes, (hash, file, iCallback) => {
-                        const currentFile = `./src/services/${service}/${file}`;
-                        Fs.stat(currentFile, (err, stats) => {
-                            if (err && err.code === 'ENOENT') {
-                                needsUpdate.push(`${service}/${file}`);
-                                return iCallback();
-                            } else if (err) { return iCallback(err); }
+                Async.eachOf(results.services, (hash, uuid, loopCallback) => {
+                    const currentFile = `./src/services/configs/${uuid}.json`;
+                    Fs.stat(currentFile, (err, stats) => {
+                        if (err && err.code === 'ENOENT') {
+                            needsUpdate.push(uuid);
+                            return loopCallback();
+                        } else if (err) { return loopCallback(err); }
 
-                            if (!stats.isFile()) return iCallback();
+                        if (!stats.isFile()) return loopCallback();
 
-                            const currentChecksum = Crypto.createHash('sha1').update(Fs.readFileSync(currentFile), 'utf8').digest('hex');
+                        const currentChecksum = Crypto.createHash('sha1').update(Fs.readFileSync(currentFile), 'utf8').digest('hex');
 
-                            if (currentChecksum !== hash) {
-                                needsUpdate.push(`${service}/${file}`);
-                            }
+                        if (currentChecksum !== hash) {
+                            needsUpdate.push(uuid);
+                        }
 
-                            return iCallback();
-                        });
-                    }, eCallback);
+                        return loopCallback();
+                    });
                 }, err => {
                     callback(err, needsUpdate);
                 });
@@ -72,26 +70,26 @@ class Service {
             download: ['compare', (results, callback) => {
                 if (_.isEmpty(results.compare)) return callback();
 
-                Async.each(results.compare, (file, eCallback) => {
-                    this.pullFile(file, eCallback);
+                Async.each(results.compare, (uuid, eCallback) => {
+                    this.pullFile(uuid, eCallback);
                 }, callback);
             }],
         }, next);
     }
 
     getServices(next) {
-        const endpoint = `${Config.get('remote.base')}/daemon/services`;
+        const endpoint = `${Config.get('remote.base')}/api/remote/eggs`;
         Request({
             method: 'GET',
             url: endpoint,
             headers: {
-                'X-Access-Node': Config.get('keys.0'),
+                'Authorization': `Bearer ${Config.get('keys.0')}`,
             },
         }, (err, response, body) => {
             if (err) return next(err);
 
             if (response.statusCode !== 200) {
-                const error = new Error('Error while attempting to fetch list of services from the panel.');
+                const error = new Error('Error while attempting to fetch list of Eggs from the panel.');
                 error.responseCode = response.statusCode;
                 error.requestURL = endpoint;
                 return next(error);
@@ -105,23 +103,23 @@ class Service {
         });
     }
 
-    pullFile(file, next) {
-        Log.debug(`Pulling updated service file: ${file}`);
+    pullFile(uuid, next) {
+        Log.debug(`Pulling updated Egg file: ${uuid}`);
         Request({
             method: 'GET',
-            url: `${Config.get('remote.base')}/daemon/services/pull/${file}/`,
+            url: `${Config.get('remote.base')}/api/remote/eggs/${uuid}`,
             headers: {
-                'X-Access-Node': Config.get('keys.0'),
+                'Authorization': `Bearer ${Config.get('keys.0')}`,
             },
         }, (err, response, body) => {
             if (err) return next(err);
 
             if (response.statusCode !== 200) {
-                return next(new Error(`Error while attempting to fetch updated service file (HTTP/${response.statusCode})`));
+                return next(new Error(`Error while attempting to fetch updated Egg file (HTTP/${response.statusCode})`));
             }
 
-            Log.debug(`Saving updated service file: ${file}`);
-            Fs.outputFile(`./src/services/${file}`, body, next);
+            Log.debug(`Saving updated Egg file: ${uuid}`);
+            Fs.outputFile(`./src/services/configs/${uuid}.json`, body, next);
         });
     }
 }

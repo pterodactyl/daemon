@@ -2,14 +2,21 @@
 This file is a running track of new features and fixes to each version of the daemon released starting with `v0.2.0`.
 
 ### v0.5.0
+### Added
+* Added more data integrity checks when running a server. These changes make it impossible to boot a server that has an
+invalid service option configuration.
+
 ### Fixed
 * Fixes `Cannot get length of undefined` errors that would occasionally plauge certain servers on the daemon.
 * Fixes `write after end` error caused by race condition.
 * Fixes error caused by missing per cpu usage data.
+* Servers referencing a missing or empty configuration file will now still boot but be inoperable via the console.
 
 ### Changed
 * Authentication now uses dynamically changing tokens issued by the Panel.
-* All API routes now prefixed with `v1/`
+* All API routes now prefixed with `v1/`.
+* Service options now use the new panel structure and are stored in `src/services/configs/<uuid>.json`. All existing servers will need to be updated, the panel ships with a command to do this.
+* Rebuilding a server now allows the service to be changed on the fly and re-applied.
 
 ## v0.4.5 (Candid Comodactylus)
 ### Fixed

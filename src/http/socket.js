@@ -24,6 +24,7 @@
  */
 const rfr = require('rfr');
 const _ = require('lodash');
+const Ansi = require('ansi-escape-sequences');
 
 const RestServer = rfr('src/http/restify.js');
 const Socket = require('socket.io').listen(RestServer.server);
@@ -70,10 +71,16 @@ class WebSocket {
                         return;
                     }
 
-                    this.server.fs.readEnd(this.server.service.object.log.location, (readErr, readData) => {
-                        if (readErr) return this.websocket.emit('console', 'There was an error while attempting to get the log file.');
-                        activeSocket.emit('server log', readData);
-                    });
+                    if (!_.isUndefined(_.get(this.server, 'service.config.log.location'))) {
+                        this.server.fs.readEnd(_.get(this.server, 'service.config.log.location'), (readErr, readData) => {
+                            if (readErr) return this.websocket.emit('console', 'There was an error while attempting to get the log file.');
+                            activeSocket.emit('server log', readData);
+                        });
+                    } else {
+                        this.websocket.emit('console', {
+                            line: `${Ansi.style.red}[Pterodactyl Daemon] No log location is configured for this server or service!`,
+                        });
+                    }
                 });
             });
 
