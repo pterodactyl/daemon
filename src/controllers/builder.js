@@ -29,13 +29,11 @@ const _ = require('lodash');
 
 const Log = rfr('src/helpers/logger.js');
 const ConfigHelper = rfr('src/helpers/config.js');
-const SFTPController = rfr('src/controllers/sftp.js');
 const InitializeHelper = rfr('src/helpers/initialize.js').Initialize;
 const DeleteController = rfr('src/controllers/delete.js');
 
 const Initialize = new InitializeHelper();
 const Config = new ConfigHelper();
-const SFTP = new SFTPController();
 
 class Builder {
     constructor(json) {
@@ -63,26 +61,7 @@ class Builder {
                     return asyncCallback();
                 }, callback);
             },
-            create_sftp: callback => {
-                this.log.debug('Creating SFTP user on the system...');
-                SFTP.create(this.json.user, RandomString.generate(), callback);
-            },
-            set_uid: ['create_sftp', (results, callback) => {
-                this.log.debug('Retrieving the user\'s ID...');
-                SFTP.uid(this.json.user, (err, uid) => {
-                    if (err || _.isNull(uid)) {
-                        SFTP.delete(this.json.user, delErr => {
-                            if (delErr) Log.fatal(delErr);
-                            Log.warn('Cleaned up after failed server creation.');
-                        });
-                        return (!_.isNull(err)) ? callback(err) : callback(new Error('Unable to retrieve the user ID.'));
-                    }
-                    this.log.debug(`User ID is: ${uid}`);
-                    this.json.build.user = parseInt(uid, 10);
-                    return callback();
-                });
-            }],
-            initialize: ['set_uid', 'verify_ip', (results, callback) => {
+            initialize: ['verify_ip', (results, callback) => {
                 Initialize.setup(this.json, callback);
             }],
             block_boot: ['initialize', (results, callback) => {

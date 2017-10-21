@@ -24,9 +24,11 @@
     "url": "https://github.com/Pterodactyl/Daemon/issues"
   },
   "engines": {
-    "node": ">=6.0.0",
-    "os": "linux"
+    "node": ">=6.0.0"
   },
+  "os": [
+    "linux"
+  ],
   "homepage": "https://github.com/Pterodactyl/Daemon",
   "devDependencies": {
     "eslint": "4.9.0",
@@ -63,6 +65,7 @@
     "request": "2.83.0",
     "restify": "4.3.1",
     "rfr": "1.2.3",
+    "sftp-server": "^1.0.6",
     "socket.io": "2.0.3",
     "socketio-file-upload": "0.6.0",
     "yargs": "8.0.2"

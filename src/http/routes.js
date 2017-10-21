@@ -126,11 +126,6 @@ RestServer.post('/v1/server/reinstall', (req, res, next) => {
     return next();
 });
 
-RestServer.post('/v1/server/password', (req, res, next) => {
-    Routes.setSFTPPassword();
-    return next();
-});
-
 RestServer.post('/v1/server/rebuild', (req, res, next) => {
     Routes.rebuildServer();
     return next();

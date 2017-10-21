@@ -44,11 +44,9 @@ const Websocket = rfr('src/http/socket.js').ServerSockets;
 const UploadSocket = rfr('src/http/upload.js');
 const PackSystem = rfr('src/controllers/pack.js');
 const FileSystem = rfr('src/controllers/fs.js');
-const SFTPController = rfr('src/controllers/sftp.js');
 const OptionController = rfr('src/controllers/option.js');
 const ServiceCore = rfr('src/services/index.js');
 
-const SFTP = new SFTPController();
 const Config = new ConfigHelper();
 
 class Server extends EventEmitter {
@@ -705,11 +703,6 @@ class Server extends EventEmitter {
             return next(err);
         });
     }
-
-    setPassword(password, next) {
-        SFTP.password(this.json.user, password, next);
-    }
-
     suspend(next) {
         Async.parallel([
             callback => {
@@ -720,9 +713,6 @@ class Server extends EventEmitter {
                     return this.kill(callback);
                 }
                 return callback();
-            },
-            callback => {
-                SFTP.lock(this.json.user, callback);
             },
         ], err => {
             if (!err) {
@@ -736,9 +726,6 @@ class Server extends EventEmitter {
         Async.parallel([
             callback => {
                 this.modifyConfig({ suspended: 0 }, callback);
-            },
-            callback => {
-                SFTP.unlock(this.json.user, callback);
             },
         ], err => {
             if (!err) {

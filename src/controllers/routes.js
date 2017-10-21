@@ -455,16 +455,6 @@ class RouteController {
         });
     }
 
-    setSFTPPassword() {
-        Auth.allowed('s:set-password', (allowedErr, isAllowed) => {
-            if (allowedErr || !isAllowed) return;
-
-            Auth.server().setPassword(this.req.params.password, err => {
-                Responses.generic204(err);
-            });
-        });
-    }
-
     postServerSuspend() {
         Auth.allowed('g:server:suspend', (allowedErr, isAllowed) => {
             if (allowedErr || !isAllowed) return;

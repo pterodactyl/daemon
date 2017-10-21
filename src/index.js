@@ -42,14 +42,12 @@ Log.info('Loading modules, this could take a few seconds.');
 
 const NetworkController = rfr('src/controllers/network.js');
 const Initializer = rfr('src/helpers/initialize.js').Initialize;
-const SFTPController = rfr('src/controllers/sftp.js');
 const LiveStats = rfr('src/http/stats.js');
 const ServiceController = rfr('src/controllers/service.js');
 const TimezoneHelper = rfr('src/helpers/timezone.js');
 
 const Network = new NetworkController();
 const Initialize = new Initializer();
-const SFTP = new SFTPController(true);
 const Stats = new LiveStats();
 const Service = new ServiceController();
 const Timezone = new TimezoneHelper();
@@ -117,15 +115,7 @@ Async.auto({
         Log.info('Checking pterodactyl0 interface and setting configuration values.');
         Network.interface(callback);
     }],
-    start_sftp: ['setup_network', (r, callback) => {
-        Log.info('Attempting to start SFTP service container...');
-        SFTP.startService(err => {
-            if (err) return callback(err);
-            Log.info('SFTP container successfully booted.');
-            return callback();
-        });
-    }],
-    init_servers: ['check_services', 'start_sftp', (r, callback) => {
+    init_servers: ['check_services', (r, callback) => {
         Log.info('Attempting to load servers and initialize daemon...');
         Initialize.init(callback);
     }],
