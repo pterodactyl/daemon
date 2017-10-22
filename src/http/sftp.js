@@ -159,6 +159,8 @@ class InternalSftpServer {
                         });
 
                         sftp.on('OPEN', (reqId, location, flags) => {
+                            clientContext.server.log.debug(location, flags, SftpStream.flagsToString(flags), 'OPEN');
+
                             const handle = this.makeHandle(clientContext);
                             const data = {
                                 path: location,
@@ -170,12 +172,14 @@ class InternalSftpServer {
                                 data.type = OPEN_MODE.READ;
                                 break;
                             case 'w':
+                            case 'wx':
                                 data.type = OPEN_MODE.WRITE;
                                 data.writer = this.createWriter(clientContext, location);
                                 break;
                             default:
                                 clientContext.server.log.warn({
                                     path: location,
+                                    flag_id: flags,
                                     flag: SftpStream.flagsToString(flags),
                                     identifier: clientContext.request_id,
                                 }, 'Received an unknown OPEN flag during SFTP operation.');
@@ -186,12 +190,11 @@ class InternalSftpServer {
                             clientContext.handles[handle] = data;
                             clientContext.handles_count += 1;
 
-                            sftp.handle(reqId, handle);
+                            return sftp.handle(reqId, handle);
                         });
 
                         sftp.on('READ', (reqId, handle, offset, length) => {
                             const requestData = _.get(clientContext.handles, handle, null);
-
                             if (requestData.done) {
                                 return sftp.status(reqId, STATUS_CODE.EOF);
                             }
@@ -199,7 +202,7 @@ class InternalSftpServer {
                             clientContext.server.fs.readBytes(requestData.path, offset, length, (err, data, done) => {
                                 requestData.done = done || false;
 
-                                if ((err && err.code === 'IS_DIR') || done) {
+                                if ((err && err.code === 'EISDIR') || done) {
                                     return sftp.status(reqId, STATUS_CODE.EOF);
                                 } else if (err) {
                                     clientContext.server.log.warn({
@@ -211,7 +214,7 @@ class InternalSftpServer {
                                     return sftp.status(reqId, STATUS_CODE.FAILURE);
                                 }
 
-                                return sftp.data(reqId, data);
+                                return sftp.data(reqId, data, 'utf8');
                             });
                         });
 

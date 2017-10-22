@@ -159,7 +159,7 @@ class FileSystem {
             if (err) return next(err);
             if (!stat.isFile()) {
                 const internalError = new Error('Trying to read bytes from a non-file.');
-                internalError.code = 'IS_DIR';
+                internalError.code = 'EISDIR';
 
                 return next(internalError);
             }
@@ -171,7 +171,7 @@ class FileSystem {
             const chunks = [];
             const stream = Fs.createReadStream(this.server.path(file), {
                 start: offset,
-                end: offset + length,
+                end: (offset + length) - 1,
             });
             stream.on('data', data => {
                 chunks.push(data);
@@ -360,14 +360,14 @@ class FileSystem {
             if (result === 'application/x-gzip' || result === 'application/gzip') {
                 Exec = Process.spawn('tar', ['xzf', Path.basename(file), '-C', to], {
                     cwd: Path.dirname(file),
-                    uid: this.server.json.build.user,
-                    gid: this.server.json.build.user,
+                    uid: Config.get('docker.container.user', 1000),
+                    gid: Config.get('docker.container.user', 1000),
                 });
             } else if (result === 'application/zip') {
                 Exec = Process.spawn('unzip', ['-q', '-o', Path.basename(file), '-d', to], {
                     cwd: Path.dirname(file),
-                    uid: this.server.json.build.user,
-                    gid: this.server.json.build.user,
+                    uid: Config.get('docker.container.user', 1000),
+                    gid: Config.get('docker.container.user', 1000),
                 });
             } else {
                 return next(new Error(`Decompression of file failed: ${result} is not a decompessible Mimetype.`));
@@ -431,8 +431,8 @@ class FileSystem {
     systemCompress(files, archive, next) {
         const Exec = Process.spawn('tar', ['czf', archive, files.join(' ')], {
             cwd: this.server.path(),
-            uid: this.server.json.build.user,
-            gid: this.server.json.build.user,
+            uid: Config.get('docker.container.user', 1000),
+            gid: Config.get('docker.container.user', 1000),
         });
 
         Exec.on('error', execErr => {
