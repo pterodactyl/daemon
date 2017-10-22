@@ -37,8 +37,11 @@ const OPEN_MODE = Ssh2.SFTP_OPEN_MODE;
 const STATUS_CODE = Ssh2.SFTP_STATUS_CODE;
 const ReqHandles = [];
 
+const ConfigHelper = rfr('src/helpers/config.js');
 const Log = rfr('src/helpers/logger.js');
 const Servers = rfr('src/helpers/initialize.js').Servers;
+
+const Config = new ConfigHelper();
 
 class InternalSftpServer {
     init(next) {
@@ -47,8 +50,7 @@ class InternalSftpServer {
                 Fs.readFileSync('/srv/daemon/config/credentials/ssh/ssh_host_rsa_key').toString('utf8'),
             ],
         }, client => {
-            let clientContext = false;
-
+            let clientContext = {};
             client.on('authentication', ctx => {
                 clientContext = {
                     client: ctx,
@@ -63,7 +65,7 @@ class InternalSftpServer {
                         sftp.on('REALPATH', reqId => {
                             sftp.name(reqId, {
                                 filename: '/',
-                                longname: 'drw------- 1 test test 3 Dec 8 2009 /',
+                                longname: 'drw------- 0 1001 1001 3 Dec 8 2009 /',
                                 attrs: {},
                             });
                         });
@@ -100,7 +102,7 @@ class InternalSftpServer {
                             sftp.handle(reqId, handle);
                         });
 
-                        sftp.on('OPEN', (reqId, location, flags, attrs) => {
+                        sftp.on('OPEN', (reqId, location, flags) => {
                             const handle = this.makeHandle(reqId);
                             const data = {
                                 path: location,
@@ -233,7 +235,7 @@ class InternalSftpServer {
             }).on('error', err => {
                 Log.error(err);
             });
-        }).listen(2022, '0.0.0.0', next);
+        }).listen(Config.get('sftp.port', 2022), Config.get('sftp.ip', '0.0.0.0'), next);
     }
 
     makeHandle(reqId) {
@@ -257,8 +259,8 @@ class InternalSftpServer {
                     const longFormat = Util.format(
                         '%s 0 %i %i %d %s %s',
                         (item.directory) ? 'drwxr-xr-x' : '-rw-r--r--',
-                        1001,
-                        1001,
+                        Config.get('docker.container.user', 1000),
+                        Config.get('docker.container.user', 1000),
                         item.size,
                         Moment(item.created).format('MMM DD HH:mm'),
                         item.name,
@@ -270,8 +272,8 @@ class InternalSftpServer {
                         attrs: {
                             mode: (item.directory) ? Fs.constants.S_IFDIR | 0o755 : Fs.constants.S_IFREG | 0o644,
                             permissions: (item.directory) ? 0o755 : 0o644,
-                            uid: server.json.build.user,
-                            gid: server.json.build.user,
+                            uid: Config.get('docker.container.user', 1000),
+                            gid: Config.get('docker.container.user', 1000),
                             size: item.size,
                             atime: parseInt(Moment(item.created).format('X'), 10),
                             mtime: parseInt(Moment(item.modified).format('X'), 10),

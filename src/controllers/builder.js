@@ -24,7 +24,6 @@
  */
 const rfr = require('rfr');
 const Async = require('async');
-const RandomString = require('randomstring');
 const _ = require('lodash');
 
 const Log = rfr('src/helpers/logger.js');

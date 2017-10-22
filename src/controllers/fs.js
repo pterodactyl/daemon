@@ -31,9 +31,13 @@ const Mmm = require('mmmagic');
 const RandomString = require('randomstring');
 const Process = require('child_process');
 const Util = require('util');
+const rfr = require('rfr');
 
 const Magic = Mmm.Magic;
 const Mime = new Magic(Mmm.MAGIC_MIME_TYPE);
+
+const ConfigHelper = rfr('src/helpers/config.js');
+const Config = new ConfigHelper();
 
 class FileSystem {
     constructor(server) {
@@ -93,7 +97,7 @@ class FileSystem {
             chownTarget = this.server.path(file);
         }
 
-        const Exec = Process.spawn('chown', ['-R', Util.format('%d:%d', this.server.json.build.user, this.server.json.build.user), chownTarget], {});
+        const Exec = Process.spawn('chown', ['-R', Util.format('%d:%d', Config.get('docker.container.user', 1000), Config.get('docker.container.user', 1000)), chownTarget], {});
         Exec.on('error', execErr => {
             this.server.log.error(execErr);
             return next(new Error('There was an error while attempting to set ownership of files.'));
