@@ -291,7 +291,7 @@ class FileSystem {
 
     stat(file, next) {
         Fs.stat(this.server.path(file), (err, stat) => {
-            if (err) next(err);
+            if (err) return next(err);
             Mime.detectFile(this.server.path(file), (mimeErr, result) => {
                 next(null, {
                     'name': (Path.parse(this.server.path(file))).base,

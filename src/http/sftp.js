@@ -31,11 +31,12 @@ const Ssh2 = require('ssh2');
 const Moment = require('moment');
 const Util = require('util');
 const Ssh2Streams = require('ssh2-streams');
+const Path = require('path');
+const Randomstring = require('randomstring');
 
 const SftpStream = Ssh2Streams.SFTPStream;
 const OPEN_MODE = Ssh2.SFTP_OPEN_MODE;
 const STATUS_CODE = Ssh2.SFTP_STATUS_CODE;
-const ReqHandles = [];
 
 const ConfigHelper = rfr('src/helpers/config.js');
 const Log = rfr('src/helpers/logger.js');
@@ -50,28 +51,74 @@ class InternalSftpServer {
                 Fs.readFileSync('/srv/daemon/config/credentials/ssh/ssh_host_rsa_key').toString('utf8'),
             ],
         }, client => {
-            let clientContext = {};
+            let clientContext;
             client.on('authentication', ctx => {
                 clientContext = {
+                    request_id: Randomstring.generate(64),
                     client: ctx,
                     server: _.get(Servers, '58d8055e-9de3-4031-a9fa-933a1c4252e4'),
+                    handles: {},
+                    handles_count: 0,
                 };
                 ctx.accept();
             }).on('ready', () => {
                 client.on('session', accept => {
-                    accept().on('sftp', a => {
+                    const Session = accept();
+                    Session.on('sftp', a => {
                         const sftp = a();
 
-                        sftp.on('REALPATH', reqId => {
-                            sftp.name(reqId, {
-                                filename: '/',
-                                longname: 'drw------- 0 1001 1001 3 Dec 8 2009 /',
+                        sftp.on('REALPATH', (reqId, location) => {
+                            Log.debug('REALPATH', clientContext.request_id, reqId, location);
+
+                            let path = _.replace(Path.resolve(clientContext.server.path(), location), clientContext.server.path(), '');
+                            if (_.startsWith(path, '/')) {
+                                path = path.substr(1);
+                            }
+                            Log.debug('REALPATH [FINAL]', {
+                                filename: `/${path}`,
+                                longname: `drwxrwxrwx 1 foo foo 3 Dec 8 2009 /${path}`,
+                                attrs: {},
+                            });
+                            return sftp.name(reqId, {
+                                filename: `/${path}`,
+                                longname: `drwxrwxrwx 1 foo foo 3 Dec 8 2009 /${path}`,
                                 attrs: {},
                             });
                         });
 
+                        sftp.on('STAT', (reqId, path) => {
+                            clientContext.server.fs.stat(path, (err, item) => {
+                                if (err) {
+                                    if (err.code === 'ENOENT') {
+                                        return sftp.status(reqId, STATUS_CODE.NO_SUCH_FILE);
+                                    }
+
+                                    Log.error('STAT', err);
+                                    return sftp.status(reqId, STATUS_CODE.FAILURE);
+                                }
+
+                                return sftp.attrs(reqId, {
+                                    mode: (item.directory) ? Fs.constants.S_IFDIR | 0o755 : Fs.constants.S_IFREG | 0o644,
+                                    permissions: (item.directory) ? 0o755 : 0o644,
+                                    uid: Config.get('docker.container.user', 1000),
+                                    gid: Config.get('docker.container.user', 1000),
+                                    size: item.size,
+                                    atime: parseInt(Moment(item.created).format('X'), 10),
+                                    mtime: parseInt(Moment(item.modified).format('X'), 10),
+                                });
+                            });
+                        });
+
+                        sftp.on('FSTAT', (reqId, handle) => {
+                            return sftp.emit('STAT', reqId, clientContext.handles[handle].path);
+                        });
+
+                        sftp.on('LSTAT', (reqId, path) => {
+                            return sftp.emit('STAT', reqId, path);
+                        });
+
                         sftp.on('READDIR', (reqId, handle) => {
-                            const requestData = _.get(ReqHandles, handle, null);
+                            const requestData = _.get(clientContext.handles, handle, null);
                             if (_.isNull(requestData)) {
                                 Log.error('Unknown handle provided for READDIR');
                                 return sftp.status(reqId, STATUS_CODE.FAILURE);
@@ -93,17 +140,19 @@ class InternalSftpServer {
                         });
 
                         sftp.on('OPENDIR', (reqId, location) => {
-                            const handle = this.makeHandle(reqId);
-                            ReqHandles[handle] = {
+                            const handle = this.makeHandle(clientContext);
+                            clientContext.handles[handle] = {
                                 path: location,
                                 done: false,
                             };
+
+                            clientContext.handles_count += 1;
 
                             sftp.handle(reqId, handle);
                         });
 
                         sftp.on('OPEN', (reqId, location, flags) => {
-                            const handle = this.makeHandle(reqId);
+                            const handle = this.makeHandle(clientContext);
                             const data = {
                                 path: location,
                                 done: false,
@@ -122,12 +171,14 @@ class InternalSftpServer {
                                 return sftp.status(reqId, STATUS_CODE.OP_UNSUPPORTED);
                             }
 
-                            ReqHandles[handle] = data;
+                            clientContext.handles[handle] = data;
+                            clientContext.handles_count += 1;
+
                             sftp.handle(reqId, handle);
                         });
 
                         sftp.on('READ', (reqId, handle, offset, length) => {
-                            const requestData = _.get(ReqHandles, handle, null);
+                            const requestData = _.get(clientContext.handles, handle, null);
                             if (_.isNull(requestData)) {
                                 Log.error('Unknown handle provided for READ');
                                 return sftp.status(reqId, STATUS_CODE.FAILURE);
@@ -156,7 +207,7 @@ class InternalSftpServer {
                         });
 
                         sftp.on('WRITE', (reqId, handle, offset, data) => {
-                            const requestData = _.get(ReqHandles, handle, null);
+                            const requestData = _.get(clientContext.handles, handle, null);
                             if (_.isNull(requestData)) {
                                 Log.error('Unknown handle provided for READ');
                                 return sftp.status(reqId, STATUS_CODE.FAILURE);
@@ -214,7 +265,7 @@ class InternalSftpServer {
 
                         // Cleanup things.
                         sftp.on('CLOSE', (reqId, handle) => {
-                            const requestData = _.get(ReqHandles, handle, null);
+                            const requestData = _.get(clientContext.handles, handle, null);
                             if (!_.isNull(requestData)) {
                                 // If the writer is still active, close it and chown the item
                                 // that was written.
@@ -225,7 +276,7 @@ class InternalSftpServer {
                                     });
                                 }
 
-                                delete ReqHandles[handle];
+                                delete clientContext.handles[handle];
                             }
 
                             return sftp.status(reqId, STATUS_CODE.OK);
@@ -233,13 +284,13 @@ class InternalSftpServer {
                     });
                 });
             }).on('error', err => {
-                Log.error(err);
+                Log.error('SFTP Subsystem Error!', err);
             });
         }).listen(Config.get('sftp.port', 2022), Config.get('sftp.ip', '0.0.0.0'), next);
     }
 
-    makeHandle(reqId) {
-        return Buffer.alloc(1, reqId);
+    makeHandle(ctx) {
+        return Buffer.alloc(1, ctx.handles_count);
     }
 
     createWriter(ctx, path) {
