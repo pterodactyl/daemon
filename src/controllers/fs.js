@@ -292,12 +292,12 @@ class FileSystem {
                 next(null, {
                     'name': (Path.parse(this.server.path(file))).base,
                     'created': stat.birthtime,
-                    'modified': stat.ctime,
+                    'modified': stat.mtime,
                     'size': stat.size,
                     'directory': stat.isDirectory(),
                     'file': stat.isFile(),
                     'symlink': stat.isSymbolicLink(),
-                    'mime': result || 'unknown',
+                    'mime': result || 'application/octet-stream',
                 });
             });
         });
@@ -480,7 +480,7 @@ class FileSystem {
                                 'directory': results.do_stat.isDirectory(),
                                 'file': results.do_stat.isFile(),
                                 'symlink': results.do_stat.isSymbolicLink(),
-                                'mime': results.do_mime || 'unknown',
+                                'mime': results.do_mime || 'application/octet-stream',
                             });
                             aCallback();
                         }],

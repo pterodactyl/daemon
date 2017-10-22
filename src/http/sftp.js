@@ -46,9 +46,6 @@ class InternalSftpServer {
             hostKeys: [
                 Fs.readFileSync('/srv/daemon/config/credentials/ssh/ssh_host_rsa_key').toString('utf8'),
             ],
-            // debug: s => {
-            //     Log.debug(s);
-            // },
         }, client => {
             let clientContext = false;
 
@@ -103,28 +100,27 @@ class InternalSftpServer {
                             sftp.handle(reqId, handle);
                         });
 
-                        sftp.on('OPEN', (reqId, location, flags) => {
+                        sftp.on('OPEN', (reqId, location, flags, attrs) => {
                             const handle = this.makeHandle(reqId);
-                            let openType = '';
+                            const data = {
+                                path: location,
+                                done: false,
+                            };
 
                             switch (SftpStream.flagsToString(flags)) {
                             case 'r':
-                                openType = OPEN_MODE.READ;
+                                data.type = OPEN_MODE.READ;
                                 break;
                             case 'w':
-                                openType = OPEN_MODE.WRITE;
+                                data.type = OPEN_MODE.WRITE;
+                                data.writer = this.createWriter(clientContext, location);
                                 break;
                             default:
                                 Log.error('Received unknown SFTP flag.', { flag: flags, request: reqId });
                                 return sftp.status(reqId, STATUS_CODE.OP_UNSUPPORTED);
                             }
 
-                            ReqHandles[handle] = {
-                                type: openType,
-                                path: location,
-                                done: false,
-                            };
-
+                            ReqHandles[handle] = data;
                             sftp.handle(reqId, handle);
                         });
 
@@ -152,6 +148,86 @@ class InternalSftpServer {
                                 return sftp.data(reqId, data);
                             });
                         });
+
+                        sftp.on('SETSTAT', (reqId, path, attrs) => {
+                            sftp.status(reqId, STATUS_CODE.OK);
+                        });
+
+                        sftp.on('WRITE', (reqId, handle, offset, data) => {
+                            const requestData = _.get(ReqHandles, handle, null);
+                            if (_.isNull(requestData)) {
+                                Log.error('Unknown handle provided for READ');
+                                return sftp.status(reqId, STATUS_CODE.FAILURE);
+                            }
+
+                            // The writer is closed in the sftp.on('CLOSE') listener.
+                            Fs.write(requestData.writer, data, 0, data.length, null, err => {
+                                if (err) {
+                                    Log.error(err);
+                                    return sftp.status(reqId, STATUS_CODE.FAILURE);
+                                }
+
+                                return sftp.status(reqId, STATUS_CODE.OK);
+                            });
+                        });
+
+                        sftp.on('MKDIR', (reqId, path) => {
+                            Fs.ensureDir(clientContext.server.path(path), err => {
+                                if (err) Log.error(err);
+
+                                return sftp.status(reqId, err ? STATUS_CODE.FAILURE : STATUS_CODE.OK);
+                            });
+                        });
+
+                        sftp.on('RENAME', (reqId, oldPath, newPath) => {
+                            clientContext.server.fs.move(oldPath, newPath, err => {
+                                if (err) Log.error(err);
+
+                                return sftp.status(reqId, err ? STATUS_CODE.FAILURE : STATUS_CODE.OK);
+                            });
+                        });
+
+                        // Remove and RmDir function the exact same in terms of how the Daemon processes
+                        // the request. Simplify logic and just pass the remove event over to the rmdir handler.
+                        sftp.on('REMOVE', (reqId, path) => {
+                            sftp.emit('RMDIR', reqId, path);
+                        });
+
+                        sftp.on('RMDIR', (reqId, path) => {
+                            clientContext.server.fs.rm(path, err => {
+                                if (err) Log.error(err);
+
+                                return sftp.status(reqId, err ? STATUS_CODE.FAILURE : STATUS_CODE.OK);
+                            });
+                        });
+
+                        // Unsupported operations.
+                        sftp.on('SYMLINK', reqId => {
+                            sftp.status(reqId, STATUS_CODE.OP_UNSUPPORTED);
+                        });
+
+                        sftp.on('READLINK', reqId => {
+                            sftp.status(reqId, STATUS_CODE.OP_UNSUPPORTED);
+                        });
+
+                        // Cleanup things.
+                        sftp.on('CLOSE', (reqId, handle) => {
+                            const requestData = _.get(ReqHandles, handle, null);
+                            if (!_.isNull(requestData)) {
+                                // If the writer is still active, close it and chown the item
+                                // that was written.
+                                if (!_.isUndefined(_.get(requestData, 'writer'))) {
+                                    Fs.close(requestData.writer);
+                                    clientContext.server.fs.chown(requestData.path, err => {
+                                        if (err) Log.error(err);
+                                    });
+                                }
+
+                                delete ReqHandles[handle];
+                            }
+
+                            return sftp.status(reqId, STATUS_CODE.OK);
+                        });
                     });
                 });
             }).on('error', err => {
@@ -162,6 +238,10 @@ class InternalSftpServer {
 
     makeHandle(reqId) {
         return Buffer.alloc(1, reqId);
+    }
+
+    createWriter(ctx, path) {
+        return Fs.openSync(ctx.server.path(path), 'w', 0o644);
     }
 
     handleReadDir(ctx, path, next) {
