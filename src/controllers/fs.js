@@ -150,6 +150,35 @@ class FileSystem {
         });
     }
 
+    readBytes(file, offset, length, next) {
+        Fs.stat(this.server.path(file), (err, stat) => {
+            if (err) return next(err);
+            if (!stat.isFile()) {
+                const internalError = new Error('Trying to read bytes from a non-file.');
+                internalError.code = 'IS_DIR';
+
+                return next(internalError);
+            }
+
+            if (offset >= stat.size) {
+                return next(null, '', true);
+            }
+
+            let lines = '';
+            const stream = Fs.createReadStream(this.server.path(file), {
+                encoding: 'utf8',
+                start: offset,
+                end: offset + length,
+            });
+            stream.on('data', data => {
+                lines += data;
+            });
+            stream.on('end', () => {
+                next(null, lines, false);
+            });
+        });
+    }
+
     readEnd(file, bytes, next) {
         if (_.isFunction(bytes)) {
             next = bytes; // eslint-disable-line
@@ -263,8 +292,8 @@ class FileSystem {
             Mime.detectFile(this.server.path(file), (mimeErr, result) => {
                 next(null, {
                     'name': (Path.parse(this.server.path(file))).base,
-                    'created': stat.ctime,
-                    'modified': stat.mtime,
+                    'created': stat.birthtime,
+                    'modified': stat.ctime,
                     'size': stat.size,
                     'directory': stat.isDirectory(),
                     'file': stat.isFile(),

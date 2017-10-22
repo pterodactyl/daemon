@@ -11,6 +11,7 @@ invalid service option configuration.
 * Fixes `write after end` error caused by race condition.
 * Fixes error caused by missing per cpu usage data.
 * Servers referencing a missing or empty configuration file will now still boot but be inoperable via the console.
+* Fixes a bug where times returned by file listing API endpoint were incorrect.
 
 ### Changed
 * Authentication now uses dynamically changing tokens issued by the Panel.

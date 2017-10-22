@@ -45,12 +45,14 @@ const Initializer = rfr('src/helpers/initialize.js').Initialize;
 const LiveStats = rfr('src/http/stats.js');
 const ServiceController = rfr('src/controllers/service.js');
 const TimezoneHelper = rfr('src/helpers/timezone.js');
+const SftpServer = rfr('src/http/sftp.js');
 
 const Network = new NetworkController();
 const Initialize = new Initializer();
 const Stats = new LiveStats();
 const Service = new ServiceController();
 const Timezone = new TimezoneHelper();
+const Sftp = new SftpServer();
 
 Log.info('Modules loaded, starting Pterodactyl Daemon...');
 Async.auto({
@@ -134,6 +136,10 @@ Async.auto({
         Log.info('Configuring websocket for daemon stats...');
         Stats.init();
         return callback();
+    }],
+    init_sftp: ['init_websocket', (r, callback) => {
+        Log.info('Configuring internal SFTP server...');
+        Sftp.init(callback);
     }],
 }, (err, results) => {
     if (err) {
