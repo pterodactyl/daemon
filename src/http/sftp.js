@@ -38,11 +38,8 @@ const SftpStream = Ssh2Streams.SFTPStream;
 const OPEN_MODE = Ssh2.SFTP_OPEN_MODE;
 const STATUS_CODE = Ssh2.SFTP_STATUS_CODE;
 
-const Package = rfr('package.json');
 const ConfigHelper = rfr('src/helpers/config.js');
-const Log = rfr('src/helpers/logger.js');
 const Servers = rfr('src/helpers/initialize.js').Servers;
-
 const Config = new ConfigHelper();
 
 class InternalSftpServer {
