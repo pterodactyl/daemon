@@ -116,7 +116,7 @@ class InternalSftpServer {
                                 data.writer = this.createWriter(clientContext, location);
                                 break;
                             default:
-                                Log.error('Received unknown SFTP flag.', { flag: flags, request: reqId });
+                                Log.error('Received unknown SFTP flag.', { flag: SftpStream.flagsToString(flags), request: reqId });
                                 return sftp.status(reqId, STATUS_CODE.OP_UNSUPPORTED);
                             }
 
@@ -255,13 +255,12 @@ class InternalSftpServer {
                 const attrs = [];
                 _.forEach(files, item => {
                     const longFormat = Util.format(
-                        '%s %i %i %i %d %s %s',
-                        (item.directory) ? '-rwxr-xr-x' : '-rw-r--r--',
-                        (item.directory) ? 2 : 1,
-                        server.json.build.user,
-                        server.json.build.user,
+                        '%s 0 %i %i %d %s %s',
+                        (item.directory) ? 'drwxr-xr-x' : '-rw-r--r--',
+                        1001,
+                        1001,
                         item.size,
-                        Moment(item.created).format('MMM D YYYY'),
+                        Moment(item.created).format('MMM DD HH:mm'),
                         item.name,
                     );
 
