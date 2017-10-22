@@ -125,7 +125,7 @@ class InternalSftpServer {
                                 done: false,
                             };
 
-                            sftp.handle(reqId, Buffer.from(handle, 'utf8'));
+                            sftp.handle(reqId, handle);
                         });
 
                         sftp.on('READ', (reqId, handle, offset, length) => {
@@ -140,15 +140,15 @@ class InternalSftpServer {
                             }
 
                             clientContext.server.fs.readBytes(requestData.path, offset, length, (err, data, done) => {
-                                if (err && err.code === 'IS_DIR') {
-                                    Log.error('error dir');
+                                requestData.done = done || false;
+
+                                if ((err && err.code === 'IS_DIR') || done) {
                                     return sftp.status(reqId, STATUS_CODE.EOF);
                                 } else if (err) {
                                     Log.error(err);
                                     return sftp.status(reqId, STATUS_CODE.FAILURE);
                                 }
 
-                                requestData.done = done;
                                 return sftp.data(reqId, data);
                             });
                         });

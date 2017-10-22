@@ -161,20 +161,19 @@ class FileSystem {
             }
 
             if (offset >= stat.size) {
-                return next(null, '', true);
+                return next(null, null, true);
             }
 
-            let lines = '';
+            const chunks = [];
             const stream = Fs.createReadStream(this.server.path(file), {
-                encoding: 'utf8',
                 start: offset,
                 end: offset + length,
             });
             stream.on('data', data => {
-                lines += data;
+                chunks.push(data);
             });
             stream.on('end', () => {
-                next(null, lines, false);
+                next(null, Buffer.concat(chunks), false);
             });
         });
     }
