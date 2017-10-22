@@ -51,14 +51,19 @@ class InternalSftpServer {
         }, client => {
             let clientContext;
             client.on('authentication', ctx => {
-                clientContext = {
-                    request_id: Randomstring.generate(64),
-                    client: ctx,
-                    server: _.get(Servers, '58d8055e-9de3-4031-a9fa-933a1c4252e4'),
-                    handles: {},
-                    handles_count: 0,
-                };
-                ctx.accept();
+                if (ctx.method === 'password') {
+                    clientContext = {
+                        request_id: Randomstring.generate(64),
+                        client: ctx,
+                        server: _.get(Servers, '58d8055e-9de3-4031-a9fa-933a1c4252e4'),
+                        handles: {},
+                        handles_count: 0,
+                    };
+
+                    return ctx.accept();
+                }
+
+                return ctx.reject(['password']);
             }).on('ready', () => {
                 client.on('session', accept => {
                     const Session = accept();
