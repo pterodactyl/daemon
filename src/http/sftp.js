@@ -390,6 +390,12 @@ class InternalSftpServer {
                     });
                 });
             }).on('error', err => {
+                if (err.level === 'client-timeout') {
+                    return clientContext.server.log.debug({
+                        identifier: clientContext.request_id,
+                    }, 'Client timed out.');
+                }
+
                 clientContext.server.log.error({
                     exception: err,
                     identifier: clientContext.request_id,
