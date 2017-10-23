@@ -33,11 +33,13 @@ const Util = require('util');
 const Ssh2Streams = require('ssh2-streams');
 const Path = require('path');
 const Randomstring = require('randomstring');
+const Request = require('request');
 
 const SftpStream = Ssh2Streams.SFTPStream;
 const OPEN_MODE = Ssh2.SFTP_OPEN_MODE;
 const STATUS_CODE = Ssh2.SFTP_STATUS_CODE;
 
+const Log = rfr('src/helpers/logger.js');
 const ConfigHelper = rfr('src/helpers/config.js');
 const Servers = rfr('src/helpers/initialize.js').Servers;
 const Config = new ConfigHelper();
@@ -52,18 +54,48 @@ class InternalSftpServer {
             let clientContext;
             client.on('authentication', ctx => {
                 if (ctx.method === 'password') {
-                    clientContext = {
-                        request_id: Randomstring.generate(64),
-                        client: ctx,
-                        server: _.get(Servers, '58d8055e-9de3-4031-a9fa-933a1c4252e4'),
-                        handles: {},
-                        handles_count: 0,
-                    };
+                    const endpoint = `${Config.get('remote.base')}/api/remote/sftp`;
+                    Request({
+                        method: 'POST',
+                        url: endpoint,
+                        json: {
+                            username: ctx.username,
+                            password: ctx.password,
+                        },
+                        headers: {
+                            'Authorization': `Bearer ${Config.get('keys.0')}`,
+                        },
+                    }, (err, response, body) => {
+                        if (err) {
+                            Log.error(err, 'An error was encountered while attempting to authenticate SFTP credentials.');
+                            return ctx.reject(['password']);
+                        }
 
-                    return ctx.accept();
+                        if (response.statusCode !== 200) {
+                            Log.warn({
+                                responseCode: response.statusCode,
+                                requestUrl: endpoint,
+                                username: ctx.username,
+                                response: _.get(body, 'error'),
+                            }, 'Panel reported an invalid set of SFTP credentials or a malformed request.');
+
+                            return ctx.reject(['password']);
+                        }
+
+                        clientContext = {
+                            request_id: Randomstring.generate(64),
+                            client: ctx,
+                            server: _.get(Servers, body.server),
+                            token: body.token,
+                            handles: {},
+                            handles_count: 0,
+                        };
+
+                        return ctx.accept();
+                    });
+                } else {
+                    return ctx.reject(['password']);
                 }
-
-                return ctx.reject(['password']);
             }).on('ready', () => {
                 client.on('session', accept => {
                     const Session = accept();
