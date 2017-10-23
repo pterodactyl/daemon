@@ -134,10 +134,38 @@ Async.auto({
             }
         });
     },
-    check_services: ['check_structure', 'check_tar', 'check_zip', (r, callback) => {
+    setup_sftp_user: ['check_structure', 'check_tar', 'check_zip', (r, callback) => {
+        Log.debug('Checking if a SFTP user needs to be created and assigned to the configuration.');
+        Async.series([
+            scall => {
+                Proc.exec(`useradd -r -s /bin/false ${Config.get('docker.container.username', 'p.dactyl')}`, {}, err => {
+                    if (err && !_.includes(err.message, 'already exists')) {
+                        return scall(err);
+                    }
+
+                    return scall();
+                });
+            },
+            scall => {
+                Proc.exec(`id -u ${Config.get('docker.container.username', 'p.dactyl')}`, {}, (err, stdout) => {
+                    if (err) return scall(err);
+
+                    Log.info(`Configuring user ${Config.get('docker.container.username', 'p.dactyl')} (id: ${stdout.replace(/[\x00-\x1F\x7F-\x9F]/g, '')}) as the owner of all server files.`); // eslint-disable-line
+                    Config.modify({
+                        docker: {
+                            container: {
+                                user: parseInt(stdout.replace(/[\x00-\x1F\x7F-\x9F]/g, ''), 10), // eslint-disable-line
+                            },
+                        },
+                    }, scall);
+                });
+            },
+        ], callback);
+    }],
+    check_services: ['setup_sftp_user', (r, callback) => {
         Service.boot(callback);
     }],
-    check_network: ['check_structure', 'check_tar', 'check_zip', (r, callback) => {
+    check_network: ['setup_sftp_user', (r, callback) => {
         Log.info('Checking container networking environment...');
         Network.init(callback);
     }],
