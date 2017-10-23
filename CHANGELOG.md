@@ -18,6 +18,7 @@ invalid service option configuration.
 * All API routes now prefixed with `v1/`.
 * Service options now use the new panel structure and are stored in `src/services/configs/<uuid>.json`. All existing servers will need to be updated, the panel ships with a command to do this.
 * Rebuilding a server now allows the service to be changed on the fly and re-applied.
+* SFTP is now handled internally within the Daemon rather than relying on a Docker SFTP container. Authentication is performed using a Panel user.
 
 ## v0.4.5 (Candid Comodactylus)
 ### Fixed
