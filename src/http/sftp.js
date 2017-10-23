@@ -48,7 +48,7 @@ class InternalSftpServer {
     init(next) {
         Ssh2.Server({
             hostKeys: [
-                Fs.readFileSync('/srv/daemon/config/credentials/ssh/ssh_host_rsa_key').toString('utf8'),
+                Fs.readFileSync('./config/.sftp/id_rsa').toString('utf8'),
             ],
         }, client => {
             let clientContext;

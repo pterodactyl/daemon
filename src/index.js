@@ -29,9 +29,12 @@ const Request = require('request');
 const compareVersions = require('compare-versions');
 const Fs = require('fs-extra');
 const _ = require('lodash');
+const Keypair = require('keypair');
 
 const Log = rfr('src/helpers/logger.js');
 const Package = rfr('package.json');
+const ConfigHelper = rfr('src/helpers/config.js');
+const Config = new ConfigHelper();
 
 Log.info('+ ------------------------------------ +');
 Log.info(`| Running Pterodactyl Daemon v${Package.version}    |`);
@@ -90,8 +93,8 @@ Async.auto({
         });
     },
     check_structure: callback => {
-        Fs.ensureDirSync('config/credentials');
         Fs.ensureDirSync('config/servers');
+        Fs.ensureDirSync('config/.sftp');
         callback();
     },
     check_tar: callback => {
@@ -101,6 +104,35 @@ Async.auto({
     check_zip: callback => {
         Proc.exec('unzip --help', {}, callback);
         Log.debug('Unzip module found on server.');
+    },
+    check_sftp_rsa_key: callback => {
+        Log.debug('Checking for SFTP id_rsa key...');
+        Fs.stat('./config/.sftp/id_rsa', err => {
+            if (err && err.code === 'ENOENT') {
+                Log.info('Creating keypair to use for SFTP connections.');
+
+                const pair = Keypair({
+                    bits: Config.get('sftp.keypair.bits', 2048),
+                    e: Config.get('sftp.keypair.e', 65537),
+                });
+                Async.parallel([
+                    pcall => {
+                        Fs.outputFile('./config/.sftp/id_rsa', pair.private, {
+                            mode: 0o600,
+                        }, pcall);
+                    },
+                    pcall => {
+                        Fs.outputFile('./config/.sftp/id_rsa.pub', pair.public, {
+                            mode: 0o600,
+                        }, pcall);
+                    },
+                ], callback);
+            } else if (err) {
+                return callback(err);
+            } else {
+                return callback();
+            }
+        });
     },
     check_services: ['check_structure', 'check_tar', 'check_zip', (r, callback) => {
         Service.boot(callback);
@@ -137,7 +169,7 @@ Async.auto({
         Stats.init();
         return callback();
     }],
-    init_sftp: ['init_websocket', (r, callback) => {
+    init_sftp: ['init_websocket', 'check_sftp_rsa_key', (r, callback) => {
         Log.info('Configuring internal SFTP server...');
         Sftp.init(callback);
     }],
