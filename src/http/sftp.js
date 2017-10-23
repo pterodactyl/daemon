@@ -167,6 +167,11 @@ class InternalSftpServer {
                                 done: false,
                             };
 
+                            // Handle GNOME sending improper signals?
+                            if (flags === 42) {
+                                flags = OPEN_MODE.TRUNC | OPEN_MODE.CREAT | OPEN_MODE.WRITE; // eslint-disable-line
+                            }
+
                             switch (SftpStream.flagsToString(flags)) {
                             case 'r':
                                 data.type = OPEN_MODE.READ;
@@ -174,10 +179,9 @@ class InternalSftpServer {
                             case 'w':
                             case 'wx':
                                 data.type = OPEN_MODE.WRITE;
-                                data.writer = this.createWriter(clientContext, location);
                                 break;
                             default:
-                                clientContext.server.log.warn({
+                                clientContext.server.log.info({
                                     path: location,
                                     flag_id: flags,
                                     flag: SftpStream.flagsToString(flags),
@@ -187,10 +191,39 @@ class InternalSftpServer {
                                 return sftp.status(reqId, STATUS_CODE.OP_UNSUPPORTED);
                             }
 
-                            clientContext.handles[handle] = data;
-                            clientContext.handles_count += 1;
+                            Async.series({
+                                is_write: callback => {
+                                    let e = null;
+                                    if (data.type !== OPEN_MODE.WRITE) {
+                                        e = new Error();
+                                        e.code = 'E_ISREAD';
+                                    }
 
-                            return sftp.handle(reqId, handle);
+                                    return callback(e);
+                                },
+                                ensure: callback => {
+                                    Fs.ensureFile(clientContext.server.path(location), callback);
+                                },
+                                open: callback => {
+                                    Fs.open(clientContext.server.path(location), 'w', 0o644, callback);
+                                },
+                            }, (err, results) => {
+                                if (err && err.code !== 'E_ISREAD') {
+                                    clientContext.server.log.warn({
+                                        path: location,
+                                        exception: err,
+                                        identifier: clientContext.request_id,
+                                    }, 'An error occurred while attempting to perform an OPEN operation in the SFTP server.');
+
+                                    return sftp.status(reqId, STATUS_CODE.FAILURE);
+                                }
+
+                                data.writer = _.get(results, 'open', undefined);
+                                clientContext.handles[handle] = data;
+                                clientContext.handles_count += 1;
+
+                                return sftp.handle(reqId, handle);
+                            });
                         });
 
                         sftp.on('READ', (reqId, handle, offset, length) => {
@@ -367,10 +400,6 @@ class InternalSftpServer {
 
     makeHandle(ctx) {
         return Buffer.alloc(1, ctx.handles_count);
-    }
-
-    createWriter(ctx, path) {
-        return Fs.openSync(ctx.server.path(path), 'w', 0o644);
     }
 
     formatFileMode(item) {
