@@ -115,15 +115,15 @@ class InternalSftpServer {
                             });
                         });
 
-                        sftp.on('STAT', (reqId, path) => {
-                            clientContext.server.fs.stat(path, (err, item) => {
+                        sftp.on('STAT', (reqId, location) => {
+                            clientContext.server.fs.stat(location, (err, item) => {
                                 if (err) {
                                     if (err.code === 'ENOENT') {
                                         return sftp.status(reqId, STATUS_CODE.NO_SUCH_FILE);
                                     }
 
                                     clientContext.server.log.warn({
-                                        path: path,
+                                        path: location,
                                         exception: err,
                                         identifier: clientContext.request_id,
                                     }, 'An error occurred while attempting to perform a STAT operation in the SFTP server.');
@@ -144,11 +144,11 @@ class InternalSftpServer {
                         });
 
                         sftp.on('FSTAT', (reqId, handle) => {
-                            return sftp.emit('STAT', reqId, clientContext.handles[handle].path);
+                            sftp.emit('STAT', reqId, clientContext.handles[handle].path);
                         });
 
                         sftp.on('LSTAT', (reqId, path) => {
-                            return sftp.emit('STAT', reqId, path);
+                            sftp.emit('STAT', reqId, path);
                         });
 
                         sftp.on('READDIR', (reqId, handle) => {
@@ -306,7 +306,7 @@ class InternalSftpServer {
                         });
 
                         sftp.on('FSETSTAT', (reqId, handle, attrs) => {
-                            return sftp.emit('SETSTAT', clientContext.handles[handle].path, attrs);
+                            sftp.emit('SETSTAT', clientContext.handles[handle].path, attrs);
                         });
 
                         sftp.on('WRITE', (reqId, handle, offset, data) => {
