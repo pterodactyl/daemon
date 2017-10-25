@@ -29,9 +29,12 @@ const Request = require('request');
 const compareVersions = require('compare-versions');
 const Fs = require('fs-extra');
 const _ = require('lodash');
+const Keypair = require('keypair');
 
 const Log = rfr('src/helpers/logger.js');
 const Package = rfr('package.json');
+const ConfigHelper = rfr('src/helpers/config.js');
+const Config = new ConfigHelper();
 
 Log.info('+ ------------------------------------ +');
 Log.info(`| Running Pterodactyl Daemon v${Package.version}    |`);
@@ -42,20 +45,34 @@ Log.info('Loading modules, this could take a few seconds.');
 
 const NetworkController = rfr('src/controllers/network.js');
 const Initializer = rfr('src/helpers/initialize.js').Initialize;
-const SFTPController = rfr('src/controllers/sftp.js');
 const LiveStats = rfr('src/http/stats.js');
 const ServiceController = rfr('src/controllers/service.js');
 const TimezoneHelper = rfr('src/helpers/timezone.js');
+const SftpServer = rfr('src/http/sftp.js');
 
 const Network = new NetworkController();
 const Initialize = new Initializer();
-const SFTP = new SFTPController(true);
 const Stats = new LiveStats();
 const Service = new ServiceController();
 const Timezone = new TimezoneHelper();
+const Sftp = new SftpServer();
 
 Log.info('Modules loaded, starting Pterodactyl Daemon...');
 Async.auto({
+    warn_deprecation: callback => {
+        if (!Config.get('sftp.useNewFormat', false) && !Config.get('sftp.yesIKnowINeedToMigrateMyData', false)) {
+            Log.warn('+ ------------------ ! DEPRECATION NOTICE ! ------------------ +');
+            Log.warn('+ You have not run the data migration utility included in this +');
+            Log.warn('+ release. Please see upgrade documentation for the command to +');
+            Log.warn('+ run.                                                         +');
+            Log.warn('+                                                              +');
+            Log.warn('+ This daemon will fail to run in coming releases if you do    +');
+            Log.warn('+ not perform this action.                                     +');
+            Log.warn('+ ------------------ ! DEPRECATION NOTICE ! ------------------ +');
+        }
+
+        return callback();
+    },
     check_version: callback => {
         if (Package.version === '0.0.0-canary') {
             return callback(null, 'Pterodactyl Daemon is up-to-date running a nightly build.');
@@ -90,8 +107,8 @@ Async.auto({
         });
     },
     check_structure: callback => {
-        Fs.ensureDirSync('config/credentials');
         Fs.ensureDirSync('config/servers');
+        Fs.ensureDirSync('config/.sftp');
         callback();
     },
     check_tar: callback => {
@@ -102,10 +119,67 @@ Async.auto({
         Proc.exec('unzip --help', {}, callback);
         Log.debug('Unzip module found on server.');
     },
-    check_services: ['check_structure', 'check_tar', 'check_zip', (r, callback) => {
+    check_sftp_rsa_key: callback => {
+        Log.debug('Checking for SFTP id_rsa key...');
+        Fs.stat('./config/.sftp/id_rsa', err => {
+            if (err && err.code === 'ENOENT') {
+                Log.info('Creating keypair to use for SFTP connections.');
+
+                const pair = Keypair({
+                    bits: Config.get('sftp.keypair.bits', 2048),
+                    e: Config.get('sftp.keypair.e', 65537),
+                });
+                Async.parallel([
+                    pcall => {
+                        Fs.outputFile('./config/.sftp/id_rsa', pair.private, {
+                            mode: 0o600,
+                        }, pcall);
+                    },
+                    pcall => {
+                        Fs.outputFile('./config/.sftp/id_rsa.pub', pair.public, {
+                            mode: 0o600,
+                        }, pcall);
+                    },
+                ], callback);
+            } else if (err) {
+                return callback(err);
+            } else {
+                return callback();
+            }
+        });
+    },
+    setup_sftp_user: ['check_structure', 'check_tar', 'check_zip', (r, callback) => {
+        Log.debug('Checking if a SFTP user needs to be created and assigned to the configuration.');
+        Async.series([
+            scall => {
+                Proc.exec(`useradd -r -s /bin/false ${Config.get('docker.container.username', 'p.dactyl')}`, {}, err => {
+                    if (err && !_.includes(err.message, 'already exists')) {
+                        return scall(err);
+                    }
+
+                    return scall();
+                });
+            },
+            scall => {
+                Proc.exec(`id -u ${Config.get('docker.container.username', 'p.dactyl')}`, {}, (err, stdout) => {
+                    if (err) return scall(err);
+
+                    Log.info(`Configuring user ${Config.get('docker.container.username', 'p.dactyl')} (id: ${stdout.replace(/[\x00-\x1F\x7F-\x9F]/g, '')}) as the owner of all server files.`); // eslint-disable-line
+                    Config.modify({
+                        docker: {
+                            container: {
+                                user: parseInt(stdout.replace(/[\x00-\x1F\x7F-\x9F]/g, ''), 10), // eslint-disable-line
+                            },
+                        },
+                    }, scall);
+                });
+            },
+        ], callback);
+    }],
+    check_services: ['setup_sftp_user', (r, callback) => {
         Service.boot(callback);
     }],
-    check_network: ['check_structure', 'check_tar', 'check_zip', (r, callback) => {
+    check_network: ['setup_sftp_user', (r, callback) => {
         Log.info('Checking container networking environment...');
         Network.init(callback);
     }],
@@ -117,15 +191,7 @@ Async.auto({
         Log.info('Checking pterodactyl0 interface and setting configuration values.');
         Network.interface(callback);
     }],
-    start_sftp: ['setup_network', (r, callback) => {
-        Log.info('Attempting to start SFTP service container...');
-        SFTP.startService(err => {
-            if (err) return callback(err);
-            Log.info('SFTP container successfully booted.');
-            return callback();
-        });
-    }],
-    init_servers: ['check_services', 'start_sftp', (r, callback) => {
+    init_servers: ['check_services', (r, callback) => {
         Log.info('Attempting to load servers and initialize daemon...');
         Initialize.init(callback);
     }],
@@ -144,6 +210,10 @@ Async.auto({
         Log.info('Configuring websocket for daemon stats...');
         Stats.init();
         return callback();
+    }],
+    init_sftp: ['init_websocket', 'check_sftp_rsa_key', (r, callback) => {
+        Log.info('Configuring internal SFTP server...');
+        Sftp.init(callback);
     }],
 }, (err, results) => {
     if (err) {

@@ -154,7 +154,7 @@ class Core {
                                 return callback();
                             },
                             callback => {
-                                Fs.chown(Path.dirname(LogFile), this.json.build.user, this.json.build.user, callback);
+                                Fs.chown(Path.dirname(LogFile), Config.get('docker.container.user', 1000), Config.get('docker.container.user', 1000), callback);
                             },
                         ], err => {
                             if (err) this.server.log.warn(err);

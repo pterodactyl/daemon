@@ -29,13 +29,11 @@ const Fs = require('fs-extra');
 const Path = require('path');
 const _ = require('lodash');
 
-const SFTPController = rfr('src/controllers/sftp.js');
 const ConfigHelper = rfr('src/helpers/config.js');
 const Log = rfr('src/helpers/logger.js');
 const Status = rfr('src/helpers/status.js');
 
 const Config = new ConfigHelper();
-const SFTP = new SFTPController();
 const DockerController = new Dockerode({
     socketPath: Config.get('docker.socket', '/var/run/docker.sock'),
 });
@@ -83,16 +81,13 @@ class Delete {
                     return callback();
                 });
             }],
-            // Delete the SFTP user and files.
-            delete_sftp: ['clear_object', (r, callback) => {
-                this.log.debug('Attempting to remove SFTP user...');
-                SFTP.delete(this.json.user, err => {
-                    if (!err) this.log.debug('Removed SFTP user.');
-                    return callback(err);
-                });
-            }],
-            delete_folder: ['delete_sftp', (r, callback) => {
-                Fs.remove(Path.join(Config.get('sftp.path', '/srv/daemon-data'), this.json.user), callback);
+            delete_folder: ['clear_object', (r, callback) => {
+                let folderName = _.get(this.json, 'user');
+                if (Config.get('sftp.useNewFormat', false)) {
+                    folderName = this.json.uuid;
+                }
+
+                Fs.remove(Path.join(Config.get('sftp.path', '/srv/daemon-data'), folderName), callback);
             }],
         }, err => {
             if (err) Log.fatal(err);

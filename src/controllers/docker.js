@@ -360,9 +360,9 @@ class Docker {
                 // Make the container
                 DockerController.createContainer({
                     Image: config.image,
-                    name: this.server.json.user,
+                    name: this.server.json.uuid,
                     Hostname: 'container',
-                    User: config.user.toString(),
+                    User: Config.get('docker.container.user', 1000).toString(),
                     AttachStdin: true,
                     AttachStdout: true,
                     AttachStderr: true,

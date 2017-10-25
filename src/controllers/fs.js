@@ -31,9 +31,13 @@ const Mmm = require('mmmagic');
 const RandomString = require('randomstring');
 const Process = require('child_process');
 const Util = require('util');
+const rfr = require('rfr');
 
 const Magic = Mmm.Magic;
 const Mime = new Magic(Mmm.MAGIC_MIME_TYPE);
+
+const ConfigHelper = rfr('src/helpers/config.js');
+const Config = new ConfigHelper();
 
 class FileSystem {
     constructor(server) {
@@ -93,7 +97,7 @@ class FileSystem {
             chownTarget = this.server.path(file);
         }
 
-        const Exec = Process.spawn('chown', ['-R', Util.format('%d:%d', this.server.json.build.user, this.server.json.build.user), chownTarget], {});
+        const Exec = Process.spawn('chown', ['-R', Util.format('%d:%d', Config.get('docker.container.user', 1000), Config.get('docker.container.user', 1000)), chownTarget], {});
         Exec.on('error', execErr => {
             this.server.log.error(execErr);
             return next(new Error('There was an error while attempting to set ownership of files.'));
@@ -147,6 +151,34 @@ class FileSystem {
                 return next(new Error('This file is too large to open.'));
             }
             Fs.readFile(this.server.path(file), 'utf8', next);
+        });
+    }
+
+    readBytes(file, offset, length, next) {
+        Fs.stat(this.server.path(file), (err, stat) => {
+            if (err) return next(err);
+            if (!stat.isFile()) {
+                const internalError = new Error('Trying to read bytes from a non-file.');
+                internalError.code = 'EISDIR';
+
+                return next(internalError);
+            }
+
+            if (offset >= stat.size) {
+                return next(null, null, true);
+            }
+
+            const chunks = [];
+            const stream = Fs.createReadStream(this.server.path(file), {
+                start: offset,
+                end: (offset + length) - 1,
+            });
+            stream.on('data', data => {
+                chunks.push(data);
+            });
+            stream.on('end', () => {
+                next(null, Buffer.concat(chunks), false);
+            });
         });
     }
 
@@ -259,17 +291,18 @@ class FileSystem {
 
     stat(file, next) {
         Fs.stat(this.server.path(file), (err, stat) => {
-            if (err) next(err);
+            if (err) return next(err);
             Mime.detectFile(this.server.path(file), (mimeErr, result) => {
                 next(null, {
                     'name': (Path.parse(this.server.path(file))).base,
-                    'created': stat.ctime,
+                    'created': stat.birthtime,
                     'modified': stat.mtime,
+                    'mode': stat.mode,
                     'size': stat.size,
                     'directory': stat.isDirectory(),
                     'file': stat.isFile(),
                     'symlink': stat.isSymbolicLink(),
-                    'mime': result || 'unknown',
+                    'mime': result || 'application/octet-stream',
                 });
             });
         });
@@ -327,14 +360,14 @@ class FileSystem {
             if (result === 'application/x-gzip' || result === 'application/gzip') {
                 Exec = Process.spawn('tar', ['xzf', Path.basename(file), '-C', to], {
                     cwd: Path.dirname(file),
-                    uid: this.server.json.build.user,
-                    gid: this.server.json.build.user,
+                    uid: Config.get('docker.container.user', 1000),
+                    gid: Config.get('docker.container.user', 1000),
                 });
             } else if (result === 'application/zip') {
                 Exec = Process.spawn('unzip', ['-q', '-o', Path.basename(file), '-d', to], {
                     cwd: Path.dirname(file),
-                    uid: this.server.json.build.user,
-                    gid: this.server.json.build.user,
+                    uid: Config.get('docker.container.user', 1000),
+                    gid: Config.get('docker.container.user', 1000),
                 });
             } else {
                 return next(new Error(`Decompression of file failed: ${result} is not a decompessible Mimetype.`));
@@ -398,8 +431,8 @@ class FileSystem {
     systemCompress(files, archive, next) {
         const Exec = Process.spawn('tar', ['czf', archive, files.join(' ')], {
             cwd: this.server.path(),
-            uid: this.server.json.build.user,
-            gid: this.server.json.build.user,
+            uid: Config.get('docker.container.user', 1000),
+            gid: Config.get('docker.container.user', 1000),
         });
 
         Exec.on('error', execErr => {
@@ -448,11 +481,12 @@ class FileSystem {
                                 'name': item,
                                 'created': results.do_stat.birthtime,
                                 'modified': results.do_stat.mtime,
+                                'mode': results.do_stat.mode,
                                 'size': results.do_stat.size,
                                 'directory': results.do_stat.isDirectory(),
                                 'file': results.do_stat.isFile(),
                                 'symlink': results.do_stat.isSymbolicLink(),
-                                'mime': results.do_mime || 'unknown',
+                                'mime': results.do_mime || 'application/octet-stream',
                             });
                             aCallback();
                         }],

@@ -10,7 +10,8 @@
     "start": "node src/index.js | node_modules/bunyan/bin/bunyan -o short",
     "test": "./node_modules/eslint/bin/eslint.js --quiet --config .eslintrc src scripts",
     "configure": "node scripts/configure.js",
-    "diagnostics": "node scripts/diagnostics.js"
+    "diagnostics": "node scripts/diagnostics.js",
+    "migrate": "node scripts/migrate.js"
   },
   "repository": "git+https://github.com/Pterodactyl/Daemon.git",
   "keywords": [
@@ -24,9 +25,11 @@
     "url": "https://github.com/Pterodactyl/Daemon/issues"
   },
   "engines": {
-    "node": ">=6.0.0",
-    "os": "linux"
+    "node": ">=6.0.0"
   },
+  "os": [
+    "linux"
+  ],
   "homepage": "https://github.com/Pterodactyl/Daemon",
   "devDependencies": {
     "eslint": "4.9.0",
@@ -51,6 +54,7 @@
     "inquirer": "^3.3.0",
     "ip-cidr": "1.1.2",
     "isstream": "0.1.2",
+    "keypair": "^1.0.1",
     "klaw": "^2.1.0",
     "lodash": "4.17.4",
     "memory-cache": "0.2.0",
@@ -65,6 +69,8 @@
     "rfr": "1.2.3",
     "socket.io": "2.0.3",
     "socketio-file-upload": "0.6.0",
+    "ssh2": "^0.5.5",
+    "ssh2-streams": "^0.1.20",
     "yargs": "8.0.2"
   }
 }
