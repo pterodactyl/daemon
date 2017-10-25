@@ -78,16 +78,49 @@ Inquirer.prompt([
         callback => {
             Async.eachOfLimit(this.folders, 2, (file, k, ecall) => {
                 if (Path.extname(file) === '.json') {
-                    Fs.readJson(file, (err, json) => {
-                        const CurrentPath = Path.join(Config.get('sftp.path', '/srv/daemon-data'), json.user, '/data/*');
-                        const CurrentPathHidden = Path.join(Config.get('sftp.path', '/srv/daemon-data'), json.user, '/data/.*');
-                        const NewPath = Path.join(Config.get('sftp.path', '/srv/daemon-data'), json.uuid);
+                    Async.auto({
+                        json: acall => {
+                            Fs.readJson(file, acall);
+                        },
+                        paths: ['json', (r, acall) => {
+                            const CurrentPath = Path.join(Config.get('sftp.path', '/srv/daemon-data'), r.json.user, '/data');
+                            const NewPath = Path.join(Config.get('sftp.path', '/srv/daemon-data'), r.json.uuid);
 
-                        console.log('Moving server data from', CurrentPath, 'to', NewPath);
-                        const Exec = Process.spawn('mv', [CurrentPath, CurrentPathHidden, NewPath]);
-                        Exec.on('error', ecall);
-                        Exec.on('exit', () => { ecall(); });
-                    });
+                            return acall(null, {
+                                currentPath: CurrentPath,
+                                newPath: NewPath,
+                            });
+                        }],
+                        exists: ['paths', (r, acall) => {
+                            Fs.access(Path.join(r.paths.currentPath, '/*'), Fs.constants.F_OK | Fs.constants.R_OK, err => {
+                                acall(null, !err);
+                            });
+                        }],
+                        directory: ['exists', (r, acall) => {
+                            if (r.exists) {
+                                Fs.ensureDir(r.paths.newPath, acall);
+                            } else {
+                                return acall();
+                            }
+                        }],
+                        move: ['directory', (r, acall) => {
+                            if (r.exists) {
+                                console.log(`Moving files from ${r.paths.currentPath} to ${r.paths.newPath}`);
+                                Process.exec(`mv ${r.paths.currentPath}/* ${r.paths.newPath}/.`, {}, acall);
+                            } else {
+                                console.log(`Skipping move for ${r.paths.currentPath} as folder does not exist.`);
+                                return acall();
+                            }
+                        }],
+                        cleanup: ['move', (r, acall) => {
+                            if (r.exists) {
+                                console.log(`Removing old data directory: ${Path.join(r.paths.currentPath, '../')}`);
+                                Fs.remove(Path.join(r.paths.currentPath, '../'), acall);
+                            } else {
+                                return acall();
+                            }
+                        }],
+                    }, ecall);
                 } else {
                     return ecall();
                 }
