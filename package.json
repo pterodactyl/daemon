@@ -10,7 +10,8 @@
     "start": "node src/index.js | node_modules/bunyan/bin/bunyan -o short",
     "test": "./node_modules/eslint/bin/eslint.js --quiet --config .eslintrc src scripts",
     "configure": "node scripts/configure.js",
-    "diagnostics": "node scripts/diagnostics.js"
+    "diagnostics": "node scripts/diagnostics.js",
+    "migrate": "node scripts/migrate.js"
   },
   "repository": "git+https://github.com/Pterodactyl/Daemon.git",
   "keywords": [

@@ -82,7 +82,12 @@ class Delete {
                 });
             }],
             delete_folder: ['clear_object', (r, callback) => {
-                Fs.remove(Path.join(Config.get('sftp.path', '/srv/daemon-data'), this.json.user), callback);
+                let folderName = _.get(this.json, 'user');
+                if (Config.get('sftp.useNewFormat', false)) {
+                    folderName = this.json.uuid;
+                }
+
+                Fs.remove(Path.join(Config.get('sftp.path', '/srv/daemon-data'), folderName), callback);
             }],
         }, err => {
             if (err) Log.fatal(err);

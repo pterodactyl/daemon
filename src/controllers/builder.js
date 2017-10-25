@@ -25,6 +25,8 @@
 const rfr = require('rfr');
 const Async = require('async');
 const _ = require('lodash');
+const Fs = require('fs-extra');
+const Path = require('path');
 
 const Log = rfr('src/helpers/logger.js');
 const ConfigHelper = rfr('src/helpers/config.js');
@@ -45,7 +47,10 @@ class Builder {
 
     init(next) {
         Async.auto({
-            verify_ip: callback => {
+            create_folder: callback => {
+                Fs.ensureDir(Path.join(Config.get('sftp.path', '/srv/daemon-data'), this.json.uuid), callback);
+            },
+            verify_ip: ['create_folder', (results, callback) => {
                 this.log.debug('Updating passed JSON to route correct interfaces.');
                 // Update 127.0.0.1 to point to the docker0 interface.
                 if (this.json.build.default.ip === '127.0.0.1') {
@@ -59,7 +64,7 @@ class Builder {
                     }
                     return asyncCallback();
                 }, callback);
-            },
+            }],
             initialize: ['verify_ip', (results, callback) => {
                 Initialize.setup(this.json, callback);
             }],

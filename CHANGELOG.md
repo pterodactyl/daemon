@@ -3,8 +3,8 @@ This file is a running track of new features and fixes to each version of the da
 
 ### v0.5.0
 ### Added
-* Added more data integrity checks when running a server. These changes make it impossible to boot a server that has an
-invalid service option configuration.
+* Added more data integrity checks when running a server. These changes make it impossible to boot a server that has an invalid service option configuration.
+* SFTP is now handled internally within the Daemon rather than relying on a Docker SFTP container. Authentication is performed using a Panel user.
 
 ### Fixed
 * Fixes `Cannot get length of undefined` errors that would occasionally plauge certain servers on the daemon.
@@ -18,7 +18,7 @@ invalid service option configuration.
 * All API routes now prefixed with `v1/`.
 * Service options now use the new panel structure and are stored in `src/services/configs/<uuid>.json`. All existing servers will need to be updated, the panel ships with a command to do this.
 * Rebuilding a server now allows the service to be changed on the fly and re-applied.
-* SFTP is now handled internally within the Daemon rather than relying on a Docker SFTP container. Authentication is performed using a Panel user.
+* Server data is now stored in `/srv/daemon-data/<uuid>` rather than `/srv/daemon-data/<username>/data` by default.
 
 ## v0.4.5 (Candid Comodactylus)
 ### Fixed
