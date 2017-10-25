@@ -70,6 +70,8 @@ Async.auto({
             Log.warn('+ not perform this action.                                     +');
             Log.warn('+ ------------------ ! DEPRECATION NOTICE ! ------------------ +');
         }
+
+        return callback();
     },
     check_version: callback => {
         if (Package.version === '0.0.0-canary') {
