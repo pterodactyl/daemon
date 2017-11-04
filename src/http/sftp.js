@@ -475,7 +475,7 @@ class InternalSftpServer {
                         this.formatFileMode(item),
                         item.size,
                         Moment(item.created).format('MMM DD HH:mm'),
-                        item.name // eslint-disable-line
+                        item.name
                     );
 
                     attrs.push({
