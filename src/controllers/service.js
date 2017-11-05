@@ -83,6 +83,7 @@ class Service {
             method: 'GET',
             url: endpoint,
             headers: {
+                'Accept': 'application/vnd.pterodactyl.v1+json',
                 'Authorization': `Bearer ${Config.get('keys.0')}`,
             },
         }, (err, response, body) => {
@@ -109,6 +110,7 @@ class Service {
             method: 'GET',
             url: `${Config.get('remote.base')}/api/remote/eggs/${uuid}`,
             headers: {
+                'Accept': 'application/vnd.pterodactyl.v1+json',
                 'Authorization': `Bearer ${Config.get('keys.0')}`,
             },
         }, (err, response, body) => {

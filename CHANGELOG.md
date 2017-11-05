@@ -5,6 +5,7 @@ This file is a running track of new features and fixes to each version of the da
 ### Fixed
 * `[beta.1]` — Fixes a bug causing the migration utility to not run correctly due to globbing.
 * `[beta.1]` — Fixes missing route causing inability to revoke an access token manually.
+* `[beta.1]` — Fixes errors causing inability to create servers on the Panel.
 
 ### Changed
 * `[beta.1]` — Data migration is not optional, update code to reflect such.

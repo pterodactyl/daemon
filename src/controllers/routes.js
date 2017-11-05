@@ -125,7 +125,7 @@ class RouteController {
             // We do need to monitor for errors and negatiate with
             // the panel if they do occur.
             Builder.init((err, data) => {
-                if (err) Log.fatal('A fatal error was encountered while attempting to create a server.', err);
+                if (err) Log.fatal({ err: err, meta: _.get(err, 'meta') }, 'A fatal error was encountered while attempting to create a server.'); // eslint-disable-line
 
                 const HMAC = Crypto.createHmac('sha256', Config.get('keys.0'));
                 HMAC.update(data.uuid);

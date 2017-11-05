@@ -155,6 +155,7 @@ class Server extends EventEmitter {
         Request.get({
             url: `${Config.get('remote.base')}/api/remote/authenticate/${token}`,
             headers: {
+                'Accept': 'application/vnd.pterodactyl.v1+json',
                 'Authorization': `Bearer ${Config.get('keys.0')}`,
             },
         }, (err, response, body) => {

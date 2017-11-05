@@ -54,7 +54,7 @@ class InternalSftpServer {
             let clientContext;
             client.on('authentication', ctx => {
                 if (ctx.method === 'password') {
-                    const endpoint = `${Config.get('remote.base')}/api/remote/sftp`;
+                    const endpoint = `${Config.get('remote.base')}/api/v1/remote/sftp`;
                     Request({
                         method: 'POST',
                         url: endpoint,

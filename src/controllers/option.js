@@ -50,21 +50,24 @@ class Option {
     pull(next) {
         this.server.log.debug('Contacting panel to determine scripts to run for option processes.');
 
-        const endpoint = `${Config.get('remote.base')}/daemon/details/option/${this.server.json.uuid}`;
+        const endpoint = `${Config.get('remote.base')}/api/remote/scripts/${this.server.json.uuid}`;
         Request({
             method: 'GET',
             url: endpoint,
+            timeout: 5000,
             headers: {
-                'X-Access-Node': Config.get('keys.0'),
+                'Accept': 'application/vnd.pterodactyl.v1+json',
+                'Authorization': `Bearer ${Config.get('keys.0')}`,
             },
         }, (err, resp) => {
             if (err) return next(err);
             if (resp.statusCode !== 200) {
                 const error = new Error('Recieved a non-200 error code when attempting to check scripts for server.');
-                error.responseCode = resp.statusCode;
-                error.requestURL = endpoint;
-                error.meta = err;
-                return next(err);
+                error.meta = {
+                    code: resp.statusCode,
+                    requestUrl: endpoint,
+                };
+                return next(error);
             }
 
             const Results = JSON.parse(resp.body);
@@ -123,12 +126,18 @@ class Option {
             }],
             run: ['setup_stream', 'image', (results, callback) => {
                 this.server.log.debug('Running privileged docker container to perform the installation process.');
+
+                const environment = [];
+                _.each(_.get(results.details, 'env', []), (value, key) => {
+                    environment.push(`${key}=${value}`);
+                });
+
                 DockerController.run(_.get(results.details, 'config.container', 'alpine:3.4'), [_.get(results.details, 'config.entry', 'ash'), './mnt/install/install.sh'], (Config.get('logger.level', 'info') === 'debug') ? process.stdout : this.processLogger, {
                     Tty: true,
                     AttachStdin: true,
                     AttachStdout: true,
                     AttachStderr: true,
-                    Env: _.get(results.details, 'env', []),
+                    Env: environment,
                     Mounts: [
                         {
                             Source: this.server.path(),
