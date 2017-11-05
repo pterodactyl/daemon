@@ -492,12 +492,7 @@ class Server extends EventEmitter {
     }
 
     path(location) {
-        let dataPath;
-        if (Config.get('sftp.useNewFormat', false)) {
-            dataPath = Path.join(Config.get('sftp.path', '/srv/daemon-data'), this.json.uuid);
-        } else {
-            dataPath = Path.join(Config.get('sftp.path', '/srv/daemon-data'), this.json.user, '/data');
-        }
+        const dataPath = Path.join(Config.get('sftp.path', '/srv/daemon-data'), this.json.uuid);
 
         let returnPath = dataPath;
         if (!_.isUndefined(location) && _.replace(location, /\s+/g, '').length > 0) {

@@ -6,6 +6,9 @@ This file is a running track of new features and fixes to each version of the da
 * `[beta.1]` — Fixes a bug causing the migration utility to not run correctly due to globbing.
 * `[beta.1]` — Fixes missing route causing inability to revoke an access token manually.
 
+### Changed
+* `[beta.1]` — Data migration is not optional, update code to reflect such.
+
 ## v0.5.0-beta.1
 ### Added
 * Added more data integrity checks when running a server. These changes make it impossible to boot a server that has an invalid service option configuration.

@@ -59,20 +59,6 @@ const Sftp = new SftpServer();
 
 Log.info('Modules loaded, starting Pterodactyl Daemon...');
 Async.auto({
-    warn_deprecation: callback => {
-        if (!Config.get('sftp.useNewFormat', false) && !Config.get('sftp.yesIKnowINeedToMigrateMyData', false)) {
-            Log.warn('+ ------------------ ! DEPRECATION NOTICE ! ------------------ +');
-            Log.warn('+ You have not run the data migration utility included in this +');
-            Log.warn('+ release. Please see upgrade documentation for the command to +');
-            Log.warn('+ run.                                                         +');
-            Log.warn('+                                                              +');
-            Log.warn('+ This daemon will fail to run in coming releases if you do    +');
-            Log.warn('+ not perform this action.                                     +');
-            Log.warn('+ ------------------ ! DEPRECATION NOTICE ! ------------------ +');
-        }
-
-        return callback();
-    },
     check_version: callback => {
         if (Package.version === '0.0.0-canary') {
             return callback(null, 'Pterodactyl Daemon is up-to-date running a nightly build.');

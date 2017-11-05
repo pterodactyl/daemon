@@ -23,6 +23,7 @@
  * SOFTWARE.
  */
 
+const _ = require('lodash');
 const rfr = require('rfr');
 const Async = require('async');
 const Inquirer = require('inquirer');
@@ -83,7 +84,7 @@ Inquirer.prompt([
                             Fs.readJson(file, acall);
                         },
                         paths: ['json', (r, acall) => {
-                            const CurrentPath = Path.join(Config.get('sftp.path', '/srv/daemon-data'), r.json.user, '/data');
+                            const CurrentPath = Path.join(Config.get('sftp.path', '/srv/daemon-data'), _.get(r.json, 'user', '_SHOULD_SKIP'), '/data');
                             const NewPath = Path.join(Config.get('sftp.path', '/srv/daemon-data'), r.json.uuid);
 
                             return acall(null, {
@@ -131,13 +132,6 @@ Inquirer.prompt([
             const Exec = Process.spawn('chown', ['-R', Util.format('%d:%d', Config.get('docker.container.user', 1000), Config.get('docker.container.user', 1000)), Config.get('sftp.path', '/srv/daemon-data')]);
             Exec.on('error', callback);
             Exec.on('exit', () => { callback(); });
-        },
-        callback => {
-            Config.modify({
-                sftp: {
-                    useNewFormat: true,
-                },
-            }, callback);
         },
     ], err => {
         if (err) return console.error(err);
