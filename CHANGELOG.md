@@ -4,6 +4,7 @@ This file is a running track of new features and fixes to each version of the da
 ## v0.5.0-beta.2
 ### Fixed
 * `[beta.1]` — Fixes a bug causing the migration utility to not run correctly due to globbing.
+* `[beta.1]` — Fixes missing route causing inability to revoke an access token manually.
 
 ## v0.5.0-beta.1
 ### Added

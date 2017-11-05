@@ -32,6 +32,7 @@ const Path = require('path');
 const Crypto = require('crypto');
 const _ = require('lodash');
 const Os = require('os');
+const Cache = require('memory-cache');
 
 const ConfigHelper = rfr('src/helpers/config.js');
 const ResponseHelper = rfr('src/helpers/responses.js');
@@ -70,6 +71,19 @@ class RouteController {
                 },
                 network: Os.networkInterfaces(),
             });
+        });
+    }
+
+    // Revoke an authentication key on demand
+    revokeKey() {
+        Auth.allowed('c:revoke-key', (allowedErr, isAllowed) => {
+            if (allowedErr || !isAllowed) return;
+
+            const key = _.get(this.req.params, 'key');
+            Log.debug({ token: key }, 'Revoking authentication token per manual request.')
+            Cache.del(`auth:token:${key}`);
+
+            return Responses.generic204(null);
         });
     }
 

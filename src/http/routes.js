@@ -73,6 +73,14 @@ RestServer.get('/v1', (req, res, next) => {
 });
 
 /**
+ * Revoke authentication keys manually.
+ */
+RestServer.del('/v1/keys/:key', (req, res, next) => {
+    Routes.revokeKey();
+    return next();
+});
+
+/**
  * Save New Configuration for Daemon; also updates the config across the program for immediate changes.
  */
 RestServer.put('/v1/config', (req, res, next) => {
