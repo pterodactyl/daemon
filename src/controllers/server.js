@@ -83,7 +83,7 @@ class Server extends EventEmitter {
             if (err) return next(err);
 
             if (!_.isString(_.get(this.json, 'service.type', false))) {
-                return next(new Error('No service type was passed to the server configuration, unable to select a service.'));
+                return next(new Error(`No service type was passed to the server configuration for ${this.json.uuid}, unable to select a service.`));
             }
 
             Async.series([
