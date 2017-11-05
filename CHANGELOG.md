@@ -1,7 +1,11 @@
 # Changelog
 This file is a running track of new features and fixes to each version of the daemon released starting with `v0.2.0`.
 
-### v0.5.0
+## v0.5.0-beta.2
+### Fixed
+* `[beta.1]` — Fixes a bug causing the migration utility to not run correctly due to globbing.
+
+## v0.5.0-beta.1
 ### Added
 * Added more data integrity checks when running a server. These changes make it impossible to boot a server that has an invalid service option configuration.
 * SFTP is now handled internally within the Daemon rather than relying on a Docker SFTP container. Authentication is performed using a Panel user.

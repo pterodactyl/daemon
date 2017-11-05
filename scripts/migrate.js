@@ -92,7 +92,7 @@ Inquirer.prompt([
                             });
                         }],
                         exists: ['paths', (r, acall) => {
-                            Fs.access(Path.join(r.paths.currentPath, '/*'), Fs.constants.F_OK | Fs.constants.R_OK, err => {
+                            Fs.access(r.paths.currentPath, Fs.constants.F_OK | Fs.constants.R_OK, err => {
                                 acall(null, !err);
                             });
                         }],
