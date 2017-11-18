@@ -1,7 +1,7 @@
 # Changelog
 This file is a running track of new features and fixes to each version of the daemon released starting with `v0.2.0`.
 
-## v0.5.0-beta.2
+## v0.5.0-beta.2 (Dazzling Daohugoupterus)
 ### Fixed
 * `[beta.1]` — Fixes a bug causing the migration utility to not run correctly due to globbing.
 * `[beta.1]` — Fixes missing route causing inability to revoke an access token manually.
@@ -10,7 +10,7 @@ This file is a running track of new features and fixes to each version of the da
 ### Changed
 * `[beta.1]` — Data migration is not optional, update code to reflect such.
 
-## v0.5.0-beta.1
+## v0.5.0-beta.1 (Dazzling Daohugoupterus)
 ### Added
 * Added more data integrity checks when running a server. These changes make it impossible to boot a server that has an invalid service option configuration.
 * SFTP is now handled internally within the Daemon rather than relying on a Docker SFTP container. Authentication is performed using a Panel user.
