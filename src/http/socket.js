@@ -34,7 +34,6 @@ class WebSocket {
         this.server = server;
         this.websocket = Socket.of(`/v1/ws/${this.server.json.uuid}`);
 
-        // Standard Websocket Permissions
         this.websocket.use((params, next) => {
             if (!params.handshake.query.token) {
                 return next(new Error('You must pass the correct handshake values.'));
@@ -42,7 +41,7 @@ class WebSocket {
 
             this.server.hasPermission('s:console', params.handshake.query.token, (err, hasPermission) => {
                 if (err || !hasPermission) {
-                    return next(new Error('You do not have permission to access this socket (ws).'));
+                    return next(new Error('You do not have permission to access the socket for this server.'));
                 }
 
                 return next();
