@@ -44,7 +44,7 @@ class Core {
             this.config = config || rfr(Util.format('src/services/configs/%s.json', this.json.service.egg));
         } catch (ex) {
             if (ex.code === 'MODULE_NOT_FOUND') {
-                this.server.log.error('Could not locate an Egg configuration for this server. Please rebuild this server.');
+                this.server.log.warn('Could not locate an Egg configuration for server, a rebuild will be required.');
                 this.config = {};
             } else {
                 throw ex;

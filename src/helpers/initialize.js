@@ -62,16 +62,6 @@ class Initialize {
 
                         // Initalize the Server
                         this.setup(json, (err, server) => {
-                            if (err && err === 'MODULE_NOT_FOUND') {
-                                Log.error('Server detected as referencing an invalid service option. Please fix this server and reboot the daemon!', {
-                                    server: json.uuid,
-                                    option: _.get(json, 'service.option'),
-                                });
-
-                                delete Servers[json.uuid];
-                                return callback(null);
-                            }
-
                             return callback(err, server);
                         });
                     });

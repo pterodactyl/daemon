@@ -1,6 +1,10 @@
 # Changelog
 This file is a running track of new features and fixes to each version of the daemon released starting with `v0.2.0`.
 
+## v0.5.0-beta.3 (Dazzling Daohugoupterus)
+### Fixed
+* `[beta.2]` — Fixes a bug that caused the Daemon to fail the boot process after upgrading from previous versions due to a missing egg configuration.
+
 ## v0.5.0-beta.2 (Dazzling Daohugoupterus)
 ### Fixed
 * `[beta.1]` — Fixes a bug causing the migration utility to not run correctly due to globbing.
