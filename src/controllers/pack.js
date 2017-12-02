@@ -117,7 +117,7 @@ class Pack {
                     },
                 }, (err, resp) => {
                     if (err) {
-                        const error = new Error('Recieved a non-200 error code while attempting to pull the hash for a service pack.');
+                        const error = new Error('Recieved a non-200 error code while attempting to pull the hash for a egg pack.');
                         error.responseCode = resp.statusCode;
                         error.requestURL = endpoint;
                         error.meta = err;
@@ -191,7 +191,7 @@ class Pack {
                     .on('error', next)
                     .on('response', response => {
                         if (response.statusCode !== 200) {
-                            const error = new Error('Recieved a non-200 error code while attempting to pull the hash for a service pack.');
+                            const error = new Error('Recieved a non-200 error code while attempting to pull the hash for a egg pack.');
                             error.responseCode = response.statusCode;
                             error.requestURL = endpoint;
                             error.pack = this.pack;

@@ -259,7 +259,7 @@ class Server extends EventEmitter {
         }
 
         if (this.blockBooting) {
-            return next(new Error('Server cannot be started, booting is blocked due to pack or service install.'));
+            return next(new Error('Server cannot be started, booting is blocked due to pack or egg install.'));
         }
 
         // Set status early on to avoid super fast clickers
@@ -365,7 +365,7 @@ class Server extends EventEmitter {
         }
 
         if (_.isUndefined(_.get(this.service, 'config.stop'))) {
-            this.emit('console', `${Ansi.style.red}[Pterodactyl Daemon] No stop configuration is defined for this service.`);
+            this.emit('console', `${Ansi.style.red}[Pterodactyl Daemon] No stop configuration is defined for this egg.`);
             return next();
         }
 
@@ -775,8 +775,8 @@ class Server extends EventEmitter {
                 this.option.install(callback);
             },
             callback => {
-                if (!_.isString(_.get(this.json, 'service', false))) {
-                    return callback(new Error('No service type was passed to the server configuration, unable to select a service.'));
+                if (!_.isString(_.get(this.json, 'service.egg', false))) {
+                    return callback(new Error('No Egg was passed to the server configuration, unable to select an egg.'));
                 }
 
                 this.service = new ServiceCore(this, null, callback);

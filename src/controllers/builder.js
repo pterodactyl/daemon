@@ -76,7 +76,7 @@ class Builder {
             }],
             run_scripts: ['install_pack', (results, callback) => {
                 if (_.get(this.json, 'service.skip_scripts', false)) {
-                    this.log.info('Skipping service option script run due to server configuration file.');
+                    this.log.info('Skipping egg script run due to server configuration file.');
                     return callback();
                 }
                 results.initialize.option.install(callback);

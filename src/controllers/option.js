@@ -87,7 +87,7 @@ class Option {
             write_file: ['details', (results, callback) => {
                 if (_.isNil(_.get(results.details, 'scripts.install', null))) {
                     // No script defined, skip the rest.
-                    const error = new Error('No installation script was defined for this service, skipping rest of process.');
+                    const error = new Error('No installation script was defined for this egg, skipping rest of process.');
                     error.code = 'E_NOSCRIPT';
                     return error;
                 }
