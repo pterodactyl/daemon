@@ -80,6 +80,11 @@ RestServer.del('/v1/keys/:key', (req, res, next) => {
     return next();
 });
 
+RestServer.post('/v1/keys/batch-delete', (req, res, next) => {
+    Routes.batchDeleteKeys();
+    return next();
+});
+
 /**
  * Save New Configuration for Daemon; also updates the config across the program for immediate changes.
  */

@@ -87,6 +87,20 @@ class RouteController {
         });
     }
 
+    // Similar to revokeKey except it allows for multiple keys at once
+    batchDeleteKeys() {
+        Auth.allowed('c:revoke-key', (allowedErr, isAllowed) => {
+            if (allowedErr || !isAllowed) return;
+
+            _.each(_.get(this.req.params, 'keys'), key => {
+                Log.debug({ token: key }, 'Revoking authentication token per batch delete request.');
+                Cache.del(`auth:token:${key}`);
+            });
+
+            return Responses.generic204(null);
+        });
+    }
+
     // Updates saved configuration on system.
     patchConfig() {
         Auth.allowed('c:config', (allowedErr, isAllowed) => {
