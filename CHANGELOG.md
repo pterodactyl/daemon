@@ -4,6 +4,7 @@ This file is a running track of new features and fixes to each version of the da
 ## v0.5.0-beta.4 (Dazzling Daohugoupterus)
 ### Fixed
 * `[beta.3]` — Fixes bug that caused servers to not be able to be reinstalled due to a check for non-existant keys.
+* Fixes race condition when attemping to boot a server after a rebuild has begun.
 
 ## v0.5.0-beta.3 (Dazzling Daohugoupterus)
 ### Fixed

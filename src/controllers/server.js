@@ -253,8 +253,8 @@ class Server extends EventEmitter {
         return this.service.onPreflight(next);
     }
 
-    start(next) {
-        if (this.status !== Status.OFF) {
+    start(next, ignorePowerState) {
+        if (this.status !== Status.OFF && ignorePowerState !== true) {
             return next(new Error('Server is already running.'));
         }
 
@@ -270,15 +270,16 @@ class Server extends EventEmitter {
                 Async.waterfall([
                     callback => {
                         this.buildInProgress = true;
-                        this.emit('console', `${Ansi.style.cyan}[Pterodactyl Daemon] Your server container needs to be rebuilt. This should only take a few seconds, but could take a few minutes. You do not need to do anything else while this occurs. Your server will automatically continue with startup once this process is completed.`);
                         callback();
                     },
                     callback => {
-                        this.setStatus(Status.OFF);
+                        this.emit('console', `${Ansi.style.cyan}[Pterodactyl Daemon] Your server container needs to be rebuilt. This should only take a few seconds, but could take a few minutes. You do not need to do anything else while this occurs. Your server will automatically continue with startup once this process is completed.`);
+                        this.setStatus(Status.STOPPING);
                         this.rebuild(callback);
                     },
                     callback => {
-                        this.start(callback);
+                        this.setStatus(Status.OFF);
+                        this.start(callback, true);
                     },
                 ], err => {
                     if (err) {
@@ -669,6 +670,7 @@ class Server extends EventEmitter {
             },
             rebuild: ['destroy', (results, callback) => {
                 this.log.debug('Rebuilding server container...');
+                this.emit('console', `${Ansi.style.yellow}[Pterodactyl Daemon] Rebuilding server container...`);
                 this.docker.build((err, data) => {
                     callback(err, data);
                 });
@@ -676,6 +678,7 @@ class Server extends EventEmitter {
             update_config: ['rebuild', (results, callback) => {
                 this.log.debug(`New container successfully created with ID ${results.rebuild.id.substr(0, 12)}`);
                 this.log.debug('Containers successfully rotated, updating stored configuration.');
+                this.emit('console', `${Ansi.style.yellow}[Pterodactyl Daemon] New container built, rotating hamsters...`);
                 this.modifyConfig({
                     rebuild: false,
                     container: {
@@ -688,12 +691,14 @@ class Server extends EventEmitter {
                 this.service = new ServiceCore(this, null, callback);
             }],
             init_container: ['init_service', (results, callback) => {
+                this.emit('console', `${Ansi.style.yellow}[Pterodactyl Daemon] Container is being initialized...`);
                 this.initContainer(callback);
             }],
         }, err => {
             this.buildInProgress = false;
             if (!err) {
                 this.log.info('Completed rebuild process for server container.');
+                this.emit('console', `${Ansi.style.green}[Pterodactyl Daemon] Completed rebuild process for server. Server is now booting.`);
                 return next();
             }
 
