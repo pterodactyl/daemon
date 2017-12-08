@@ -253,8 +253,8 @@ class Server extends EventEmitter {
         return this.service.onPreflight(next);
     }
 
-    start(next, ignorePowerState) {
-        if (this.status !== Status.OFF && ignorePowerState !== true) {
+    start(next) {
+        if (this.status !== Status.OFF) {
             return next(new Error('Server is already running.'));
         }
 
@@ -279,7 +279,7 @@ class Server extends EventEmitter {
                     },
                     callback => {
                         this.setStatus(Status.OFF);
-                        this.start(callback, true);
+                        this.start(callback);
                     },
                 ], err => {
                     if (err) {
