@@ -86,7 +86,7 @@ class Option {
                     // No script defined, skip the rest.
                     const error = new Error('No installation script was defined for this service, skipping rest of process.');
                     error.code = 'E_NOSCRIPT';
-                    return error;
+                    return callback(error);
                 }
 
                 this.server.log.debug('Writing temporary file to be handed into the Docker container.');
