@@ -2,7 +2,7 @@
 
 /**
  * Pterodactyl - Daemon
- * Copyright (c) 2015 - 2016 Dane Everitt <dane@daneeveritt.com>
+ * Copyright (c) 2015 - 2017 Dane Everitt <dane@daneeveritt.com>.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,14 +27,13 @@ const Async = require('async');
 const Dockerode = require('dockerode');
 const Fs = require('fs-extra');
 const Path = require('path');
+const _ = require('lodash');
 
-const SFTPController = rfr('src/controllers/sftp.js');
 const ConfigHelper = rfr('src/helpers/config.js');
 const Log = rfr('src/helpers/logger.js');
 const Status = rfr('src/helpers/status.js');
 
 const Config = new ConfigHelper();
-const SFTP = new SFTPController();
 const DockerController = new Dockerode({
     socketPath: Config.get('docker.socket', '/var/run/docker.sock'),
 });
@@ -46,44 +45,49 @@ class Delete {
     }
 
     delete(next) {
-        Async.series([
+        Async.auto({
             // Clear the 'Servers' object of the specific server
-            callback => {
-                this.log.info('Clearing servers object...');
+            clear_object: callback => {
+                this.log.debug('Clearing servers object...');
                 const Servers = rfr('src/helpers/initialize.js').Servers;
 
                 // Prevent crash detection
-                Servers[this.json.uuid].setStatus(Status.OFF);
+                if (!_.isUndefined(Servers[this.json.uuid]) && _.isFunction(Servers[this.json.uuid].setStatus)) {
+                    Servers[this.json.uuid].setStatus(Status.OFF);
+                }
+
                 delete Servers[this.json.uuid];
                 return callback();
             },
             // Delete the container (kills if running)
-            callback => {
-                this.log.info('Attempting to remove container...');
+            delete_container: ['clear_object', (r, callback) => {
+                this.log.debug('Attempting to remove container...');
+                if (!_.get(this.json, 'container.id', false)) {
+                    this.log.warn('No container ID was defined in the server JSON, skipping container deletion step.');
+                    return callback();
+                }
+
                 const container = DockerController.getContainer(this.json.container.id);
                 container.remove({ v: true, force: true }, err => {
-                    if (!err) this.log.info('Removed container.');
+                    if (!err) this.log.debug('Removed container.');
                     return callback(err);
                 });
-            },
-            // Delete the SFTP user and files.
-            callback => {
-                this.log.info('Attempting to remove SFTP user...');
-                SFTP.delete(this.json.user, err => {
-                    if (!err) this.log.info('Removed SFTP user.');
-                    return callback(err);
-                });
-            },
+            }],
             // Delete the configuration files for this server
-            callback => {
-                this.log.info('Attempting to remove configuration files...');
+            delete_config: ['clear_object', (r, callback) => {
+                this.log.debug('Attempting to remove configuration files...');
                 Fs.remove(Path.join('./config/servers', this.json.uuid), err => {
-                    if (!err) this.log.info('Removed configuration folder.');
-                    return callback(err);
+                    if (!err) this.log.debug('Removed configuration folder.', err);
+                    return callback();
                 });
-            },
-        ], err => {
+            }],
+            delete_folder: ['clear_object', (r, callback) => {
+                Fs.remove(Path.join(Config.get('sftp.path', '/srv/daemon-data'), this.json.uuid), callback);
+            }],
+        }, err => {
             if (err) Log.fatal(err);
+            if (!err) this.log.info('Server deleted.');
+
             return next(err);
         });
     }

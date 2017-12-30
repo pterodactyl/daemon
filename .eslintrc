@@ -14,7 +14,18 @@
       "consistent-return": 0,
       "max-len": 0,
       "lodash/prefer-map": 0,
+      "lodash/import-scope": 0,
+      "no-multi-assign": 2,
       "arrow-parens": [2, "as-needed"],
-      class-methods-use-this: 0
+      "class-methods-use-this": 0,
+      "prefer-destructuring": 0,
+      "no-bitwise": 0,
+      "comma-dangle": ["error", {
+        "arrays": "always-multiline",
+        "objects": "always-multiline",
+        "imports": "always-multiline",
+        "exports": "always-multiline",
+        "functions": "never"
+      }]
   }
 }

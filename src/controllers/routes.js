@@ -2,7 +2,7 @@
 
 /**
  * Pterodactyl - Daemon
- * Copyright (c) 2015 - 2016 Dane Everitt <dane@daneeveritt.com>
+ * Copyright (c) 2015 - 2017 Dane Everitt <dane@daneeveritt.com>.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -31,12 +31,15 @@ const Mime = require('mime');
 const Path = require('path');
 const Crypto = require('crypto');
 const _ = require('lodash');
+const Os = require('os');
+const Cache = require('memory-cache');
 
 const ConfigHelper = rfr('src/helpers/config.js');
 const ResponseHelper = rfr('src/helpers/responses.js');
 const BuilderController = rfr('src/controllers/builder.js');
 const DeleteController = rfr('src/controllers/delete.js');
 const Log = rfr('src/helpers/logger.js');
+const Package = rfr('package.json');
 
 const Config = new ConfigHelper();
 let Responses;
@@ -52,274 +55,460 @@ class RouteController {
 
     // Returns Index
     getIndex() {
-        this.res.send('Pterodactyl Management Daemon');
+        Auth.allowed('c:info', (allowedErr, isAllowed) => {
+            if (allowedErr || !isAllowed) return;
+
+            this.res.send({
+                name: 'Pterodactyl Management Daemon',
+                version: Package.version,
+                system: {
+                    type: Os.type(),
+                    arch: Os.arch(),
+                    platform: Os.platform(),
+                    release: Os.release(),
+                    cpus: Os.cpus().length,
+                    freemem: Os.freemem(),
+                },
+                network: Os.networkInterfaces(),
+            });
+        });
+    }
+
+    // Revoke an authentication key on demand
+    revokeKey() {
+        Auth.allowed('c:revoke-key', (allowedErr, isAllowed) => {
+            if (allowedErr || !isAllowed) return;
+
+            const key = _.get(this.req.params, 'key');
+            Log.debug({ token: key }, 'Revoking authentication token per manual request.')
+            Cache.del(`auth:token:${key}`);
+
+            return Responses.generic204(null);
+        });
+    }
+
+    // Similar to revokeKey except it allows for multiple keys at once
+    batchDeleteKeys() {
+        Auth.allowed('c:revoke-key', (allowedErr, isAllowed) => {
+            if (allowedErr || !isAllowed) return;
+
+            _.each(_.get(this.req.params, 'keys'), key => {
+                Log.debug({ token: key }, 'Revoking authentication token per batch delete request.');
+                Cache.del(`auth:token:${key}`);
+            });
+
+            return Responses.generic204(null);
+        });
+    }
+
+    // Updates saved configuration on system.
+    patchConfig() {
+        Auth.allowed('c:config', (allowedErr, isAllowed) => {
+            if (allowedErr || !isAllowed) return;
+
+            Config.modify(this.req.params, err => {
+                Responses.generic204(err);
+            });
+        });
     }
 
     // Saves Daemon Configuration to Disk
     putConfig() {
-        if (!Auth.allowed('c:config')) return;
-        Config.save(this.req.params, err => {
-            if (err) return this.res.send(500, { 'error': err.message });
-            return this.res.send(204);
+        Auth.allowed('c:config', (allowedErr, isAllowed) => {
+            if (allowedErr || !isAllowed) return;
+
+            Config.save(this.req.params, err => {
+                Responses.generic204(err);
+            });
         });
     }
 
     postNewServer() {
-        if (!Auth.allowed('c:create')) return;
-        const Builder = new BuilderController(this.req.params);
-        this.res.send(202, { 'message': 'Server is being built now, this might take some time if the docker image doesn\'t exist on the system yet.' });
+        Auth.allowed('c:create', (allowedErr, isAllowed) => {
+            if (allowedErr || !isAllowed) return;
 
-        // We sent a HTTP 202 since this might take awhile.
-        // We do need to monitor for errors and negatiate with
-        // the panel if they do occur.
-        Builder.init((err, data) => {
-            if (err) Log.error(err);
+            const startOnCompletion = _.get(this.req.params, 'start_on_completion', false);
+            if (startOnCompletion) {
+                delete this.req.params.start_on_completion;
+            }
 
-            const HMAC = Crypto.createHmac('sha256', Config.get('keys.0'));
-            HMAC.update(data.uuid);
+            const Builder = new BuilderController(this.req.params);
+            this.res.send(202, { 'message': 'Server is being built now, this might take some time if the docker image doesn\'t exist on the system yet.' });
 
-            Request.post(Config.get('remote.installed'), {
-                form: {
-                    server: data.uuid,
-                    signed: HMAC.digest('base64'),
-                    installed: (err) ? 'error' : 'installed',
-                },
-                followAllRedirects: true,
-                timeout: 5000,
-            }, (requestErr, response, body) => {
-                if (requestErr || response.statusCode !== 200) {
-                    Log.warn(requestErr, 'An error occured while attempting to alert the panel of server install status.', { code: (typeof response !== 'undefined') ? response.statusCode : null, responseBody: body });
-                } else {
-                    Log.info('Notified remote panel of server install status.');
-                }
+            // We sent a HTTP 202 since this might take awhile.
+            // We do need to monitor for errors and negatiate with
+            // the panel if they do occur.
+            Builder.init((err, data) => {
+                if (err) Log.fatal({ err: err, meta: _.get(err, 'meta') }, 'A fatal error was encountered while attempting to create a server.'); // eslint-disable-line
+
+                const HMAC = Crypto.createHmac('sha256', Config.get('keys.0'));
+                HMAC.update(data.uuid);
+
+                Request.post(`${Config.get('remote.base')}/daemon/install`, {
+                    form: {
+                        server: data.uuid,
+                        signed: HMAC.digest('base64'),
+                        installed: (err) ? 'error' : 'installed',
+                    },
+                    headers: {
+                        'X-Access-Node': Config.get('keys.0'),
+                    },
+                    followAllRedirects: true,
+                    timeout: 5000,
+                }, (requestErr, response, body) => {
+                    if (requestErr || response.statusCode !== 200) {
+                        Log.warn(requestErr, 'An error occured while attempting to alert the panel of server install status.', { code: (typeof response !== 'undefined') ? response.statusCode : null, responseBody: body });
+                    } else {
+                        Log.info('Notified remote panel of server install status.');
+                    }
+
+                    if (startOnCompletion && !err) {
+                        const Servers = rfr('src/helpers/initialize.js').Servers;
+                        Servers[data.uuid].start(startErr => {
+                            if (err) Log.error({ server: data.uuid, err: startErr }, 'There was an error while attempting to auto-start this server.');
+                        });
+                    }
+                });
             });
         });
     }
 
     getAllServers() {
-        if (!Auth.allowed('c:list')) return;
-        const responseData = {};
-        Async.each(Auth.allServers(), (server, callback) => {
-            responseData[server.json.uuid] = {
-                container: server.json.container,
-                service: server.json.service,
-                status: server.status,
-                query: server.processData.query,
-                proc: server.processData.process,
-            };
-            callback();
-        }, () => {
-            this.res.send(responseData);
+        Auth.allowed('c:list', (allowedErr, isAllowed) => {
+            if (allowedErr || !isAllowed) return;
+
+            const responseData = {};
+            Async.each(Auth.allServers(), (server, callback) => {
+                responseData[server.json.uuid] = {
+                    container: server.json.container,
+                    service: server.json.service,
+                    status: server.status,
+                    query: server.processData.query,
+                    proc: server.processData.process,
+                };
+                callback();
+            }, () => {
+                this.res.send(responseData);
+            });
         });
     }
 
     deleteServer() {
-        if (!Auth.allowed('g:server:delete')) return;
-        const Delete = new DeleteController(Auth.server().json);
-        Delete.delete(err => {
-            Responses.generic204(err);
+        Auth.allowed('g:server:delete', (allowedErr, isAllowed) => {
+            if (allowedErr || !isAllowed) return;
+
+            const Delete = new DeleteController(Auth.server().json);
+            Delete.delete(err => {
+                Responses.generic204(err);
+            });
         });
     }
 
     // Handles server power
     putServerPower() {
         if (this.req.params.action === 'start') {
-            if (!Auth.allowed('s:power:start')) return;
-            Auth.server().start(err => {
-                if (err && (_.includes(err.message, 'Server is currently queued for a container rebuild') || _.includes(err.message, 'Server container was not found and needs to be rebuilt.'))) {
-                    return this.res.send(202, { 'message': err.message });
-                }
-                Responses.generic204(err);
+            Auth.allowed('s:power:start', (allowedErr, isAllowed) => {
+                if (allowedErr || !isAllowed) return;
+
+                Auth.server().start(err => {
+                    if (err && (_.includes(err.message, 'Server is currently queued for a container rebuild') || _.includes(err.message, 'Server container was not found and needs to be rebuilt.'))) {
+                        return this.res.send(202, { 'message': err.message });
+                    }
+                    Responses.generic204(err);
+                });
             });
         } else if (this.req.params.action === 'stop') {
-            if (!Auth.allowed('s:power:stop')) return;
-            Auth.server().stop(err => {
-                Responses.generic204(err);
+            Auth.allowed('s:power:stop', (allowedErr, isAllowed) => {
+                if (allowedErr || !isAllowed) return;
+
+                Auth.server().stop(err => {
+                    Responses.generic204(err);
+                });
             });
         } else if (this.req.params.action === 'restart') {
-            if (!Auth.allowed('s:power:restart')) return;
-            Auth.server().restart(err => {
-                if (err && (_.includes(err.message, 'Server is currently queued for a container rebuild') || _.includes(err.message, 'Server container was not found and needs to be rebuilt.'))) {
-                    return this.res.send(202, { 'message': err.message });
-                }
-                Responses.generic204(err);
+            Auth.allowed('s:power:restart', (allowedErr, isAllowed) => {
+                if (allowedErr || !isAllowed) return;
+
+                Auth.server().restart(err => {
+                    if (err && (_.includes(err.message, 'Server is currently queued for a container rebuild') || _.includes(err.message, 'Server container was not found and needs to be rebuilt.'))) {
+                        return this.res.send(202, { 'message': err.message });
+                    }
+                    Responses.generic204(err);
+                });
             });
         } else if (this.req.params.action === 'kill') {
-            if (!Auth.allowed('s:power:kill')) return;
-            Auth.server().kill(err => {
-                Responses.generic204(err);
+            Auth.allowed('s:power:kill', (allowedErr, isAllowed) => {
+                if (allowedErr || !isAllowed) return;
+
+                Auth.server().kill(err => {
+                    Responses.generic204(err);
+                });
             });
         } else {
             this.res.send(404, { 'error': 'Unknown power action recieved.' });
         }
     }
 
+    reinstallServer() {
+        Auth.allowed('c:install-server', (allowedErr, isAllowed) => {
+            if (allowedErr || !isAllowed) return;
+
+            Auth.server().reinstall(this.req.params, err => {
+                if (err) Log.error(err);
+
+                const HMAC = Crypto.createHmac('sha256', Config.get('keys.0'));
+                HMAC.update(Auth.serverUuid());
+
+                Request.post(`${Config.get('remote.base')}/daemon/install`, {
+                    form: {
+                        server: Auth.serverUuid(),
+                        signed: HMAC.digest('base64'),
+                        installed: (err) ? 'error' : 'installed',
+                    },
+                    headers: {
+                        'X-Access-Node': Config.get('keys.0'),
+                    },
+                    followAllRedirects: true,
+                    timeout: 5000,
+                }, (requestErr, response, body) => {
+                    if (requestErr || response.statusCode !== 200) {
+                        Log.warn(requestErr, 'An error occured while attempting to alert the panel of server install status.', { code: (typeof response !== 'undefined') ? response.statusCode : null, responseBody: body });
+                    } else {
+                        Log.info('Notified remote panel of server install status.');
+                    }
+                });
+            });
+
+            this.res.send(202, { 'message': 'Server is being reinstalled.' });
+        });
+    }
+
     getServer() {
-        if (!Auth.allowed('s:get')) return;
-        this.res.send({
-            container: Auth.server().json.container,
-            service: Auth.server().json.service,
-            status: Auth.server().status,
-            query: Auth.server().processData.query,
-            proc: Auth.server().processData.process,
+        Auth.allowed('s:get', (allowedErr, isAllowed) => {
+            if (allowedErr || !isAllowed) return;
+
+            this.res.send({
+                container: Auth.server().json.container,
+                service: Auth.server().json.service,
+                status: Auth.server().status,
+                query: Auth.server().processData.query,
+                proc: Auth.server().processData.process,
+            });
         });
     }
 
     // Sends command to server
     postServerCommand() {
-        if (!Auth.allowed('s:command')) return;
-        if (!_.isUndefined(this.req.params.command)) {
-            if (this.req.params.command.trim().replace(/^\/*/, '').startsWith(Auth.server().service.object.stop)) {
-                if (!Auth.allowed('s:power:stop')) return;
+        Auth.allowed('s:files:command', (allowedErr, isAllowed) => {
+            if (allowedErr || !isAllowed) return;
+
+            if (!_.isUndefined(this.req.params.command)) {
+                if (_.startsWith(_.replace(_.trim(this.req.params.command), /^\/*/, ''), Auth.server().service.object.stop)) {
+                    Auth.allowed('s:power:stop', (powerErr, powerIsAllowed) => {
+                        if (powerErr || !powerIsAllowed) return;
+
+                        Auth.server().command(this.req.params.command, err => {
+                            Responses.generic204(err);
+                        });
+                    });
+                } else {
+                    Auth.server().command(this.req.params.command, err => {
+                        Responses.generic204(err);
+                    });
+                }
+            } else {
+                this.res.send(500, { 'error': 'Missing command in request.' });
             }
-            Auth.server().command(this.req.params.command, err => {
-                Responses.generic204(err);
-            });
-        } else {
-            this.res.send(500, { 'error': 'Missing command in request.' });
-        }
+        });
     }
 
     // Returns listing of server files.
     getServerDirectory() {
-        if (!Auth.allowed('s:files:get')) return;
-        if (!this.req.params[0]) this.req.params[0] = '.';
-        Auth.server().fs.directory(this.req.params[0], (err, data) => {
-            if (err) {
-                return Responses.generic500(err);
-            }
-            return this.res.send(data);
+        Auth.allowed('s:files:get', (allowedErr, isAllowed) => {
+            if (allowedErr || !isAllowed) return;
+
+            Auth.server().fs.directory(this.req.params[0], (err, data) => {
+                if (err) {
+                    return Responses.generic500(err);
+                }
+                return this.res.send(data);
+            });
         });
     }
 
     // Return file contents
     getServerFile() {
-        if (!Auth.allowed('s:files:read')) return;
-        Auth.server().fs.read(this.req.params[0], (err, data) => {
-            if (err) {
-                return Responses.generic500(err);
-            }
-            return this.res.send({ content: data });
+        Auth.allowed('s:files:read', (allowedErr, isAllowed) => {
+            if (allowedErr || !isAllowed) return;
+
+            Auth.server().fs.read(this.req.params[0], (err, data) => {
+                if (err) {
+                    return Responses.generic500(err);
+                }
+                return this.res.send({ content: data });
+            });
         });
     }
 
     getServerLog() {
-        if (!Auth.allowed('s:console')) return;
-        Auth.server().fs.readEnd(Auth.server().service.object.log.location, (err, data) => {
-            if (err) {
-                return Responses.generic500(err);
-            }
-            return this.res.send(data);
+        Auth.allowed('s:console', (allowedErr, isAllowed) => {
+            if (allowedErr || !isAllowed) return;
+
+            Auth.server().fs.readEnd(Auth.server().service.object.log.location, (err, data) => {
+                if (err) {
+                    return Responses.generic500(err);
+                }
+                return this.res.send(data);
+            });
         });
     }
 
     getServerFileStat() {
-        if (!Auth.allowed('s:files:read')) return;
-        Auth.server().fs.stat(this.req.params[0], (err, data) => {
-            if (err) {
-                return Responses.generic500(err);
-            }
-            return this.res.send(data);
+        Auth.allowed('s:files:read', (allowedErr, isAllowed) => {
+            if (allowedErr || !isAllowed) return;
+
+            Auth.server().fs.stat(this.req.params[0], (err, data) => {
+                if (err) {
+                    return Responses.generic500(err);
+                }
+                return this.res.send(data);
+            });
         });
     }
 
     postFileFolder() {
-        if (!Auth.allowed('s:files:create')) return;
-        Auth.server().fs.mkdir(this.req.params.path, err => {
-            Responses.generic204(err);
+        Auth.allowed('s:files:create', (allowedErr, isAllowed) => {
+            if (allowedErr || !isAllowed) return;
+
+            Auth.server().fs.mkdir(this.req.params.path, err => {
+                Responses.generic204(err);
+            });
         });
     }
 
     postFileCopy() {
-        if (!Auth.allowed('s:files:copy')) return;
-        Auth.server().fs.copy(this.req.params.from, this.req.params.to, err => {
-            Responses.generic204(err);
+        Auth.allowed('s:files:copy', (allowedErr, isAllowed) => {
+            if (allowedErr || !isAllowed) return;
+
+            Auth.server().fs.copy(this.req.params.from, this.req.params.to, err => {
+                Responses.generic204(err);
+            });
+        });
+    }
+
+    // prevent breaking API change for now.
+    deleteServerFile() {
+        Auth.allowed('s:files:delete', (allowedErr, isAllowed) => {
+            if (allowedErr || !isAllowed) return;
+
+            Auth.server().fs.rm(this.req.params[0], err => {
+                Responses.generic204(err);
+            });
+        });
+    }
+
+    postFileDelete() {
+        Auth.allowed('s:files:delete', (allowedErr, isAllowed) => {
+            if (allowedErr || !isAllowed) return;
+
+            Auth.server().fs.rm(this.req.params.items, err => {
+                Responses.generic204(err);
+            });
         });
     }
 
     postFileMove() {
-        if (!Auth.allowed('s:files:move')) return;
-        Auth.server().fs.move(this.req.params.from, this.req.params.to, err => {
-            Responses.generic204(err);
+        Auth.allowed('s:files:move', (allowedErr, isAllowed) => {
+            if (allowedErr || !isAllowed) return;
+
+            Auth.server().fs.move(this.req.params.from, this.req.params.to, err => {
+                Responses.generic204(err);
+            });
         });
     }
 
     postFileDecompress() {
-        if (!Auth.allowed('s:files:decompress')) return;
-        Auth.server().fs.decompress(this.req.params.files, err => {
-            Responses.generic204(err);
+        Auth.allowed('s:files:decompress', (allowedErr, isAllowed) => {
+            if (allowedErr || !isAllowed) return;
+
+            Auth.server().fs.decompress(this.req.params.files, err => {
+                Responses.generic204(err);
+            });
         });
     }
 
     postFileCompress() {
-        if (!Auth.allowed('s:files:compress')) return;
-        Auth.server().fs.compress(this.req.params.files, this.req.params.to, (err, filename) => {
-            if (err) {
-                return Responses.generic500(err);
-            }
-            return this.res.send({
-                saved_as: filename,
+        Auth.allowed('s:files:compress', (allowedErr, isAllowed) => {
+            if (allowedErr || !isAllowed) return;
+
+            Auth.server().fs.compress(this.req.params.files, this.req.params.to, (err, filename) => {
+                if (err) {
+                    return Responses.generic500(err);
+                }
+                return this.res.send({
+                    saved_as: filename,
+                });
             });
         });
     }
 
     postServerFile() {
-        if (!Auth.allowed('s:files:post')) return;
-        Auth.server().fs.write(this.req.params.path, this.req.params.content, err => {
-            Responses.generic204(err);
-        });
-    }
+        Auth.allowed('s:files:post', (allowedErr, isAllowed) => {
+            if (allowedErr || !isAllowed) return;
 
-    deleteServerFile() {
-        if (!Auth.allowed('s:files:delete')) return;
-        Auth.server().fs.delete(this.req.params[0], err => {
-            Responses.generic204(err);
+            Auth.server().fs.write(this.req.params.path, this.req.params.content, err => {
+                Responses.generic204(err);
+            });
         });
     }
 
     updateServerConfig() {
-        if (!Auth.allowed('g:server:patch')) return;
-        Auth.server().modifyConfig(this.req.params, (this.req.method === 'PUT'), err => {
-            Responses.generic204(err);
+        Auth.allowed('g:server:patch', (allowedErr, isAllowed) => {
+            if (allowedErr || !isAllowed) return;
+
+            Auth.server().modifyConfig(this.req.params, (this.req.method === 'PUT'), err => {
+                Responses.generic204(err);
+            });
         });
     }
 
     rebuildServer() {
-        if (!Auth.allowed('g:server:rebuild')) return;
-        Auth.server().modifyConfig({ rebuild: true }, false, err => {
-            Responses.generic204(err);
-        });
-    }
+        Auth.allowed('g:server:rebuild', (allowedErr, isAllowed) => {
+            if (allowedErr || !isAllowed) return;
 
-    setSFTPPassword() {
-        if (!Auth.allowed('s:set-password')) return;
-        Auth.server().setPassword(this.req.params.password, err => {
-            Responses.generic204(err);
+            Auth.server().modifyConfig({ rebuild: true }, false, err => {
+                Responses.generic204(err);
+            });
         });
     }
 
     postServerSuspend() {
-        if (!Auth.allowed('g:server:suspend')) return;
-        Auth.server().suspend(err => {
-            Responses.generic204(err);
+        Auth.allowed('g:server:suspend', (allowedErr, isAllowed) => {
+            if (allowedErr || !isAllowed) return;
+
+            Auth.server().suspend(err => {
+                Responses.generic204(err);
+            });
         });
     }
 
     postServerUnsuspend() {
-        if (!Auth.allowed('g:server:unsuspend')) return;
-        Auth.server().unsuspend(err => {
-            Responses.generic204(err);
+        Auth.allowed('g:server:unsuspend', (allowedErr, isAllowed) => {
+            if (allowedErr || !isAllowed) return;
+
+            Auth.server().unsuspend(err => {
+                Responses.generic204(err);
+            });
         });
     }
 
     downloadServerFile() {
-        if (!Config.get('remote.download')) {
-            return this.res.send(501, { 'error': 'This action has not been properly configured on the daemon.' });
-        }
-
-        Request.post(Config.get('remote.download'), {
+        Request.post(`${Config.get('remote.base')}/daemon/download`, {
             form: {
-                token: this.req.params[0],
+                token: this.req.params.token,
+            },
+            headers: {
+                'X-Access-Node': Config.get('keys.0'),
             },
             timeout: 5000,
         }, (err, response, body) => {
@@ -331,7 +520,7 @@ class RouteController {
             if (response.statusCode === 200) {
                 try {
                     const json = JSON.parse(body);
-                    if (typeof json !== 'undefined' && json.path) {
+                    if (!_.isUndefined(json) && json.path) {
                         const Server = Auth.allServers();
                         // Does the server even exist?
                         if (_.isUndefined(Server[json.server])) {
@@ -340,7 +529,7 @@ class RouteController {
 
                         // Get necessary information for the download.
                         const Filename = Path.basename(json.path);
-                        const Mimetype = Mime.lookup(json.path);
+                        const Mimetype = Mime.getType(json.path);
                         const File = Server[json.server].path(json.path);
                         const Stat = Fs.statSync(File);
                         this.res.writeHead(200, {
@@ -358,7 +547,7 @@ class RouteController {
                     return this.res.send(500, { 'error': 'An unexpected error occured while attempting to process this request.' });
                 }
             } else {
-                return this.res.send(502, { 'error': 'An error occured while attempting to authenticate with an upstream provider.', res_code: response.statusCode });
+                return this.res.send(502, { 'error': 'An error occured while attempting to authenticate with an upstream provider.', res_code: response.statusCode, res_body: JSON.parse(body) });
             }
         });
     }

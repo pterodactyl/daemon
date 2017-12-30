@@ -2,7 +2,7 @@
 
 /**
  * Pterodactyl - Daemon
- * Copyright (c) 2015 - 2016 Dane Everitt <dane@daneeveritt.com>
+ * Copyright (c) 2015 - 2017 Dane Everitt <dane@daneeveritt.com>.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,6 +28,7 @@ const Path = require('path');
 const Util = require('util');
 const Fs = require('fs-extra');
 const _ = require('lodash');
+const Klaw = require('klaw');
 
 const Log = rfr('src/helpers/logger.js');
 
@@ -35,7 +36,6 @@ const Server = rfr('src/controllers/server.js');
 const Servers = {};
 
 class Initialize {
-
     /**
      * Initializes all servers on the system and loads them into memory for NodeJS.
      * @param  {Function} next [description]
@@ -43,7 +43,7 @@ class Initialize {
      */
     init(next) {
         this.folders = [];
-        Fs.walk('./config/servers/').on('data', data => {
+        Klaw('./config/servers/').on('data', data => {
             this.folders.push(data.path);
         }).on('end', () => {
             Async.each(this.folders, (file, callback) => {
@@ -61,7 +61,9 @@ class Initialize {
                         }
 
                         // Initalize the Server
-                        this.setup(json, callback);
+                        this.setup(json, (err, server) => {
+                            return callback(err, server);
+                        });
                     });
                 } else {
                     return callback();
@@ -77,9 +79,29 @@ class Initialize {
      * @return {[type]}        [description]
      */
     setup(json, next) {
-        Servers[json.uuid] = new Server(json, err => {
+        Async.series([
+            callback => {
+                if (!_.isUndefined(Servers[json.uuid])) {
+                    delete Servers[json.uuid];
+                }
+
+                Servers[json.uuid] = new Server(json, callback);
+            },
+        ], err => {
+            if (err) return next(err);
+
             Log.debug({ server: json.uuid }, 'Loaded configuration and initalized server.');
-            return next(err);
+            return next(null, Servers[json.uuid]);
+        });
+    }
+
+    /**
+     * Sets up a server given its UUID.
+     */
+    setupByUuid(uuid, next) {
+        Fs.readJson(Util.format('./config/servers/%s/server.json', uuid), (err, object) => {
+            if (err) return next(err);
+            this.setup(object, next);
         });
     }
 }

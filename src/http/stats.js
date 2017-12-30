@@ -2,7 +2,7 @@
 
 /**
  * Pterodactyl - Daemon
- * Copyright (c) 2015 - 2016 Dane Everitt <dane@daneeveritt.com>
+ * Copyright (c) 2015 - 2017 Dane Everitt <dane@daneeveritt.com>.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -35,7 +35,7 @@ const Config = new ConfigHelper();
 
 class Stats {
     constructor() {
-        this.statSocket = Socket.of('/stats/');
+        this.statSocket = Socket.of('/v1/stats/');
         this.statSocket.use((params, next) => {
             if (!params.handshake.query.token) {
                 return next(new Error('You must pass the correct handshake values.'));

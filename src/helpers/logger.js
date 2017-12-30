@@ -2,7 +2,7 @@
 
 /**
  * Pterodactyl - Daemon
- * Copyright (c) 2015 - 2016 Dane Everitt <dane@daneeveritt.com>
+ * Copyright (c) 2015 - 2017 Dane Everitt <dane@daneeveritt.com>.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -39,18 +39,11 @@ const Log = Bunyan.createLogger({
             stream: process.stdout,
         },
         {
-            level: Config.get('logger.level', 'info'),
             type: 'rotating-file',
-            path: Path.join(Config.get('logger.path', 'logs/'), 'info.log'),
+            level: Config.get('logger.level', 'info'),
+            path: Path.join(Config.get('logger.path', 'logs/'), 'wings.log'),
             period: Config.get('logger.period', '1d'),
             count: Config.get('logger.count', 3),
-        },
-        {
-            level: 'error',
-            type: 'rotating-file',
-            path: Path.join(Config.get('logger.path', 'logs/'), 'error.log'),
-            period: '1d',
-            count: 3,
         },
     ],
 });

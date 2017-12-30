@@ -2,7 +2,7 @@
 
 /**
  * Pterodactyl - Daemon
- * Copyright (c) 2015 - 2016 Dane Everitt <dane@daneeveritt.com>
+ * Copyright (c) 2015 - 2017 Dane Everitt <dane@daneeveritt.com>.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,6 +27,7 @@ const Dockerode = require('dockerode');
 const _ = require('lodash');
 
 const LoadConfig = rfr('src/helpers/config.js');
+const Log = rfr('src/helpers/logger.js');
 
 const Config = new LoadConfig();
 const DockerController = new Dockerode({
@@ -34,7 +35,6 @@ const DockerController = new Dockerode({
 });
 
 class DockerImage {
-
     /**
      * Determines if an image exists.
      * @return boolean
@@ -51,11 +51,61 @@ class DockerImage {
      * @return {Function}
      */
     static pull(image, next) {
-        DockerController.pull(image, (err, stream) => {
+        let pullWithConfig = {};
+        if (_.isObject(Config.get('docker.registry', false))) {
+            if (Config.get('docker.registry.key', false)) {
+                pullWithConfig = {
+                    authconfig: {
+                        key: Config.get('docker.registry.key', ''),
+                    },
+                };
+            } else {
+                pullWithConfig = {
+                    authconfig: {
+                        username: Config.get('docker.registry.username', ''),
+                        password: Config.get('docker.registry.password', ''),
+                        auth: Config.get('docker.registry.auth', ''),
+                        email: Config.get('docker.registry.email', ''),
+                        serveraddress: Config.get('docker.registry.serveraddress', ''),
+                    },
+                };
+            }
+        }
+
+        const shouldUseAuth = _.some(Config.get('docker.registry.images', []), i => { // eslint-disable-line
+            if (_.endsWith(i, '*')) {
+                return _.startsWith(image, i.substr(0, i.length - 1));
+            } else if (_.startsWith(i, '*')) {
+                return _.endsWith(image, i.substr(1, i.length));
+            }
+
+            return i === image;
+        });
+
+        DockerController.pull(image, (shouldUseAuth) ? pullWithConfig : {}, (err, stream) => {
             if (err) return next(err);
+
+            let SendOutput;
             stream.setEncoding('utf8');
-            stream.on('data', () => { _.noop(); });
-            stream.on('end', next);
+            stream.on('data', () => {
+                if (_.isNil(SendOutput)) {
+                    Log.info(`Pulling image ${image} ... this could take a few minutes.`);
+                    const TimeInterval = (Config.get('logger.level', 'info') === 'debug') ? 2 : 10;
+                    SendOutput = setInterval(() => {
+                        if (Config.get('logger.level', 'info') === 'debug') {
+                            Log.debug(`Pulling image ${image} ... this could take a few minutes.`);
+                        } else {
+                            Log.info(`Pulling image ${image} ... this could take a few minutes.`);
+                        }
+                    }, TimeInterval * 1000);
+                }
+            });
+            stream.on('end', streamErr => {
+                if (!_.isNil(SendOutput)) {
+                    clearInterval(SendOutput);
+                }
+                return next(streamErr);
+            });
             stream.on('error', next);
         });
     }

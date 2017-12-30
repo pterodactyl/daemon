@@ -1,13 +1,19 @@
 language: node_js
 node_js:
+  - "8"
+  - "7"
   - "6"
-  - "5"
-  - "4"
 env:
   - CXX=g++-4.8
+cache:
+  yarn: true
+  directories:
+    - $HOME/.npm
 addons:
   apt:
     sources:
       - ubuntu-toolchain-r-test
     packages:
       - g++-4.8
+notifications:
+  email: false

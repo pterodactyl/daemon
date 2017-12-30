@@ -2,7 +2,7 @@
 
 /**
  * Pterodactyl - Daemon
- * Copyright (c) 2015 - 2016 Dane Everitt <dane@daneeveritt.com>
+ * Copyright (c) 2015 - 2017 Dane Everitt <dane@daneeveritt.com>.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -55,7 +55,7 @@ const CONST_STDMEM = Config.get('docker.memory.std.value', 10240);
 class Docker {
     constructor(server, next) {
         this.server = server;
-        this.containerID = this.server.json.container.id;
+        this.containerID = _.get(this.server.json, 'container.id', null);
         this.container = DockerController.getContainer(this.containerID);
         this.stream = undefined;
         this.procStream = undefined;
@@ -166,9 +166,14 @@ class Docker {
             return next(new Error('An active stream is already in use for this container.'));
         }
 
-        this.container.exec({ Cmd: command, AttachStdin: true, AttachStdout: true, Tty: true }, (err, exec) => {
+        this.container.exec({
+            Cmd: command,
+            AttachStdin: true,
+            AttachStdout: true,
+            Tty: true,
+        }, (err, exec) => {
             if (err) return next(err);
-            exec.start((execErr, stream) => {
+            exec.start({ stdin: true }, (execErr, stream) => {
                 if (!execErr && stream) {
                     stream.setEncoding('utf8');
 
@@ -215,7 +220,12 @@ class Docker {
             return next(new Error('An active stream is already in use for this container.'));
         }
 
-        this.container.attach({ stream: true, stdin: true, stdout: true, stderr: true }, (err, stream) => {
+        this.container.attach({
+            stream: true,
+            stdin: true,
+            stdout: true,
+            stderr: true,
+        }, (err, stream) => {
             if (err) return next(err);
             this.stream = stream;
             this.stream.setEncoding('utf8');
@@ -280,16 +290,17 @@ class Docker {
     }
 
     /**
-     * Rebuilds a given servers container.
+     * Builds a new container for a server.
      * @param  {Function} next
      * @return {Callback}
      */
-    rebuild(next) {
+    build(next) {
         const config = this.server.json.build;
         const bindings = {};
         const exposed = {};
-        Async.series([
-            callback => {
+        const environment = [];
+        Async.auto({
+            update_images: callback => {
                 // The default is to not automatically update images.
                 if (!Config.get('docker.autoupdate_images', true)) {
                     ImageHelper.exists(config.image, err => {
@@ -302,9 +313,9 @@ class Docker {
                     ImageHelper.pull(config.image, callback);
                 }
             },
-            callback => {
+            update_ports: callback => {
                 // Build the port bindings
-                Async.forEachOf(config.ports, (ports, ip, eachCallback) => {
+                Async.eachOf(config.ports, (ports, ip, eachCallback) => {
                     if (!_.isArray(ports)) return eachCallback();
                     Async.each(ports, (port, portCallback) => {
                         if (/^\d{1,6}$/.test(port) !== true) return portCallback();
@@ -322,32 +333,36 @@ class Docker {
                     }, eachCallback);
                 }, callback);
             },
-            callback => {
-                this.server.log.debug('Creating new container...');
-
-                // Add some additional environment variables
+            set_environment: callback => {
                 config.env.SERVER_MEMORY = config.memory;
                 config.env.SERVER_IP = config.default.ip;
                 config.env.SERVER_PORT = config.default.port;
-
-                const environment = [];
-                _.forEach(config.env, (value, index) => {
-                    if (_.isNull(value)) return;
+                Async.eachOf(config.env, (value, index, eachCallback) => {
+                    if (_.isNull(value)) return eachCallback();
                     environment.push(Util.format('%s=%s', index, value));
-                });
+                    return eachCallback();
+                }, callback);
+            },
+            create_container: ['update_images', 'update_ports', 'set_environment', (r, callback) => {
+                this.server.log.debug('Creating new container...');
+
+                if (_.get(config, 'image').length < 1) {
+                    return callback(new Error('No docker image was passed to the script. Unable to create container!'));
+                }
 
                 // How Much Swap?
                 let swapSpace = 0;
                 if (config.swap < 0) {
                     swapSpace = -1;
                 } else if (config.swap > 0 && config.memory > 0) {
-                    swapSpace = ((config.memory + config.swap) * 1000000);
+                    swapSpace = ((config.memory + config.swap) * 1000 * 1000);
                 }
                 // Make the container
                 DockerController.createContainer({
                     Image: config.image,
+                    name: this.server.json.uuid,
                     Hostname: 'container',
-                    User: config.user.toString(),
+                    User: Config.get('docker.container.user', 1000).toString(),
                     AttachStdin: true,
                     AttachStdout: true,
                     AttachStderr: true,
@@ -360,8 +375,8 @@ class Docker {
                             RW: true,
                         },
                         {
-                            Source: '/etc/timezone',
-                            Destination: '/etc/timezone',
+                            Source: Config.get('docker.timezone_path'),
+                            Destination: Config.get('docker.timezone_path'),
                             RW: false,
                         },
                     ],
@@ -370,34 +385,31 @@ class Docker {
                     HostConfig: {
                         Binds: [
                             Util.format('%s:/home/container', this.server.path()),
-                            '/etc/timezone:/etc/timezone:ro',
+                            Util.format('%s:%s:ro', Config.get('docker.timezone_path'), Config.get('docker.timezone_path')),
                         ],
                         Tmpfs: {
-                            '/tmp': '',
+                            '/tmp': Config.get('docker.policy.container.tmpfs', 'rw,exec,nosuid,size=50M'),
                         },
                         PortBindings: bindings,
                         OomKillDisable: config.oom_disabled || false,
                         CpuQuota: (config.cpu > 0) ? (config.cpu * 1000) : -1,
                         CpuPeriod: (config.cpu > 0) ? 100000 : 0,
-                        Memory: this.hardlimit(config.memory) * 1000000,
-                        MemoryReservation: config.memory * 1000000,
+                        Memory: this.hardlimit(config.memory) * 1000 * 1000,
+                        MemoryReservation: config.memory * 1000 * 1000,
                         MemorySwap: swapSpace,
                         BlkioWeight: config.io,
                         Dns: Config.get('docker.dns', [
                             '8.8.8.8',
                             '8.8.4.4',
                         ]),
-                        ExtraHosts: [
-                            `container:${Config.get('docker.interface')}`,
-                        ],
                         LogConfig: {
-                            Type: 'none',
+                            Type: Config.get('docker.policy.container.log_driver', 'none'),
                         },
-                        SecurityOpt: [
+                        SecurityOpt: Config.get('docker.policy.container.securityopts', [
                             'no-new-privileges',
-                        ],
-                        ReadonlyRootfs: true,
-                        CapDrop: [
+                        ]),
+                        ReadonlyRootfs: Config.get('docker.policy.container.readonly_root', true),
+                        CapDrop: Config.get('docker.policy.container.cap_drop', [
                             'setpcap',
                             'mknod',
                             'audit_write',
@@ -412,36 +424,35 @@ class Docker {
                             'net_bind_service',
                             'sys_chroot',
                             'setfcap',
-                        ],
-                        NetworkMode: 'pterodactyl_nw',
+                        ]),
+                        NetworkMode: Config.get('docker.network.name', 'pterodactyl_nw'),
                     },
                 }, (err, container) => {
                     callback(err, container);
                 });
-            },
-        ], (err, data) => {
-            if (err) {
+            }],
+        }, (err, data) => {
+            if (err) return next(err);
+            return next(null, {
+                id: data.create_container.id,
+                image: config.image,
+            });
+        });
+    }
+
+    /**
+     * Destroys a container for a server.
+     */
+    destroy(container, next) {
+        const FindContainer = DockerController.getContainer(container);
+        FindContainer.inspect(err => {
+            if (!err) {
+                this.container.remove(next);
+            } else if (err && _.startsWith(_.get(err, 'json.message', 'error'), 'No such container')) { // no such container
+                return next();
+            } else {
                 return next(err);
             }
-            this.server.log.debug('Removing old server container...');
-
-            const newContainerInfo = {
-                id: data[2].id,
-                image: config.image,
-            };
-
-            this.container.inspect(inspectErr => {
-                // if the inspection does not fail, the container exists
-                if (!inspectErr) {
-                    this.container.remove(removeError => {
-                        next(removeError, newContainerInfo);
-                    });
-                // if it doesn't we'll just skip removal
-                } else {
-                    this.server.log.debug('Old container not found, skipping.');
-                    next(null, newContainerInfo);
-                }
-            });
         });
     }
 }

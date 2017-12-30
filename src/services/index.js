@@ -26,10 +26,9 @@ const rfr = require('rfr');
 const Async = require('async');
 const _ = require('lodash');
 const Fs = require('fs-extra');
-const extendify = require('extendify');
-const Gamedig = require('gamedig');
 const isStream = require('isstream');
 const Path = require('path');
+const Util = require('util');
 const createOutputStream = require('create-output-stream');
 const Ansi = require('ansi-escape-sequences');
 
@@ -37,59 +36,45 @@ const Status = rfr('src/helpers/status.js');
 const FileParserHelper = rfr('src/helpers/fileparser.js');
 
 class Core {
-    constructor(server, config) {
+    constructor(server, config = null, next) {
         this.server = server;
         this.json = server.json;
-        this.option = this.json.service.option;
-        this.object = undefined;
+
+        try {
+            this.config = config || rfr(Util.format('src/services/configs/%s.json', this.json.service.egg));
+        } catch (ex) {
+            if (ex.code === 'MODULE_NOT_FOUND') {
+                this.server.log.warn('Could not locate an Egg configuration for server, a rebuild will be required.');
+                this.config = {};
+            } else {
+                throw ex;
+            }
+        }
+
+        this.service = this.json.service;
         this.logStream = undefined;
+        this.logStreamClosing = false;
 
         this.parser = new FileParserHelper(this.server);
 
-        // Find our data on initialization.
-        _.forEach(config, element => {
-            if (this.option.match(element.tag)) {
-                // Handle "symlink" in the configuration for plugins...
-                this.object = element;
-                const deepExtend = extendify({
-                    inPlace: false,
-                    arrays: 'replace',
-                });
-                if (!_.isUndefined(element.symlink) && !_.isUndefined(config[element.symlink])) {
-                    this.object = deepExtend(config[element.symlink], element);
-                }
-            }
-        });
+        return next();
     }
 
     doQuery(next) {
-        if (this.object.query === 'none') {
-            return next(null, {});
-        }
-
-        Gamedig.query({
-            type: this.object.query,
-            host: this.json.build.default.ip,
-            port: this.json.build.default.port,
-            port_query: this.json.build.default.port,
-        }, response => {
-            if (response.error) return next(new Error(`Server unresponsive to query attempt. (${response.error})`));
-            return next(null, response);
-        });
+        return next(null);
     }
 
-    // Forgive me padrè for I have sinned. Badly.
-    //
-    // This is some incredibly messy code. As best I can describe, it
-    // loop through each listed config file, and then uses regex to search
-    // and replace values with values from the config file.
-    //
-    // This is all done with parallel functions, so every listed file
-    // is opened, and then all of the lines are run at the same time.
-    // Very quick function, surprisingly...
     onPreflight(next) {
+        if (_.isEmpty(this.config)) {
+            this.server.emit('console', `${Ansi.style['bg-red']}${Ansi.style.white}[Pterodactyl Daemon] No Egg configuration located. This server cannot be started.`);
+            return next(new Error('A server cannot be started if there is no configuration loaded for the Egg.'));
+        }
+
+        let lastFile;
+
         // Check each configuration file and set variables as needed.
-        Async.forEachOf(this.object.configs, (data, file, callback) => {
+        Async.forEachOf(_.get(this.config, 'configs', {}), (data, file, callback) => {
+            lastFile = file;
             switch (_.get(data, 'parser', 'file')) {
             case 'file':
                 this.parser.file(file, _.get(data, 'find', {}), callback);
@@ -110,14 +95,21 @@ class Core {
                 return callback(new Error('Parser assigned to file is not valid.'));
             }
         }, err => {
-            if (err) return next(err);
-            if (_.get(this.object, 'log.custom', false) === true) {
-                if (isStream.isWritable(this.logStream)) {
+            if (err) {
+                this.server.emit('console', `${Ansi.style.red}[Pterodactyl Daemon] ${err.name} while processing ${lastFile}`);
+                this.server.emit('console', `${Ansi.style.red}[Pterodactyl Daemon] ${err.message}`);
+                return next(err);
+            }
+
+            if (_.get(this.config, 'log.custom', false)) {
+                if (!this.logStreamClosing && isStream.isWritable(this.logStream)) {
+                    this.logStreamClosing = true;
                     this.logStream.end(() => {
                         this.logStream = false;
+                        this.logStreamClosing = false;
                     });
                 }
-                Fs.remove(this.server.path(_.get(this.object, 'log.location', 'logs/latest.log')), removeErr => {
+                Fs.remove(this.server.path(_.get(this.config, 'log.location', 'logs/latest.log')), removeErr => {
                     if (removeErr && !_.includes(removeErr.message, 'ENOENT: no such file or directory')) {
                         return next(removeErr);
                     }
@@ -136,7 +128,6 @@ class Core {
     }
 
     onStart(next) {
-        this.onConsole(`${Ansi.style.green}(Daemon) Server detected as started.`);
         if (_.isFunction(next)) {
             return next();
         }
@@ -149,21 +140,21 @@ class Core {
             },
             () => {
                 // Custom Log?
-                if (_.get(this.object, 'log.custom', false) === true) {
-                    if (isStream.isWritable(this.logStream)) {
+                if (_.get(this.config, 'log.custom', false) === true) {
+                    if (!this.logStreamClosing && isStream.isWritable(this.logStream)) {
                         this.logStream.write(`${data}\n`);
-                    } else {
-                        const LogFile = this.server.path(_.get(this.object, 'log.location', 'logs/latest.log'));
+                    } else if(!this.logStreamClosing) { // Don't recreate the stream when its supposed to close.
+                        const LogFile = this.server.path(_.get(this.config, 'log.location', 'logs/latest.log'));
                         Async.series([
                             callback => {
                                 this.logStream = createOutputStream(LogFile, {
-                                    mode: '0755',
+                                    mode: '0o644',
                                     defaultEncoding: 'utf8',
                                 });
                                 return callback();
                             },
                             callback => {
-                                Fs.chown(Path.dirname(LogFile), this.json.build.user, this.json.build.user, callback);
+                                Fs.chown(Path.dirname(LogFile), Config.get('docker.container.user', 1000), Config.get('docker.container.user', 1000), callback);
                             },
                         ], err => {
                             if (err) this.server.log.warn(err);
@@ -173,7 +164,7 @@ class Core {
             },
             () => {
                 // Started
-                if (_.includes(data, this.object.startup.done)) {
+                if (_.includes(data, _.get(this.config, 'startup.done', null))) {
                     Async.series([
                         callback => {
                             this.onStart(callback);
@@ -186,12 +177,12 @@ class Core {
                 }
 
                 // Stopped; Don't trigger crash
-                if (this.server.status !== Status.ON && !_.isUndefined(this.object.startup.userInteraction)) {
-                    Async.each(this.object.startup.userInteraction, string => {
+                if (this.server.status !== Status.ON && _.isArray(_.get(this.config, 'startup.userInteraction'))) {
+                    Async.each(_.get(this.config, 'startup.userInteraction'), string => {
                         if (_.includes(data, string)) {
                             this.server.log.info('Server detected as requiring user interaction, stopping now.');
                             this.server.setStatus(Status.STOPPING);
-                            this.server.command(this.object.stop, err => {
+                            this.server.command(_.get(this.config, 'stop'), err => {
                                 if (err) this.server.log.warn(err);
                             });
                         }
@@ -204,13 +195,11 @@ class Core {
     onStop(next) {
         Async.series([
             callback => {
-                this.onConsole(`${Ansi.style.green}(Daemon) Server detected as stopped.`);
-                callback();
-            },
-            callback => {
-                if (isStream.isWritable(this.logStream)) {
+                if (!this.logStreamClosing && isStream.isWritable(this.logStream)) {
+                    this.logStreamClosing = true;
                     this.logStream.end(() => {
                         this.logStream = false;
+                        this.logStreamClosing = false;
                         callback();
                     });
                 } else {
@@ -223,7 +212,6 @@ class Core {
             }
         });
     }
-
 }
 
 module.exports = Core;

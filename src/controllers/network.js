@@ -2,7 +2,7 @@
 
 /**
  * Pterodactyl - Daemon
- * Copyright (c) 2015 - 2016 Dane Everitt <dane@daneeveritt.com>
+ * Copyright (c) 2015 - 2017 Dane Everitt <dane@daneeveritt.com>.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -22,11 +22,10 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-const NETWORK_NAME = 'pterodactyl_nw';
-
 const rfr = require('rfr');
 const Dockerode = require('dockerode');
 const _ = require('lodash');
+const CIDR = require('ip-cidr');
 
 const Log = rfr('src/helpers/logger.js');
 const LoadConfig = rfr('src/helpers/config.js');
@@ -36,8 +35,9 @@ const DockerController = new Dockerode({
     socketPath: Config.get('docker.socket', '/var/run/docker.sock'),
 });
 
-class Network {
+const NETWORK_NAME = Config.get('docker.network.name', 'pterodactyl_nw');
 
+class Network {
     // Initalization Sequence for Networking
     // Called when Daemon boots.
     init(next) {
@@ -61,12 +61,24 @@ class Network {
         DockerController.createNetwork({
             Name: NETWORK_NAME,
             Driver: 'bridge',
-            EnableIPv6: true,
-            Internal: false,
+            EnableIPv6: Config.get('docker.policy.network.ipv6', true),
+            Internal: Config.get('docker.policy.network.internal', false),
+            IPAM: {
+                Config: [
+                    {
+                        Subnet: Config.get('docker.network.interfaces.v4.subnet', '172.18.0.0/16'),
+                        Gateway: Config.get('docker.network.interfaces.v4.gateway', '172.18.0.1'),
+                    },
+                    {
+                        Subnet: Config.get('docker.network.interfaces.v6.subnet', 'fdba:17c8:6c94::/64'),
+                        Gateway: Config.get('docker.network.interfaces.v6.gateway', 'fdba:17c8:6c94::1011'),
+                    },
+                ],
+            },
             Options: {
                 'com.docker.network.bridge.default_bridge': 'false',
-                'com.docker.network.bridge.enable_icc': 'false',
-                'com.docker.network.bridge.enable_ip_masquerade': 'true',
+                'com.docker.network.bridge.enable_icc': Config.get('docker.policy.network.enable_icc', 'true'),
+                'com.docker.network.bridge.enable_ip_masquerade': Config.get('docker.policy.network.enable_ip_masquerade', 'true'),
                 'com.docker.network.bridge.host_binding_ipv4': '0.0.0.0',
                 'com.docker.network.bridge.name': 'pterodactyl0',
                 'com.docker.network.driver.mtu': '1500',
@@ -80,18 +92,44 @@ class Network {
 
     interface(next) {
         Log.info('Checking gateway for pterodactyl0');
-        const DockerNetwork = DockerController.getNetwork('pterodactyl_nw');
+        const DockerNetwork = DockerController.getNetwork(NETWORK_NAME);
         DockerNetwork.inspect((err, data) => {
             if (err) return next(err);
+
+            if (_.get(data, 'Driver') === 'host') {
+                Log.warn('Detected daemon configuation using HOST NETWORK for server containers. This can expose the host network stack to programs running in containers!');
+                Log.info('Gateway detected as 127.0.0.1 - using host network.');
+                Config.modify({
+                    docker: {
+                        interface: '127.0.0.1',
+                    },
+                }, next);
+                return;
+            }
 
             if (!_.get(data, 'IPAM.Config[0].Gateway', false)) {
                 return next(new Error('No gateway could be found for pterodactyl0.'));
             }
 
-            Log.info(`Gateway detected as ${_.get(data, 'IPAM.Config[0].Gateway')} for pterodactyl0.`);
+            const Gateway = new CIDR(_.get(data, 'IPAM.Config[0].Gateway', '172.18.0.1'));
+            let IPGateway = null;
+            if (!Gateway.isValid()) {
+                return next(new Error('The pterodactyl0 network gateway is invalid.'));
+            }
+
+            const GatewayRange = Gateway.toRange();
+            if (GatewayRange[0] === GatewayRange[1]) {
+                IPGateway = GatewayRange[0];
+            } else {
+                const Split = _.split(GatewayRange[0], '.');
+                Split[3] = Number(_.last(Split)) + 1;
+                IPGateway = Split.join('.');
+            }
+
+            Log.info(`Gateway detected as ${IPGateway} for pterodactyl0.`);
             Config.modify({
                 docker: {
-                    interface: _.get(data, 'IPAM.Config[0].Gateway'),
+                    interface: IPGateway,
                 },
             }, next);
         });

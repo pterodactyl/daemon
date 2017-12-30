@@ -2,7 +2,7 @@
 
 /**
  * Pterodactyl - Daemon
- * Copyright (c) 2015 - 2016 Dane Everitt <dane@daneeveritt.com>
+ * Copyright (c) 2015 - 2017 Dane Everitt <dane@daneeveritt.com>.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,6 +23,8 @@
  * SOFTWARE.
  */
 const rfr = require('rfr');
+const _ = require('lodash');
+const Ansi = require('ansi-escape-sequences');
 
 const RestServer = rfr('src/http/restify.js');
 const Socket = require('socket.io').listen(RestServer.server);
@@ -30,24 +32,108 @@ const Socket = require('socket.io').listen(RestServer.server);
 class WebSocket {
     constructor(server) {
         this.server = server;
-        this.websocket = Socket.of(`/ws/${this.server.json.uuid}`);
+        this.websocket = Socket.of(`/v1/ws/${this.server.json.uuid}`);
 
-        // Standard Websocket Permissions
         this.websocket.use((params, next) => {
             if (!params.handshake.query.token) {
                 return next(new Error('You must pass the correct handshake values.'));
             }
-            if (!this.server.hasPermission('s:console', params.handshake.query.token)) {
-                return next(new Error('You do not have permission to access this socket (ws).'));
-            }
-            return next();
+
+            this.server.hasPermission('s:console', params.handshake.query.token, (err, hasPermission) => {
+                if (err || !hasPermission) {
+                    return next(new Error('You do not have permission to access the socket for this server.'));
+                }
+
+                return next();
+            });
         });
     }
 
     init() {
         // Send Initial Status when Websocket is connected to
-        this.websocket.on('connection', () => {
-            this.websocket.emit('initial_status', {
+        this.websocket.on('connection', activeSocket => {
+            activeSocket.on('send command', data => {
+                this.server.hasPermission('s:command', activeSocket.handshake.query.token, (err, hasPermission) => {
+                    if (err || !hasPermission) {
+                        return;
+                    }
+
+                    this.server.command(data, () => {
+                        _.noop();
+                    });
+                });
+            });
+
+            activeSocket.on('send server log', () => {
+                this.server.hasPermission('s:console', activeSocket.handshake.query.token, (err, hasPermission) => {
+                    if (err || !hasPermission) {
+                        return;
+                    }
+
+                    if (!_.isUndefined(_.get(this.server, 'service.config.log.location'))) {
+                        this.server.fs.readEnd(_.get(this.server, 'service.config.log.location'), (readErr, readData) => {
+                            if (readErr) return this.websocket.emit('console', 'There was an error while attempting to get the log file.');
+                            activeSocket.emit('server log', readData);
+                        });
+                    } else {
+                        this.websocket.emit('console', {
+                            line: `${Ansi.style.red}[Pterodactyl Daemon] No log location is configured for this server or service!`,
+                        });
+                    }
+                });
+            });
+
+            activeSocket.on('set status', data => {
+                switch (data) {
+                case 'start':
+                case 'on':
+                case 'boot':
+                    this.server.hasPermission('s:power:start', activeSocket.handshake.query.token, (err, hasPermission) => {
+                        if (err || !hasPermission) {
+                            return;
+                        }
+
+                        this.server.start(() => { _.noop(); });
+                    });
+                    break;
+                case 'off':
+                case 'stop':
+                case 'end':
+                case 'quit':
+                    this.server.hasPermission('s:power:stop', activeSocket.handshake.query.token, (err, hasPermission) => {
+                        if (err || !hasPermission) {
+                            return;
+                        }
+
+                        this.server.stop(() => { _.noop(); });
+                    });
+                    break;
+                case 'restart':
+                case 'reload':
+                    this.server.hasPermission('s:power:restart', activeSocket.handshake.query.token, (err, hasPermission) => {
+                        if (err || !hasPermission) {
+                            return;
+                        }
+
+                        this.server.restart(() => { _.noop(); });
+                    });
+                    break;
+                case 'kill':
+                case '^C':
+                    this.server.hasPermission('s:power:kill', activeSocket.handshake.query.token, (err, hasPermission) => {
+                        if (err || !hasPermission) {
+                            return;
+                        }
+
+                        this.server.kill(() => { _.noop(); });
+                    });
+                    break;
+                default:
+                    break;
+                }
+            });
+
+            activeSocket.emit('initial status', {
                 'status': this.server.status,
             });
         });
@@ -56,7 +142,7 @@ class WebSocket {
         this.server.on('console', output => {
             const data = output.toString();
             // Is this data even worth dealing with?
-            if ((data.replace(/\s+/g, '')).length > 1) {
+            if (_.replace(data, /\s+/g, '').length > 1) {
                 this.websocket.emit('console', {
                     'line': data,
                 });

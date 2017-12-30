@@ -2,7 +2,7 @@
 
 /**
  * Pterodactyl - Daemon
- * Copyright (c) 2015 - 2016 Dane Everitt <dane@daneeveritt.com>
+ * Copyright (c) 2015 - 2017 Dane Everitt <dane@daneeveritt.com>.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -39,7 +39,7 @@ const RestLogger = Bunyan.createLogger({
             level: 'info',
             type: 'rotating-file',
             path: Path.join(Config.get('logger.path', 'logs/'), 'request.log'),
-            period: '1d',
+            period: '4h',
             count: 3,
         },
     ],
@@ -49,6 +49,11 @@ const RestServer = Restify.createServer({
     name: 'Pterodactyl Daemon',
     certificate: (Config.get('web.ssl.enabled') === true) ? Fs.readFileSync(Config.get('web.ssl.certificate')) : null,
     key: (Config.get('web.ssl.enabled') === true) ? Fs.readFileSync(Config.get('web.ssl.key')) : null,
+    formatters: {
+        'application/json': (req, res, body, callback) => {
+            callback(null, JSON.stringify(body, null, 4));
+        },
+    },
 });
 
 RestServer.pre((req, res, next) => {

@@ -2,7 +2,7 @@
 
 /**
  * Pterodactyl - Daemon
- * Copyright (c) 2015 - 2016 Dane Everitt <dane@daneeveritt.com>
+ * Copyright (c) 2015 - 2017 Dane Everitt <dane@daneeveritt.com>.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,13 +28,16 @@ const Path = require('path');
 const Chokidar = require('chokidar');
 const _ = require('lodash');
 const Mmm = require('mmmagic');
-const decompressEngine = require('decompress');
-const Tar = require('tar-fs');
 const RandomString = require('randomstring');
-const chownr = require('chownr');
+const Process = require('child_process');
+const Util = require('util');
+const rfr = require('rfr');
 
 const Magic = Mmm.Magic;
 const Mime = new Magic(Mmm.MAGIC_MIME_TYPE);
+
+const ConfigHelper = rfr('src/helpers/config.js');
+const Config = new ConfigHelper();
 
 class FileSystem {
     constructor(server) {
@@ -53,7 +56,7 @@ class FileSystem {
                         // Try to overwrite those changes with the old config.
                         this.server.log.warn(err, 'An error was detected with the changed file, attempting to undo the changes.');
                         this.server.knownWrite = true;
-                        Fs.writeJson(this.server.configLocation, this.server.json, writeErr => {
+                        Fs.writeJson(this.server.configLocation, this.server.json, { spaces: 2 }, writeErr => {
                             if (!writeErr) {
                                 this.server.log.debug('Successfully undid those remote changes.');
                             } else {
@@ -69,13 +72,42 @@ class FileSystem {
         });
     }
 
+    size(next) {
+        const Exec = Process.spawn('du', ['-hsb', this.server.path()], {});
+
+        Exec.stdout.on('data', data => {
+            next(null, parseInt(_.split(data.toString(), '\t')[0], 10));
+        });
+
+        Exec.on('error', execErr => {
+            this.server.log.error(execErr);
+            return next(new Error('There was an error while attempting to check the size of the server data folder.'));
+        });
+
+        Exec.on('exit', (code, signal) => {
+            if (code !== 0) {
+                return next(new Error(`Unable to determine size of server data folder, exited with code ${code} signal ${signal}.`));
+            }
+        });
+    }
+
     chown(file, next) {
         let chownTarget = file;
         if (!_.startsWith(chownTarget, this.server.path())) {
             chownTarget = this.server.path(file);
         }
 
-        chownr(chownTarget, this.server.json.build.user, this.server.json.build.user, next);
+        const Exec = Process.spawn('chown', ['-R', Util.format('%d:%d', Config.get('docker.container.user', 1000), Config.get('docker.container.user', 1000)), chownTarget], {});
+        Exec.on('error', execErr => {
+            this.server.log.error(execErr);
+            return next(new Error('There was an error while attempting to set ownership of files.'));
+        });
+        Exec.on('exit', (code, signal) => {
+            if (code !== 0) {
+                return next(new Error(`Unable to set ownership of files properly, exited with code ${code} signal ${signal}.`));
+            }
+            return next();
+        });
     }
 
     isSelf(moveTo, moveFrom) {
@@ -119,6 +151,34 @@ class FileSystem {
                 return next(new Error('This file is too large to open.'));
             }
             Fs.readFile(this.server.path(file), 'utf8', next);
+        });
+    }
+
+    readBytes(file, offset, length, next) {
+        Fs.stat(this.server.path(file), (err, stat) => {
+            if (err) return next(err);
+            if (!stat.isFile()) {
+                const internalError = new Error('Trying to read bytes from a non-file.');
+                internalError.code = 'EISDIR';
+
+                return next(internalError);
+            }
+
+            if (offset >= stat.size) {
+                return next(null, null, true);
+            }
+
+            const chunks = [];
+            const stream = Fs.createReadStream(this.server.path(file), {
+                start: offset,
+                end: (offset + length) - 1,
+            });
+            stream.on('data', data => {
+                chunks.push(data);
+            });
+            stream.on('end', () => {
+                next(null, Buffer.concat(chunks), false);
+            });
         });
     }
 
@@ -166,12 +226,24 @@ class FileSystem {
         }
     }
 
-    delete(path, next) {
-        // Safety - prevent deleting the main folder.
-        if (Path.resolve(this.server.path(path)) === this.server.path()) {
-            return next(new Error('You cannot delete your home folder.'));
+    rm(path, next) {
+        if (_.isString(path)) {
+            // Safety - prevent deleting the main folder.
+            if (Path.resolve(this.server.path(path)) === this.server.path()) {
+                return next(new Error('You cannot delete your home folder.'));
+            }
+
+            Fs.remove(this.server.path(path), next);
+        } else {
+            Async.eachOfLimit(path, 5, (value, key, callback) => {
+                // Safety - prevent deleting the main folder.
+                if (Path.resolve(this.server.path(value)) === this.server.path()) {
+                    return next(new Error('You cannot delete your home folder.'));
+                }
+
+                Fs.remove(this.server.path(value), callback);
+            }, next);
         }
-        Fs.remove(this.server.path(path), next);
     }
 
     copy(initial, ending, opts, next) {
@@ -187,7 +259,7 @@ class FileSystem {
             Async.series([
                 callback => {
                     Fs.copy(this.server.path(initial), this.server.path(ending), {
-                        clobber: opts.clobber || true,
+                        overwrite: opts.overwrite || true,
                         preserveTimestamps: opts.timestamps || false,
                     }, callback);
                 },
@@ -207,7 +279,7 @@ class FileSystem {
                     return next(new Error('You cannot copy a folder into itself.'));
                 }
                 Fs.copy(this.server.path(value), this.server.path(ending[key]), {
-                    clobber: _.get(opts, 'clobber', true),
+                    overwrite: _.get(opts, 'overwrite', true),
                     preserveTimestamps: _.get(opts, 'timestamps', false),
                 }, err => {
                     if (err) return callback(err);
@@ -219,17 +291,18 @@ class FileSystem {
 
     stat(file, next) {
         Fs.stat(this.server.path(file), (err, stat) => {
-            if (err) next(err);
+            if (err) return next(err);
             Mime.detectFile(this.server.path(file), (mimeErr, result) => {
                 next(null, {
                     'name': (Path.parse(this.server.path(file))).base,
-                    'created': stat.ctime,
+                    'created': stat.birthtime,
                     'modified': stat.mtime,
+                    'mode': stat.mode,
                     'size': stat.size,
                     'directory': stat.isDirectory(),
                     'file': stat.isFile(),
                     'symlink': stat.isSymbolicLink(),
-                    'mime': result || 'unknown',
+                    'mime': result || 'application/octet-stream',
                 });
             });
         });
@@ -240,7 +313,7 @@ class FileSystem {
             if (this.isSelf(ending, initial)) {
                 return next(new Error('You cannot move a file or folder into itself.'));
             }
-            Fs.move(this.server.path(initial), this.server.path(ending), { clobber: false }, err => {
+            Fs.move(this.server.path(initial), this.server.path(ending), { overwrite: false }, err => {
                 if (err && !_.startsWith(err.message, 'EEXIST:')) return next(err);
                 this.chown(ending, next);
             });
@@ -255,7 +328,7 @@ class FileSystem {
                 if (this.isSelf(ending[key], value)) {
                     return next(new Error('You cannot move a file or folder into itself.'));
                 }
-                Fs.move(this.server.path(value), this.server.path(ending[key]), { clobber: false }, err => {
+                Fs.move(this.server.path(value), this.server.path(ending[key]), { overwrite: false }, err => {
                     if (err && !_.startsWith(err.message, 'EEXIST:')) return callback(err);
                     this.chown(ending[key], callback);
                 });
@@ -267,32 +340,51 @@ class FileSystem {
         if (!_.isArray(files)) {
             const fromFile = this.server.path(files);
             const toDir = fromFile.substring(0, _.lastIndexOf(fromFile, '/'));
-            decompressEngine(fromFile, toDir, {
-                strip: 1,
-            }).then(out => {
-                Async.eachOfLimit(out, 10, (v, k, eachCallback) => {
-                    Fs.chown(Path.join(toDir, v.path), this.server.json.build.user, this.server.json.build.user, eachCallback);
-                }, err => {
-                    next(err);
-                });
-            }).catch(next);
+            this.systemDecompress(fromFile, toDir, next);
         } else if (_.isArray(files)) {
             Async.eachLimit(files, 1, (file, callback) => {
                 const fromFile = this.server.path(file);
                 const toDir = fromFile.substring(0, _.lastIndexOf(fromFile, '/'));
-                decompressEngine(fromFile, toDir, {
-                    strip: 1,
-                }).then(out => {
-                    Async.eachOfLimit(out, 10, (v, k, eachCallback) => {
-                        Fs.chown(this.server.path(Path.join(toDir, v.path)), this.server.json.build.user, this.server.json.build.user, eachCallback);
-                    }, err => {
-                        next(err);
-                    });
-                }).catch(callback);
+                this.systemDecompress(fromFile, toDir, callback);
             }, next);
         } else {
             return next(new Error('Invalid datatype passed to decompression function.'));
         }
+    }
+
+    systemDecompress(file, to, next) {
+        Mime.detectFile(file, (err, result) => {
+            if (err) return next(err);
+
+            let Exec;
+            if (result === 'application/x-gzip' || result === 'application/gzip') {
+                Exec = Process.spawn('tar', ['xzf', Path.basename(file), '-C', to], {
+                    cwd: Path.dirname(file),
+                    uid: Config.get('docker.container.user', 1000),
+                    gid: Config.get('docker.container.user', 1000),
+                });
+            } else if (result === 'application/zip') {
+                Exec = Process.spawn('unzip', ['-q', '-o', Path.basename(file), '-d', to], {
+                    cwd: Path.dirname(file),
+                    uid: Config.get('docker.container.user', 1000),
+                    gid: Config.get('docker.container.user', 1000),
+                });
+            } else {
+                return next(new Error(`Decompression of file failed: ${result} is not a decompessible Mimetype.`));
+            }
+
+            Exec.on('error', execErr => {
+                this.server.log.error(execErr);
+                return next(new Error('There was an error while attempting to decompress this file.'));
+            });
+            Exec.on('exit', (code, signal) => {
+                if (code !== 0) {
+                    return next(new Error(`Decompression of file exited with code ${code} signal ${signal}.`));
+                }
+
+                return next();
+            });
+        });
     }
 
     // Unlike other functions, if multiple files and folders are passed
@@ -307,13 +399,7 @@ class FileSystem {
             if (this.isSelf(to, files)) {
                 return next(new Error('Unable to compress folder into itself.'));
             }
-
-            const Stream = Fs.createWriteStream(Path.join(this.server.path(to), SaveAsName));
-            Tar.pack(this.server.path(files)).pipe(Stream);
-            Stream.on('error', next);
-            Stream.on('close', () => {
-                next(null, SaveAsName);
-            });
+            this.systemCompress([_.replace(this.server.path(files), `${this.server.path()}/`, '')], Path.join(this.server.path(to), SaveAsName), next);
         } else if (_.isArray(files)) {
             const FileEntries = [];
             Async.series([
@@ -324,7 +410,7 @@ class FileSystem {
                             return eachCallback();
                         }
 
-                        FileEntries.push(_.replace(this.server.path(file), this.server.path(), ''));
+                        FileEntries.push(_.replace(this.server.path(file), `${this.server.path()}/`, ''));
                         eachCallback();
                     }, callback);
                 },
@@ -332,13 +418,7 @@ class FileSystem {
                     if (_.isEmpty(FileEntries)) {
                         return next(new Error('None of the files passed to the command were valid.'));
                     }
-
-                    const Stream = Fs.createWriteStream(Path.join(this.server.path(to), SaveAsName));
-                    Tar.pack(this.server.path(), {
-                        entries: FileEntries,
-                    }).pipe(Stream);
-                    Stream.on('error', callback);
-                    Stream.on('close', callback);
+                    this.systemCompress(FileEntries, Path.join(this.server.path(to), SaveAsName), callback);
                 },
             ], err => {
                 next(err, SaveAsName);
@@ -346,6 +426,26 @@ class FileSystem {
         } else {
             return next(new Error('Invalid datatype passed to decompression function.'));
         }
+    }
+
+    systemCompress(files, archive, next) {
+        const Exec = Process.spawn('tar', ['czf', archive, files.join(' ')], {
+            cwd: this.server.path(),
+            uid: Config.get('docker.container.user', 1000),
+            gid: Config.get('docker.container.user', 1000),
+        });
+
+        Exec.on('error', execErr => {
+            this.server.log.error(execErr);
+            return next(new Error('There was an error while attempting to compress this folder.'));
+        });
+        Exec.on('exit', (code, signal) => {
+            if (code !== 0) {
+                return next(new Error(`Compression of files exited with code ${code} signal ${signal}.`));
+            }
+
+            return next(null, Path.basename(archive));
+        });
     }
 
     directory(path, next) {
@@ -381,11 +481,12 @@ class FileSystem {
                                 'name': item,
                                 'created': results.do_stat.birthtime,
                                 'modified': results.do_stat.mtime,
+                                'mode': results.do_stat.mode,
                                 'size': results.do_stat.size,
                                 'directory': results.do_stat.isDirectory(),
                                 'file': results.do_stat.isFile(),
                                 'symlink': results.do_stat.isSymbolicLink(),
-                                'mime': results.do_mime || 'unknown',
+                                'mime': results.do_mime || 'application/octet-stream',
                             });
                             aCallback();
                         }],
