@@ -47,8 +47,9 @@ const Config = new ConfigHelper();
 class InternalSftpServer {
     init(next) {
         Ssh2.Server({
+            algorithms: { compress: Config.get('sftp.algos.compress', ['none', 'zlib']) },
             hostKeys: [
-                Fs.readFileSync('./config/.sftp/id_rsa').toString('utf8'),
+                Fs.readFileSync(Config.get('sftp.keypair.hostkey_path', './config/.sftp/id_rsa')).toString('utf8'),
             ],
         }, client => {
             let clientContext;
@@ -76,7 +77,7 @@ class InternalSftpServer {
                                 responseCode: response.statusCode,
                                 requestUrl: endpoint,
                                 username: ctx.username,
-                                response: _.get(body, 'error'),
+                                response: _.get(body, 'errors'),
                             }, 'Panel reported an invalid set of SFTP credentials or a malformed request.');
 
                             return ctx.reject(['password']);
