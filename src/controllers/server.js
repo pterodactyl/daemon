@@ -519,9 +519,16 @@ class Server extends EventEmitter {
             self.currentDiskUsed = Math.round(size / (1000 * 1000)); // eslint-disable-line
             if (self.json.build.disk > 0 && (size - (10 * 1000 * 1000)) > (self.json.build.disk * 1000 * 1000)) {
                 self.emit('console', `${Ansi.style.red}[Pterodactyl Daemon] Server is violating disk space limits. Stopping process.`);
-                self.stop(stopErr => {
-                    self.log.error(stopErr);
-                });
+
+                if (Config.get('actions.disk.kill', true)) {
+                    self.kill(killErr => {
+                        if (killErr) self.log.error(killErr);
+                    });
+                } else {
+                    self.stop(stopErr => {
+                        if (stopErr) self.log.error(stopErr);
+                    });
+                }
             }
         });
     }
