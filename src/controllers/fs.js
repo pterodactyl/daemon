@@ -455,7 +455,9 @@ class FileSystem {
                 Fs.stat(this.server.path(path), (err, s) => {
                     if (err) return callback(err);
                     if (!s.isDirectory()) {
-                        return callback(new Error('The path requested is not a valid directory on the system.'));
+                        const error = new Error('The path requests is not a valid directory on the system.');
+                        error.code = 'ENOENT';
+                        return callback(error);
                     }
                     return callback();
                 });
