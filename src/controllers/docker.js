@@ -350,15 +350,8 @@ class Docker {
                     return callback(new Error('No docker image was passed to the script. Unable to create container!'));
                 }
 
-                // How Much Swap?
-                let swapSpace = 0;
-                if (config.swap < 0) {
-                    swapSpace = -1;
-                } else if (config.swap > 0 && config.memory > 0) {
-                    swapSpace = ((config.memory + config.swap) * 1000 * 1000);
-                }
                 // Make the container
-                DockerController.createContainer({
+                const Container = {
                     Image: config.image,
                     name: this.server.json.uuid,
                     Hostname: 'container',
@@ -391,43 +384,37 @@ class Docker {
                             '/tmp': Config.get('docker.policy.container.tmpfs', 'rw,exec,nosuid,size=50M'),
                         },
                         PortBindings: bindings,
-                        OomKillDisable: config.oom_disabled || false,
-                        CpuQuota: (config.cpu > 0) ? (config.cpu * 1000) : -1,
-                        CpuPeriod: (config.cpu > 0) ? 100000 : 0,
-                        Memory: this.hardlimit(config.memory) * 1000 * 1000,
-                        MemoryReservation: config.memory * 1000 * 1000,
-                        MemorySwap: swapSpace,
+                        Memory: this.hardlimit(config.memory) * 1000000,
+                        MemoryReservation: config.memory * 1000000,
                         BlkioWeight: config.io,
-                        Dns: Config.get('docker.dns', [
-                            '8.8.8.8',
-                            '8.8.4.4',
-                        ]),
+                        Dns: Config.get('docker.dns', ['8.8.8.8', '8.8.4.4']),
                         LogConfig: {
                             Type: Config.get('docker.policy.container.log_driver', 'none'),
                         },
-                        SecurityOpt: Config.get('docker.policy.container.securityopts', [
-                            'no-new-privileges',
-                        ]),
+                        SecurityOpt: Config.get('docker.policy.container.securityopts', ['no-new-privileges']),
                         ReadonlyRootfs: Config.get('docker.policy.container.readonly_root', true),
                         CapDrop: Config.get('docker.policy.container.cap_drop', [
-                            'setpcap',
-                            'mknod',
-                            'audit_write',
-                            'chown',
-                            'net_raw',
-                            'dac_override',
-                            'fowner',
-                            'fsetid',
-                            'kill',
-                            'setgid',
-                            'setuid',
-                            'net_bind_service',
-                            'sys_chroot',
-                            'setfcap',
+                            'setpcap', 'mknod', 'audit_write', 'chown', 'net_raw',
+                            'dac_override', 'fowner', 'fsetid', 'kill', 'setgid',
+                            'setuid', 'net_bind_service', 'sys_chroot', 'setfcap',
                         ]),
                         NetworkMode: Config.get('docker.network.name', 'pterodactyl_nw'),
                     },
-                }, (err, container) => {
+                };
+
+                if (config.swap < 0) {
+                    Container.HostConfig.MemorySwap = -1;
+                } else {
+                    Container.HostConfig.MemorySwap = (this.hardlimit(config.memory) + config.swap) * 1000000;
+                }
+
+                if (config.cpu > 0) {
+                    Container.HostConfig.CpuQuota = config.cpu * 1000;
+                    Container.HostConfig.CpuPeriod = 100000; // 100μs
+                    Container.HostConfig.CpuShares = _.get(config, 'cpu_shares', 1024);
+                }
+
+                DockerController.createContainer(Container, (err, container) => {
                     callback(err, container);
                 });
             }],

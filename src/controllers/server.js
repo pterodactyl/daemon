@@ -309,7 +309,7 @@ class Server extends EventEmitter {
                     const humanReadable = Math.round(size / (1000 * 1000));
                     this.currentDiskUsed = humanReadable;
 
-                    if (this.json.build.disk > 0 && (size - (10 * 1000 * 1000)) > (this.json.build.disk * 1000 * 1000)) {
+                    if (this.json.build.disk > 0 && size > (this.json.build.disk * 1000 * 1000)) {
                         this.emit('console', `${Ansi.style.yellow}[Pterodactyl Daemon] Not enough disk space! ${humanReadable}M / ${this.json.build.disk}M`);
                         return callback(new Error('There is not enough available disk space to start this server.'));
                     }
@@ -517,7 +517,7 @@ class Server extends EventEmitter {
             if (err) return self.log.warn(err);
 
             self.currentDiskUsed = Math.round(size / (1000 * 1000)); // eslint-disable-line
-            if (self.json.build.disk > 0 && (size - (10 * 1000 * 1000)) > (self.json.build.disk * 1000 * 1000)) {
+            if (self.json.build.disk > 0 && size > (self.json.build.disk * 1000 * 1000)) {
                 self.emit('console', `${Ansi.style.red}[Pterodactyl Daemon] Server is violating disk space limits. Stopping process.`);
 
                 if (Config.get('actions.disk.kill', true)) {

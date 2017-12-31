@@ -1,6 +1,14 @@
 # Changelog
 This file is a running track of new features and fixes to each version of the daemon released starting with `v0.2.0`.
 
+## v0.5.0-beta.5 (Dazzling Daohugoupterus)
+### Changed
+* Changed container creation logic to ensure that servers with no swap space assigned do not get allocated swap.
+* Servers are now killed by default when they run out of disk space rather than being gracefully stopped.
+
+### Removed
+* `OOM` exceptions can no longer be disabled in Docker containers due to a startling number of users trying to use this to solve memory issues and causing more problems.
+
 ## v0.5.0-beta.4 (Dazzling Daohugoupterus)
 ### Fixed
 * `[beta.3]` — Fixes bug that caused servers to not be able to be reinstalled due to a check for non-existant keys.
