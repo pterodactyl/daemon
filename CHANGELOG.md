@@ -2,6 +2,9 @@
 This file is a running track of new features and fixes to each version of the daemon released starting with `v0.2.0`.
 
 ## v0.5.0-beta.5 (Dazzling Daohugoupterus)
+### Added
+* File parsing now supports `env.VARIABLE` syntax as a shorter alternative to `server.build.env.VARIABLE` for egg configurations.
+
 ### Changed
 * Changed container creation logic to ensure that servers with no swap space assigned do not get allocated swap.
 * Servers are now killed by default when they run out of disk space rather than being gracefully stopped.

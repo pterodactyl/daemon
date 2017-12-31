@@ -43,6 +43,8 @@ class FileParser {
         return replacement.replace(/{{\s?(\S+)\s?}}/g, ($0, $1) => { // eslint-disable-line
             if (_.startsWith($1, 'server')) {
                 return _.reduce(_.split(_.replace($1, 'server.', ''), '.'), (o, i) => o[i], this.server.json);
+            } else if (_.startsWith($1, 'env')) {
+                return _.get(this.server.json, `build.env.${_.replace($1, 'env.', '')}`, '');
             } else if (_.startsWith($1, 'config')) {
                 return Config.get(_.replace($1, 'config.', ''));
             }
