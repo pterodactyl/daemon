@@ -348,7 +348,12 @@ class RouteController {
 
             Auth.server().fs.read(this.req.params[0], (err, data) => {
                 if (err) {
-                    return Responses.generic500(err);
+                    switch (err.code) {
+                    case 'ENOENT':
+                        return this.res.send(404);
+                    default:
+                        return Responses.generic500(err);
+                    }
                 }
                 return this.res.send({ content: data });
             });
@@ -374,7 +379,12 @@ class RouteController {
 
             Auth.server().fs.stat(this.req.params[0], (err, data) => {
                 if (err) {
-                    return Responses.generic500(err);
+                    switch (err.code) {
+                    case 'ENOENT':
+                        return this.res.send(404);
+                    default:
+                        return Responses.generic500(err);
+                    }
                 }
                 return this.res.send(data);
             });

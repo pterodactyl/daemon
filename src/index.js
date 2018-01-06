@@ -138,8 +138,12 @@ Async.auto({
         Log.debug('Checking if a SFTP user needs to be created and assigned to the configuration.');
         Async.series([
             scall => {
-                Proc.exec(`useradd -r -s /bin/false ${Config.get('docker.container.username', 'p.dactyl')}`, {}, err => {
-                    if (err && !_.includes(err.message, 'already exists')) {
+                let UserCommand = 'adduser --system --no-create-home --shell /bin/false --disabled-password --disabled-login';
+                if (!_.isUndefined(process.env.IS_ALPINE) && process.env.IS_ALPINE === 'true') {
+                    UserCommand = 'adduser -S -D -H -s /bin/false';
+                }
+                Proc.exec(`${UserCommand} ${Config.get('docker.container.username', 'pterodactyl')}`, {}, err => {
+                    if (err && (!_.includes(err.message, 'already exists') || !_.includes(err.message, `user '${Config.get('docker.container.username', 'pterodactyl')}' in use`))) {
                         return scall(err);
                     }
 
@@ -147,10 +151,10 @@ Async.auto({
                 });
             },
             scall => {
-                Proc.exec(`id -u ${Config.get('docker.container.username', 'p.dactyl')}`, {}, (err, stdout) => {
+                Proc.exec(`id -u ${Config.get('docker.container.username', 'pterodactyl')}`, {}, (err, stdout) => {
                     if (err) return scall(err);
 
-                    Log.info(`Configuring user ${Config.get('docker.container.username', 'p.dactyl')} (id: ${stdout.replace(/[\x00-\x1F\x7F-\x9F]/g, '')}) as the owner of all server files.`); // eslint-disable-line
+                    Log.info(`Configuring user ${Config.get('docker.container.username', 'pterodactyl')} (id: ${stdout.replace(/[\x00-\x1F\x7F-\x9F]/g, '')}) as the owner of all server files.`); // eslint-disable-line
                     Config.modify({
                         docker: {
                             container: {
