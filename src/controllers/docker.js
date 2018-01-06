@@ -272,21 +272,23 @@ class Docker {
      * @return {Callback}
      */
     update(next) {
-        // How Much Swap?
-        let swapSpace = 0;
-        if (this.server.json.build.swap < 0) {
-            swapSpace = -1;
-        } else if (this.server.json.build.swap > 0 && this.server.json.build.memory > 0) {
-            swapSpace = ((this.server.json.build.memory + this.server.json.build.swap) * 1000000);
+        const config = this.server.json.build;
+
+        const ContainerConfiguration = {
+            BlkioWeight: config.io,
+            CpuQuota: (config.cpu > 0) ? config.cpu * 1000 : -1,
+            CpuPeriod: 100000,
+            CpuShares: _.get(config, 'cpu_shares', 1024),
+            Memory: this.hardlimit(config.memory) * 1000000,
+            MemoryReservation: config.memory * 1000000,
+            MemorySwap: -1,
+        };
+
+        if (config.swap >= 0) {
+            ContainerConfiguration.MemorySwap = (this.hardlimit(config.memory) + config.swap) * 1000000;
         }
 
-        this.container.update({
-            CpuQuota: (this.server.json.build.cpu > 0) ? (this.server.json.build.cpu * 1000) : -1,
-            CpuPeriod: (this.server.json.build.cpu > 0) ? 100000 : 0,
-            Memory: this.server.json.build.memory * 1000000,
-            MemorySwap: swapSpace,
-            BlkioWeight: this.server.json.build.io,
-        }, next);
+        this.container.update(ContainerConfiguration, next);
     }
 
     /**
@@ -386,6 +388,10 @@ class Docker {
                         PortBindings: bindings,
                         Memory: this.hardlimit(config.memory) * 1000000,
                         MemoryReservation: config.memory * 1000000,
+                        MemorySwap: -1,
+                        CpuQuota: (config.cpu > 0) ? config.cpu * 1000 : -1,
+                        CpuPeriod: 100000,
+                        CpuShares: _.get(config, 'cpu_shares', 1024),
                         BlkioWeight: config.io,
                         Dns: Config.get('docker.dns', ['8.8.8.8', '8.8.4.4']),
                         LogConfig: {
@@ -402,16 +408,8 @@ class Docker {
                     },
                 };
 
-                if (config.swap < 0) {
-                    Container.HostConfig.MemorySwap = -1;
-                } else {
+                if (config.swap >= 0) {
                     Container.HostConfig.MemorySwap = (this.hardlimit(config.memory) + config.swap) * 1000000;
-                }
-
-                if (config.cpu > 0) {
-                    Container.HostConfig.CpuQuota = config.cpu * 1000;
-                    Container.HostConfig.CpuPeriod = 100000; // 100μs
-                    Container.HostConfig.CpuShares = _.get(config, 'cpu_shares', 1024);
                 }
 
                 DockerController.createContainer(Container, (err, container) => {
