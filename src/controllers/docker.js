@@ -303,6 +303,12 @@ class Docker {
         const environment = [];
         Async.auto({
             update_images: callback => {
+                // Skip local images.
+                if (_.startsWith(config.image, '~')) {
+                    Log.debug(Util.format('Skipping pull attempt for %s as it is marked as a local image.', _.trimStart(config.image, '~')));
+                    return callback();
+                }
+
                 // The default is to not automatically update images.
                 if (!Config.get('docker.autoupdate_images', true)) {
                     ImageHelper.exists(config.image, err => {
@@ -354,7 +360,7 @@ class Docker {
 
                 // Make the container
                 const Container = {
-                    Image: config.image,
+                    Image: _.trimStart(config.image, '~'),
                     name: this.server.json.uuid,
                     Hostname: 'container',
                     User: Config.get('docker.container.user', 1000).toString(),
@@ -420,7 +426,7 @@ class Docker {
             if (err) return next(err);
             return next(null, {
                 id: data.create_container.id,
-                image: config.image,
+                image: _.trimStart(config.image, '~'),
             });
         });
     }
