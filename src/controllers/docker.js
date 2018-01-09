@@ -411,6 +411,7 @@ class Docker {
                             'setuid', 'net_bind_service', 'sys_chroot', 'setfcap',
                         ]),
                         NetworkMode: Config.get('docker.network.name', 'pterodactyl_nw'),
+                        OomKillDisable: _.get(config, 'oom_disabled', false),
                     },
                 };
 
