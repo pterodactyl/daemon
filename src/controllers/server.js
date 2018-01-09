@@ -614,12 +614,14 @@ class Server extends EventEmitter {
 
         // Update 127.0.0.1 to point to the docker0 interface.
         if (newObject.build.default.ip === '127.0.0.1') {
-            newObject.build.default.ip = Config.get('docker.interface', '172.18.0.1');
+            newObject.build.default.ip = Config.get('docker.network.ispn', false) ? '' : Config.get('docker.interface');
         }
 
         _.forEach(newObject.build.ports, (ports, ip) => {
             if (ip === '127.0.0.1') {
-                newObject.build.ports[Config.get('docker.interface', '172.18.0.1')] = ports;
+                if (!Config.get('docker.network.ispn', false)) {
+                    newObject.build.ports[Config.get('docker.interface')] = ports;
+                }
                 delete newObject.build.ports[ip];
             }
         });

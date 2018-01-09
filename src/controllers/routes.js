@@ -303,7 +303,7 @@ class RouteController {
             if (allowedErr || !isAllowed) return;
 
             if (!_.isUndefined(this.req.params.command)) {
-                if (_.startsWith(_.replace(_.trim(this.req.params.command), /^\/*/, ''), Auth.server().service.object.stop)) {
+                if (_.startsWith(_.replace(_.trim(this.req.params.command), /^\/*/, ''), _.get(Auth.server(), 'services.config.stop'))) {
                     Auth.allowed('s:power:stop', (powerErr, powerIsAllowed) => {
                         if (powerErr || !powerIsAllowed) return;
 

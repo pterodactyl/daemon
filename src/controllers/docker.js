@@ -362,7 +362,7 @@ class Docker {
                 const Container = {
                     Image: _.trimStart(config.image, '~'),
                     name: this.server.json.uuid,
-                    Hostname: 'container',
+                    Hostname: this.server.json.uuid,
                     User: Config.get('docker.container.user', 1000).toString(),
                     AttachStdin: true,
                     AttachStdout: true,

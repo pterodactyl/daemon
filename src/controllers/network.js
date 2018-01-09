@@ -60,7 +60,7 @@ class Network {
         Log.warn('No isolated network interface for containers was detected, creating one now.');
         DockerController.createNetwork({
             Name: NETWORK_NAME,
-            Driver: 'bridge',
+            Driver: Config.get('docker.network.driver', 'bridge'),
             EnableIPv6: Config.get('docker.policy.network.ipv6', true),
             Internal: Config.get('docker.policy.network.internal', false),
             IPAM: {
@@ -76,6 +76,7 @@ class Network {
                 ],
             },
             Options: {
+                'encryption': Config.get('docker.policy.network.encryption', 'false'),
                 'com.docker.network.bridge.default_bridge': 'false',
                 'com.docker.network.bridge.enable_icc': Config.get('docker.policy.network.enable_icc', 'true'),
                 'com.docker.network.bridge.enable_ip_masquerade': Config.get('docker.policy.network.enable_ip_masquerade', 'true'),

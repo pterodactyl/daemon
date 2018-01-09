@@ -54,11 +54,13 @@ class Builder {
                 this.log.debug('Updating passed JSON to route correct interfaces.');
                 // Update 127.0.0.1 to point to the docker0 interface.
                 if (this.json.build.default.ip === '127.0.0.1') {
-                    this.json.build.default.ip = Config.get('docker.interface');
+                    this.json.build.default.ip = Config.get('docker.network.ispn', false) ? '' : Config.get('docker.interface');
                 }
                 Async.forEachOf(this.json.build.ports, (ports, ip, asyncCallback) => {
                     if (ip === '127.0.0.1') {
-                        this.json.build.ports[Config.get('docker.interface')] = ports;
+                        if (!Config.get('docker.network.ispn', false)) {
+                            this.json.build.ports[Config.get('docker.interface')] = ports;
+                        }
                         delete this.json.build.ports[ip];
                         return asyncCallback();
                     }

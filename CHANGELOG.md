@@ -4,6 +4,7 @@ This file is a running track of new features and fixes to each version of the da
 ## v0.5.0-beta.5 (Dazzling Daohugoupterus)
 ### Added
 * File parsing now supports `env.VARIABLE` syntax as a shorter alternative to `server.build.env.VARIABLE` for egg configurations.
+* Adds support for inter-server private networking via Docker.
 
 ### Changed
 * Changed container creation logic to ensure that servers with no swap space assigned do not get allocated swap.
