@@ -109,8 +109,8 @@ class Network {
             }
 
             if (_.get(data, 'Driver') === 'overlay') {
-                Log.warn('Detected daemon configuation using OVERLAY NETWORK for server containers.');
-                Log.info('Removing interface address and enabling ispn.');
+                Log.info('Detected daemon configuation using OVERLAY NETWORK for server containers.');
+                Log.warn('Removing interface address and enabling ispn.');
                 Config.modify({
                     docker: {
                         interface: '',
@@ -123,8 +123,8 @@ class Network {
             }
 
             if (_.get(data, 'Driver') === 'weavemesh') {
-                Log.warn('Detected daemon configuation using WEAVEMESH NETWORK for server containers.');
-                Log.info('Removing interface address and enabling ispn.');
+                Log.info('Detected daemon configuation using WEAVEMESH NETWORK for server containers.');
+                Log.warn('Removing interface address and enabling ispn.');
                 Config.modify({
                     docker: {
                         interface: '',
