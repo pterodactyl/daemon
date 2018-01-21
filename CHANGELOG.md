@@ -4,6 +4,11 @@ This file is a running track of new features and fixes to each version of the da
 ## v0.5.0-beta.6 (Dazzling Daohugoupterus)
 ### Fixed
 * Fixes a bug that would prevent daemon boot if a docker image was missing and assigned to a server that needed to be rebuilt.
+* Fixes a bug prevent server installation when no script is defined.
+
+### Added
+* Adds support for Docker Weave setups.
+* Adds support for parsing files using XML format.
 
 ## v0.5.0-beta.5 (Dazzling Daohugoupterus)
 ### Added
