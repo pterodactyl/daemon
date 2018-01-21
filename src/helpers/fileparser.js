@@ -29,10 +29,12 @@ const Properties = require('properties-parser');
 const Yaml = require('node-yaml');
 const Ini = require('ini');
 const rfr = require('rfr');
+const jsdom = require('jsdom');
 
 const ConfigHelper = rfr('src/helpers/config.js');
 
 const Config = new ConfigHelper();
+const { JSDOM } = jsdom;
 
 class FileParser {
     constructor(server) {
@@ -252,6 +254,37 @@ class FileParser {
                 Fs.writeFile(this.server.path(file), Ini.encode(data), 'utf8', callback);
             },
         ], next);
+    }
+
+    xml(file, strings, next) {
+        JSDOM.fromFile(this.server.path(file)).then(dom => {
+            Async.waterfall([
+                callback => {
+                    Async.forEachOf(strings, (value, key, eachCallback) => {
+                        let newValue;
+                        if (_.isString(value)) {
+                            newValue = this.getReplacement(value);
+                        } else { newValue = value; }
+                        if (!_.isBoolean(newValue) && !_.isNaN(_.toNumber(newValue))) {
+                            newValue = _.toNumber(newValue);
+                        }
+
+                        if (newValue !== 'undefined') {
+                            let element = dom.window.document.querySelector(key)
+                            if (element) {
+                                element.textContent = newValue;
+                            }
+                        }
+                        eachCallback();
+                    }, () => {
+                        callback(null, dom);
+                    });
+                },
+                (dom, callback) => {
+                    Fs.writeFile(this.server.path(file), dom.serialize(), 'utf8', callback);
+                },
+            ], next)
+        }).catch((err) => next(err))
     }
 }
 
