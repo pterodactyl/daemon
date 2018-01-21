@@ -91,6 +91,9 @@ class Core {
             case 'json':
                 this.parser.json(file, _.get(data, 'find', {}), callback);
                 break;
+            case 'xml':
+                this.parser.xml(file, _.get(data, 'find', {}), callback);
+                break;
             default:
                 return callback(new Error('Parser assigned to file is not valid.'));
             }
