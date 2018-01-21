@@ -34,7 +34,7 @@ const Util = require('util');
 const rfr = require('rfr');
 
 const Magic = Mmm.Magic;
-const Mime = new Magic(Mmm.MAGIC_MIME_TYPE);
+const Mime = new Magic(Mmm.MAGIC_MIME_TYPE | Mmm.MAGIC_SYMLINK);
 
 const ConfigHelper = rfr('src/helpers/config.js');
 const Config = new ConfigHelper();
@@ -290,7 +290,7 @@ class FileSystem {
     }
 
     stat(file, next) {
-        Fs.stat(this.server.path(file), (err, stat) => {
+        Fs.lstat(this.server.path(file), (err, stat) => {
             if (err) return next(err);
             Mime.detectFile(this.server.path(file), (mimeErr, result) => {
                 next(null, {

@@ -5,6 +5,8 @@ This file is a running track of new features and fixes to each version of the da
 ### Fixed
 * Fixes a bug that would prevent daemon boot if a docker image was missing and assigned to a server that needed to be rebuilt.
 * Fixes a bug prevent server installation when no script is defined.
+* Fixes bug causing packs to fail installation due to an unpacking issue.
+* Fixes support for symlinked files in the file manager and returns the proper mime type for them.
 
 ### Added
 * Adds support for Docker Weave setups.

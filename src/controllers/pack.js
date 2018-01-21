@@ -224,7 +224,7 @@ class Pack {
 
     unpackToServer(next) {
         this.logger.debug('Unpacking pack to server.');
-        const Exec = Process.spawn('tar', ['xzf', Path.basename(this.archiveLocation), '-C', this.server.path()], {
+        const Exec = Process.spawn('tar', ['-xzf', Path.basename(this.archiveLocation), '-C', this.server.path()], {
             cwd: Path.dirname(this.archiveLocation),
             uid: Config.get('docker.container.user', 1000),
             gid: Config.get('docker.container.user', 1000),
