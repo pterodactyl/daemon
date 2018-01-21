@@ -108,6 +108,34 @@ class Network {
                 return;
             }
 
+            if (_.get(data, 'Driver') === 'overlay') {
+                Log.info('Detected daemon configuation using OVERLAY NETWORK for server containers.');
+                Log.warn('Removing interface address and enabling ispn.');
+                Config.modify({
+                    docker: {
+                        interface: '',
+                        network: {
+                            ispn: true,
+                        },
+                    },
+                }, next);
+                return;
+            }
+
+            if (_.get(data, 'Driver') === 'weavemesh') {
+                Log.info('Detected daemon configuation using WEAVEMESH NETWORK for server containers.');
+                Log.warn('Removing interface address and enabling ispn.');
+                Config.modify({
+                    docker: {
+                        interface: '',
+                        network: {
+                            ispn: true,
+                        },
+                    },
+                }, next);
+                return;
+            }
+
             if (!_.get(data, 'IPAM.Config[0].Gateway', false)) {
                 return next(new Error('No gateway could be found for pterodactyl0.'));
             }
