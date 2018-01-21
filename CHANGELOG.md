@@ -1,6 +1,10 @@
 # Changelog
 This file is a running track of new features and fixes to each version of the daemon released starting with `v0.2.0`.
 
+## v0.5.0-beta.6 (Dazzling Daohugoupterus)
+### Fixed
+* Fixes a bug that would prevent daemon boot if a docker image was missing and assigned to a server that needed to be rebuilt.
+
 ## v0.5.0-beta.5 (Dazzling Daohugoupterus)
 ### Added
 * File parsing now supports `env.VARIABLE` syntax as a shorter alternative to `server.build.env.VARIABLE` for egg configurations.

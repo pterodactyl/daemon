@@ -80,7 +80,11 @@ class Server extends EventEmitter {
         this.lastCrash = undefined;
 
         this.initContainer(err => {
-            if (err) return next(err);
+            if (err && err.code === 'PTDL_IMAGE_MISSING') {
+                this.log.error({ error: err }, 'Unable to initalize the server container due to a missing docker image.');
+            } else if (err) {
+                return next(err);
+            }
 
             Async.series([
                 callback => {
@@ -104,7 +108,16 @@ class Server extends EventEmitter {
         this.docker = new Docker(this, (err, status) => {
             if (err && _.startsWith(_.get(err, 'json.message', 'error'), 'No such container')) {
                 this.log.warn('Container was not found. Attempting to recreate it.');
-                this.rebuild(next);
+                this.rebuild(rebuildErr => {
+                    if (rebuildErr && !_.isUndefined(rebuildErr.statusCode)) {
+                        if (_.startsWith(_.get(rebuildErr, 'json.message'), 'No such image')) {
+                            rebuildErr.code = 'PTDL_IMAGE_MISSING'; // eslint-disable-line
+                            return next(rebuildErr);
+                        }
+                    }
+
+                    return next(rebuildErr);
+                });
             } else {
                 if (!err && status) {
                     this.log.info('Daemon detected that the server container is currently running, re-attaching to it now!');
