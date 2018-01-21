@@ -62,7 +62,7 @@ class Initialize {
 
                         // Initalize the Server
                         this.setup(json, (err, server) => {
-                            return callback(err, server);
+                            callback(err, server);
                         });
                     });
                 } else {

@@ -128,7 +128,7 @@ class Option {
                 this.server.log.debug('Running privileged docker container to perform the installation process.');
 
                 const environment = [];
-                _.each(_.get(results.details, 'env', []), (value, key) => {
+                _.forEach(_.get(results.details, 'env', []), (value, key) => {
                     environment.push(`${key}=${value}`);
                 });
 

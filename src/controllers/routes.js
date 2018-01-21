@@ -80,7 +80,7 @@ class RouteController {
             if (allowedErr || !isAllowed) return;
 
             const key = _.get(this.req.params, 'key');
-            Log.debug({ token: key }, 'Revoking authentication token per manual request.')
+            Log.debug({ token: key }, 'Revoking authentication token per manual request.');
             Cache.del(`auth:token:${key}`);
 
             return Responses.generic204(null);
@@ -92,7 +92,7 @@ class RouteController {
         Auth.allowed('c:revoke-key', (allowedErr, isAllowed) => {
             if (allowedErr || !isAllowed) return;
 
-            _.each(_.get(this.req.params, 'keys'), key => {
+            _.forEach(_.get(this.req.params, 'keys'), key => {
                 Log.debug({ token: key }, 'Revoking authentication token per batch delete request.');
                 Cache.del(`auth:token:${key}`);
             });
