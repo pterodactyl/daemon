@@ -429,7 +429,10 @@ class FileSystem {
     }
 
     systemCompress(files, archive, next) {
-        const Exec = Process.spawn('tar', ['czf', archive, files.join(' ')], {
+        const args = ['tar', 'czf'];
+        for(let file of files) args.push(file);
+        
+        const Exec = Process.spawn('tar', args, {
             cwd: this.server.path(),
             uid: Config.get('docker.container.user', 1000),
             gid: Config.get('docker.container.user', 1000),
