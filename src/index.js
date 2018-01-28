@@ -136,9 +136,19 @@ Async.auto({
     },
     setup_sftp_user: ['check_structure', 'check_tar', 'check_zip', (r, callback) => {
         Log.debug('Checking if a SFTP user needs to be created and assigned to the configuration.');
-        Async.series([
+        Async.waterfall([
             scall => {
-                let UserCommand = 'adduser --system --no-create-home --shell /bin/false --disabled-password --disabled-login';
+                Log.debug(`Checking if user ${Config.get('docker.container.username', 'pterodactyl')} exists or needs to be created.`);
+                Proc.exec(`cat /etc/passwd | grep ${Config.get('docker.container.username', 'pterodactyl')}`, {}, (err, stdout) => {
+                    scall(err, !_.isEmpty(stdout));
+                });
+            },
+            (exists, scall) => {
+                if (exists) {
+                    return scall();
+                }
+
+                let UserCommand = 'adduser --system --no-create-home --shell /bin/false';
                 if (!_.isUndefined(process.env.IS_ALPINE) && process.env.IS_ALPINE === 'true') {
                     UserCommand = 'adduser -S -D -H -s /bin/false';
                 }
