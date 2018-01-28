@@ -53,6 +53,7 @@ class Delete {
 
                 // Prevent crash detection
                 if (!_.isUndefined(Servers[this.json.uuid]) && _.isFunction(Servers[this.json.uuid].setStatus)) {
+                    clearInterval(Servers[this.json.uuid].intervals.diskUse);
                     Servers[this.json.uuid].setStatus(Status.OFF);
                 }
 
