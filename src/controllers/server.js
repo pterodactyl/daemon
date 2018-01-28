@@ -75,7 +75,6 @@ class Server extends EventEmitter {
 
         this.blockBooting = false;
         this.currentDiskUsed = 0;
-
         this.log = Log.child({ server: this.uuid });
         this.lastCrash = undefined;
 
@@ -96,6 +95,10 @@ class Server extends EventEmitter {
                     this.uploadSocket = new UploadSocket(this).init();
                     this.fs = new FileSystem(this);
                     this.option = new OptionController(this);
+
+                    // Check disk usage on construct and then check it every 10 seconds.
+                    this.diskUse(this);
+                    this.intervals.diskUse = setInterval(this.diskUse, 10000, this);
 
                     this.containerInitialized = true;
                     return callback();
@@ -213,7 +216,7 @@ class Server extends EventEmitter {
 
         // Handle Internal Tracking
         if (status === Status.ON || status === Status.STARTING) {
-            if (_.isNull(this.intervals.process) || _.isNull(this.intervals.diskUse)) {
+            if (_.isNull(this.intervals.process)) {
                 // Go ahead and run since it will be a minute until it does anyways.
                 // Only run if the container is all initialized and ready to go though.
                 if (this.containerInitialized) {
@@ -221,16 +224,13 @@ class Server extends EventEmitter {
                 }
 
                 this.intervals.process = setInterval(this.process, 2000, this);
-                this.intervals.diskUse = setInterval(this.diskUse, 60000, this);
             }
         } else if (status === Status.STOPPING || status === Status.OFF) {
-            if (!_.isNull(this.intervals.process) || !_.isNull(this.intervals.diskUse)) {
+            if (!_.isNull(this.intervals.process)) {
                 // Server is stopping or stopped, lets clear the interval as well as any stored
                 // information about the process. Lets also detach the stats stream.
                 clearInterval(this.intervals.process);
-                clearInterval(this.intervals.diskUse);
                 this.intervals.process = null;
-                this.intervals.diskUse = null;
                 this.processData.process = {};
             }
         }
@@ -319,21 +319,25 @@ class Server extends EventEmitter {
                     if (err) return callback(err);
 
                     // 10 MB overhead accounting.
-                    const humanReadable = Math.round(size / (1000 * 1000));
-                    this.currentDiskUsed = humanReadable;
+                    const sizeInMb = Math.round(size / (1000 * 1000));
+                    this.currentDiskUsed = sizeInMb;
 
-                    if (this.json.build.disk > 0 && size > (this.json.build.disk * 1000 * 1000)) {
-                        this.emit('console', `${Ansi.style.yellow}[Pterodactyl Daemon] Not enough disk space! ${humanReadable}M / ${this.json.build.disk}M`);
+                    if (this.json.build.disk > 0 && size > sizeInMb) {
+                        this.emit('console', `${Ansi.style.yellow}[Pterodactyl Daemon] Not enough disk space! ${sizeInMb}M / ${this.json.build.disk}M`);
                         return callback(new Error('There is not enough available disk space to start this server.'));
                     }
 
-                    this.emit('console', `${Ansi.style.yellow}[Pterodactyl Daemon] Disk Usage: ${humanReadable}M / ${this.json.build.disk}M`);
+                    this.emit('console', `${Ansi.style.yellow}[Pterodactyl Daemon] Disk Usage: ${sizeInMb}M / ${this.json.build.disk}M`);
                     return callback();
                 });
             },
             callback => {
-                this.emit('console', `${Ansi.style.yellow}[Pterodactyl Daemon] Ensuring file permissions.`);
-                this.setPermissions(callback);
+                if (Config.get('internals.set_permissions_on_boot', true)) {
+                    this.emit('console', `${Ansi.style.yellow}[Pterodactyl Daemon] Ensuring file permissions.`);
+                    this.setPermissions(callback);
+                } else {
+                    return callback();
+                }
             },
             callback => {
                 this.log.debug('Initializing for boot sequence, running preflight checks.');
@@ -528,13 +532,11 @@ class Server extends EventEmitter {
     }
 
     diskUse(self) { // eslint-disable-line
-        if (self.status === Status.OFF) return;
-
         self.fs.size((err, size) => {
             if (err) return self.log.warn(err);
 
             self.currentDiskUsed = Math.round(size / (1000 * 1000)); // eslint-disable-line
-            if (self.json.build.disk > 0 && size > (self.json.build.disk * 1000 * 1000)) {
+            if (self.json.build.disk > 0 && size > (self.json.build.disk * 1000 * 1000) && self.status !== Status.OFF) {
                 self.emit('console', `${Ansi.style.red}[Pterodactyl Daemon] Server is violating disk space limits. Stopping process.`);
 
                 if (Config.get('actions.disk.kill', true)) {

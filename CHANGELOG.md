@@ -8,11 +8,13 @@ This file is a running track of new features and fixes to each version of the da
 * Fixes bug causing packs to fail installation due to an unpacking issue.
 * Fixes support for symlinked files in the file manager and returns the proper mime type for them.
 * `[beta.6]` — Fixes bug when creating a user on CentOS.
+* `[beta.6]` — Fixes a bug with Cyberduck where files could not be overwritten.
 
 ### Added
 * Adds support for Docker Weave setups.
 * Adds support for parsing files using XML format.
 * Server boot process now sets the correct ownership on files when the server is booted.
+* Files uploaded via SFTP are now blocked if there is not enough server space available to store it.
 
 ## v0.5.0-beta.5 (Dazzling Daohugoupterus)
 ### Added

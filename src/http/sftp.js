@@ -192,16 +192,15 @@ class InternalSftpServer {
                         });
 
                         sftp.on('OPEN', (reqId, location, flags) => {
-                            clientContext.server.log.debug(location, flags, SftpStream.flagsToString(flags), 'OPEN');
-
                             const handle = this.makeHandle(clientContext);
                             const data = {
                                 path: location,
                                 done: false,
                             };
 
-                            // Handle GNOME sending improper signals?
-                            if (flags === 42) {
+                            // Handle GNOME sending improper signals (42)? Handle Cyberduck trying to overwrite
+                            // an existing file (18).
+                            if (flags === 42 || flags === 18) {
                                 flags = OPEN_MODE.TRUNC | OPEN_MODE.CREAT | OPEN_MODE.WRITE; // eslint-disable-line
                             }
 
@@ -214,7 +213,7 @@ class InternalSftpServer {
                                 data.type = OPEN_MODE.WRITE;
                                 break;
                             default:
-                                clientContext.server.log.info({
+                                clientContext.server.log.warn({
                                     path: location,
                                     flag_id: flags,
                                     flag: SftpStream.flagsToString(flags),
@@ -312,6 +311,14 @@ class InternalSftpServer {
 
                         sftp.on('WRITE', (reqId, handle, offset, data) => {
                             const requestData = _.get(clientContext.handles, handle, null);
+
+                            // Block operation if there is not enough available disk space on the server currently.
+                            if (
+                                clientContext.server.json.build.disk > 0
+                                && clientContext.server.currentDiskUsed > clientContext.server.json.build.disk
+                            ) {
+                                return sftp.status(reqId, STATUS_CODE.OP_UNSUPPORTED);
+                            }
 
                             // The writer is closed in the sftp.on('CLOSE') listener.
                             Fs.write(requestData.writer, data, 0, data.length, null, err => {
