@@ -332,6 +332,10 @@ class Server extends EventEmitter {
                 });
             },
             callback => {
+                this.emit('console', `${Ansi.style.yellow}[Pterodactyl Daemon] Ensuring file permissions.`);
+                this.setPermissions(callback);
+            },
+            callback => {
                 this.log.debug('Initializing for boot sequence, running preflight checks.');
                 this.emit('console', `${Ansi.style.green}[Pterodactyl Daemon] Running server preflight.`);
                 this.preflight(callback);
