@@ -322,7 +322,7 @@ class Server extends EventEmitter {
                     const sizeInMb = Math.round(size / (1000 * 1000));
                     this.currentDiskUsed = sizeInMb;
 
-                    if (this.json.build.disk > 0 && size > sizeInMb) {
+                    if (this.json.build.disk > 0 && sizeInMb > this.json.build.disk) {
                         this.emit('console', `${Ansi.style.yellow}[Pterodactyl Daemon] Not enough disk space! ${sizeInMb}M / ${this.json.build.disk}M`);
                         return callback(new Error('There is not enough available disk space to start this server.'));
                     }
