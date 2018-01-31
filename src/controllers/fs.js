@@ -97,7 +97,7 @@ class FileSystem {
             chownTarget = this.server.path(file);
         }
 
-        const Exec = Process.spawn('chown', ['-R', Util.format('%d:%d', Config.get('docker.container.user', 1000), Config.get('docker.container.user', 1000)), chownTarget], {});
+        const Exec = Process.spawn('chown', ['-R', Util.format('%s:%s', Config.get('docker.container.username', 'pterodactyl'), Config.get('docker.container.username', 'pterodactyl')), chownTarget], {});
         Exec.on('error', execErr => {
             this.server.log.error(execErr);
             return next(new Error('There was an error while attempting to set ownership of files.'));

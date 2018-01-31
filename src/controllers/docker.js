@@ -369,24 +369,22 @@ class Docker {
                     AttachStderr: true,
                     OpenStdin: true,
                     Tty: true,
-                    Mounts: [
-                        {
-                            Source: this.server.path(),
-                            Destination: '/home/container',
-                            RW: true,
-                        },
-                        {
-                            Source: Config.get('docker.timezone_path'),
-                            Destination: Config.get('docker.timezone_path'),
-                            RW: false,
-                        },
-                    ],
                     Env: environment,
                     ExposedPorts: exposed,
                     HostConfig: {
-                        Binds: [
-                            Util.format('%s:/home/container', this.server.path()),
-                            Util.format('%s:%s:ro', Config.get('docker.timezone_path'), Config.get('docker.timezone_path')),
+                        Mounts: [
+                            {
+                                Target: '/home/container',
+                                Source: this.server.path(),
+                                Type: 'bind',
+                                ReadOnly: false,
+                            },
+                            {
+                                Target: Config.get('docker.timezone_path'),
+                                Source: Config.get('docker.timezone_path'),
+                                Type: 'bind',
+                                ReadOnly: true,
+                            },
                         ],
                         Tmpfs: {
                             '/tmp': Config.get('docker.policy.container.tmpfs', 'rw,exec,nosuid,size=50M'),
