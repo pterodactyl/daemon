@@ -32,8 +32,11 @@ const Util = require('util');
 const createOutputStream = require('create-output-stream');
 const Ansi = require('ansi-escape-sequences');
 
+const ConfigHelper = rfr('src/helpers/config.js');
 const Status = rfr('src/helpers/status.js');
 const FileParserHelper = rfr('src/helpers/fileparser.js');
+
+const Config = new ConfigHelper();
 
 class Core {
     constructor(server, config = null, next) {
@@ -93,6 +96,9 @@ class Core {
                 break;
             case 'xml':
                 this.parser.xml(file, _.get(data, 'find', {}), callback);
+                break;
+            case 'xml-headless':
+                this.parser.xml_headless(file, _.get(data, 'find', {}, callback));
                 break;
             default:
                 return callback(new Error('Parser assigned to file is not valid.'));
