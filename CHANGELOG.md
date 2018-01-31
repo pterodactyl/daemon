@@ -1,7 +1,7 @@
 # Changelog
 This file is a running track of new features and fixes to each version of the daemon released starting with `v0.2.0`.
 
-## v0.5.0-beta.6 (Dazzling Daohugoupterus)
+## v0.5.0-rc.1 (Dazzling Daohugoupterus)
 ### Fixed
 * Fixes a bug that would prevent daemon boot if a docker image was missing and assigned to a server that needed to be rebuilt.
 * Fixes a bug prevent server installation when no script is defined.
