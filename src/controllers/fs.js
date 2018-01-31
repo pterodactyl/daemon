@@ -475,12 +475,16 @@ class FileSystem {
                     Async.auto({
                         do_stat: aCallback => {
                             Fs.stat(Path.join(this.server.path(path), item), (statErr, stat) => {
+                                // Handle bad symlinks
+                                if (statErr && statErr.code === 'ENOENT') {
+                                    return eachCallback();
+                                }
                                 aCallback(statErr, stat);
                             });
                         },
                         do_mime: aCallback => {
                             Mime.detectFile(Path.join(this.server.path(path), item), (mimeErr, result) => {
-                                aCallback(mimeErr, result);
+                                aCallback(null, result);
                             });
                         },
                         do_push: ['do_stat', 'do_mime', (results, aCallback) => {

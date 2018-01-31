@@ -9,6 +9,7 @@ This file is a running track of new features and fixes to each version of the da
 * Fixes support for symlinked files in the file manager and returns the proper mime type for them.
 * `[beta.6]` — Fixes bug when creating a user on CentOS.
 * `[beta.6]` — Fixes a bug with Cyberduck where files could not be overwritten.
+* Fixes 404 error that would arise from bad symlinks in the server data directory.
 
 ### Added
 * Adds support for Docker Weave setups.
