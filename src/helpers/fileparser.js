@@ -23,18 +23,17 @@
  * SOFTWARE.
  */
 const _ = require('lodash');
+const rfr = require('rfr');
 const Async = require('async');
 const Fs = require('fs-extra');
 const Properties = require('properties-parser');
 const Yaml = require('node-yaml');
 const Ini = require('ini');
-const rfr = require('rfr');
-const jsdom = require('jsdom');
+const Xml = require('xml2js');
 
 const ConfigHelper = rfr('src/helpers/config.js');
 
 const Config = new ConfigHelper();
-const { JSDOM } = jsdom;
 
 class FileParser {
     constructor(server) {
@@ -256,35 +255,69 @@ class FileParser {
         ], next);
     }
 
-    xml(file, strings, next) {
-        JSDOM.fromFile(this.server.path(file)).then(dom => {
-            Async.waterfall([
-                callback => {
-                    Async.forEachOf(strings, (value, key, eachCallback) => {
-                        let newValue;
-                        if (_.isString(value)) {
-                            newValue = this.getReplacement(value);
-                        } else { newValue = value; }
+    xml(file, strings, next, headless) {
+        Fs.read(this.server.path(file), (err, data) => {
+            if (err) {
+                if (_.startsWith(err.message, 'ENOENT: no such file or directory')) return next();
+                return next(err);
+            }
+
+            Xml.parseString(data, (xmlErr, result) => {
+                if (xmlErr) return next(xmlErr);
+                Async.forEachOf(strings, (replacement, eachKey, callback) => {
+                    let newValue;
+                    const matchedElements = [];
+
+                    // Used for wildcard matching
+                    const Split = _.split(eachKey, '.');
+                    const Pos = _.indexOf(Split, '*');
+
+                    // Determine if a '*' character is present, and if so
+                    // push all of the matching keys into the matchedElements array
+                    if (Pos >= 0) {
+                        const SearchBlock = (_.dropRight(Split, Split.length - Pos)).join('.');
+                        _.find(result[SearchBlock], (object, key) => { // eslint-disable-line
+                            Split[Pos] = key;
+                            matchedElements.push(Split.join('.'));
+                        });
+                    } else {
+                        matchedElements.push(eachKey);
+                    }
+
+                    // Loop through the matchedElements array and handle replacements
+                    // as needed.
+                    Async.each(matchedElements, (element, eCallback) => {
+                        if (_.isString(replacement)) {
+                            newValue = this.getReplacement(replacement);
+                        } else if (_.isObject(replacement)) {
+                            // Find & Replace
+                            newValue = _.get(result, element);
+                            _.forEach(replacement, (rep, find) => {
+                                newValue = _.replace(newValue, find, this.getReplacement(rep));
+                            });
+                        } else {
+                            newValue = replacement;
+                        }
+
                         if (!_.isBoolean(newValue) && !_.isNaN(_.toNumber(newValue))) {
                             newValue = _.toNumber(newValue);
                         }
 
-                        if (newValue !== 'undefined') {
-                            let element = dom.window.document.querySelector(key)
-                            if (element) {
-                                element.textContent = newValue;
-                            }
-                        }
-                        eachCallback();
-                    }, () => {
-                        callback(null, dom);
+                        _.set(result, element, newValue);
+                        eCallback();
+                    }, callback);
+                }, () => {
+                    const Builder = new Xml.Builder({
+                        headless: headless === true,
                     });
-                },
-                (dom, callback) => {
-                    Fs.writeFile(this.server.path(file), dom.serialize(), 'utf8', callback);
-                },
-            ], next)
-        }).catch((err) => next(err))
+                    Fs.write(this.server.path(file), Builder.buildObject(result), next);
+                });
+            });
+        });
+    }
+
+    xml_headless(file, strings, next) {
+        this.xml(file, strings, next, true);
     }
 }
 
