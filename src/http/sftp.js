@@ -153,6 +153,12 @@ class InternalSftpServer {
                         });
 
                         sftp.on('READDIR', (reqId, handle) => {
+                            clientContext.server.hasPermission('s:files:list', clientContext.token, (err, hasPermission) => {
+                                if (err || !hasPermission) {
+                                    return sftp.status(reqId, STATUS_CODE.PERMISSION_DENIED);
+                                }
+                            });
+
                             const requestData = _.get(clientContext.handles, handle, null);
 
                             if (requestData.done) {
@@ -180,6 +186,12 @@ class InternalSftpServer {
                         });
 
                         sftp.on('OPENDIR', (reqId, location) => {
+                            clientContext.server.hasPermission('s:files:list', clientContext.token, (err, hasPermission) => {
+                                if (err || !hasPermission) {
+                                    return sftp.status(reqId, STATUS_CODE.PERMISSION_DENIED);
+                                }
+                            });
+
                             const handle = this.makeHandle(clientContext);
                             clientContext.handles[handle] = {
                                 path: location,
@@ -192,6 +204,12 @@ class InternalSftpServer {
                         });
 
                         sftp.on('OPEN', (reqId, location, flags) => {
+                            clientContext.server.hasPermission('s:files:download', clientContext.token, (err, hasPermission) => {
+                                if (err || !hasPermission) {
+                                    return sftp.status(reqId, STATUS_CODE.PERMISSION_DENIED);
+                                }
+                            });
+
                             const handle = this.makeHandle(clientContext);
                             const data = {
                                 path: location,
@@ -259,6 +277,12 @@ class InternalSftpServer {
                         });
 
                         sftp.on('READ', (reqId, handle, offset, length) => {
+                            clientContext.server.hasPermission('s:files:download', clientContext.token, (err, hasPermission) => {
+                                if (err || !hasPermission) {
+                                    return sftp.status(reqId, STATUS_CODE.PERMISSION_DENIED);
+                                }
+                            });
+
                             const requestData = _.get(clientContext.handles, handle, null);
                             if (requestData.done) {
                                 return sftp.status(reqId, STATUS_CODE.EOF);
@@ -310,6 +334,12 @@ class InternalSftpServer {
                         });
 
                         sftp.on('WRITE', (reqId, handle, offset, data) => {
+                            clientContext.server.hasPermission('s:files:upload', clientContext.token, (err, hasPermission) => {
+                                if (err || !hasPermission) {
+                                    return sftp.status(reqId, STATUS_CODE.PERMISSION_DENIED);
+                                }
+                            });
+
                             const requestData = _.get(clientContext.handles, handle, null);
 
                             // Block operation if there is not enough available disk space on the server currently.
@@ -337,6 +367,12 @@ class InternalSftpServer {
                         });
 
                         sftp.on('MKDIR', (reqId, location) => {
+                            clientContext.server.hasPermission('s:files:create', clientContext.token, (err, hasPermission) => {
+                                if (err || !hasPermission) {
+                                    return sftp.status(reqId, STATUS_CODE.PERMISSION_DENIED);
+                                }
+                            });
+
                             Fs.ensureDir(clientContext.server.path(location), err => {
                                 if (err) {
                                     clientContext.server.log.warn({
@@ -351,6 +387,12 @@ class InternalSftpServer {
                         });
 
                         sftp.on('RENAME', (reqId, oldPath, newPath) => {
+                            clientContext.server.hasPermission('s:files:move', clientContext.token, (err, hasPermission) => {
+                                if (err || !hasPermission) {
+                                    return sftp.status(reqId, STATUS_CODE.PERMISSION_DENIED);
+                                }
+                            });
+
                             clientContext.server.fs.move(oldPath, newPath, err => {
                                 if (err) {
                                     if (err.code === 'ENOENT') {
@@ -378,6 +420,12 @@ class InternalSftpServer {
                         });
 
                         sftp.on('RMDIR', (reqId, location) => {
+                            clientContext.server.hasPermission('s:files:delete', clientContext.token, (err, hasPermission) => {
+                                if (err || !hasPermission) {
+                                    return sftp.status(reqId, STATUS_CODE.PERMISSION_DENIED);
+                                }
+                            });
+
                             clientContext.server.fs.rm(location, err => {
                                 if (err) {
                                     if (err.code === 'ENOENT') {

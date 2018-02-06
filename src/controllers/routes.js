@@ -299,7 +299,7 @@ class RouteController {
 
     // Sends command to server
     postServerCommand() {
-        Auth.allowed('s:files:command', (allowedErr, isAllowed) => {
+        Auth.allowed('s:command', (allowedErr, isAllowed) => {
             if (allowedErr || !isAllowed) return;
 
             if (!_.isUndefined(this.req.params.command)) {
@@ -324,7 +324,7 @@ class RouteController {
 
     // Returns listing of server files.
     getServerDirectory() {
-        Auth.allowed('s:files:get', (allowedErr, isAllowed) => {
+        Auth.allowed('s:files:list', (allowedErr, isAllowed) => {
             if (allowedErr || !isAllowed) return;
 
             Auth.server().fs.directory(this.req.params[0], (err, data) => {
@@ -343,7 +343,7 @@ class RouteController {
 
     // Return file contents
     getServerFile() {
-        Auth.allowed('s:files:read', (allowedErr, isAllowed) => {
+        Auth.allowed('s:files:edit', (allowedErr, isAllowed) => {
             if (allowedErr || !isAllowed) return;
 
             Auth.server().fs.read(this.req.params[0], (err, data) => {
@@ -374,7 +374,7 @@ class RouteController {
     }
 
     getServerFileStat() {
-        Auth.allowed('s:files:read', (allowedErr, isAllowed) => {
+        Auth.allowed('s:files:edit', (allowedErr, isAllowed) => {
             if (allowedErr || !isAllowed) return;
 
             Auth.server().fs.stat(this.req.params[0], (err, data) => {
@@ -468,7 +468,7 @@ class RouteController {
     }
 
     postServerFile() {
-        Auth.allowed('s:files:post', (allowedErr, isAllowed) => {
+        Auth.allowed('s:files:save', (allowedErr, isAllowed) => {
             if (allowedErr || !isAllowed) return;
 
             Auth.server().fs.write(this.req.params.path, this.req.params.content, err => {
