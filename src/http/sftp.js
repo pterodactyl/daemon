@@ -153,7 +153,7 @@ class InternalSftpServer {
                         });
 
                         sftp.on('READDIR', (reqId, handle) => {
-                            clientContext.server.hasPermission('s:files:list', clientContext.token, (err, hasPermission) => {
+                            clientContext.server.hasPermission('s:files:get', clientContext.token, (err, hasPermission) => {
                                 if (err || !hasPermission) {
                                     return sftp.status(reqId, STATUS_CODE.PERMISSION_DENIED);
                                 }
@@ -186,7 +186,7 @@ class InternalSftpServer {
                         });
 
                         sftp.on('OPENDIR', (reqId, location) => {
-                            clientContext.server.hasPermission('s:files:list', clientContext.token, (err, hasPermission) => {
+                            clientContext.server.hasPermission('s:files:get', clientContext.token, (err, hasPermission) => {
                                 if (err || !hasPermission) {
                                     return sftp.status(reqId, STATUS_CODE.PERMISSION_DENIED);
                                 }
