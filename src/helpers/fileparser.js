@@ -316,7 +316,7 @@ class FileParser {
         });
     }
 
-    xml_headless(file, strings, next) {
+    xmlHeadless(file, strings, next) {
         this.xml(file, strings, next, true);
     }
 }
