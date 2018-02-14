@@ -70,16 +70,17 @@ class WebSocket {
                         return;
                     }
 
-                    if (!_.isUndefined(_.get(this.server, 'service.config.log.location'))) {
-                        this.server.fs.readEnd(_.get(this.server, 'service.config.log.location'), (readErr, readData) => {
-                            if (readErr) return this.websocket.emit('console', 'There was an error while attempting to get the log file.');
-                            activeSocket.emit('server log', readData);
-                        });
-                    } else {
-                        this.websocket.emit('console', {
-                            line: `${Ansi.style.red}[Pterodactyl Daemon] No log location is configured for this server or service!`,
-                        });
-                    }
+                    this.server.fs.readEndOfLogStream(80000, (err, lines) => {
+                        if (err) {
+                            this.websocket.emit('console', {
+                                line: `${Ansi.style.red}[Pterodactyl Daemon] An error was encountered while attempting to read the log file!`,
+                            });
+
+                            return this.server.log.error(err);
+                        }
+
+                        activeSocket.emit('server log', lines);
+                    });
                 });
             });
 

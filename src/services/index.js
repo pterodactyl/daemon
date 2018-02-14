@@ -25,18 +25,12 @@
 const rfr = require('rfr');
 const Async = require('async');
 const _ = require('lodash');
-const Fs = require('fs-extra');
 const isStream = require('isstream');
-const Path = require('path');
 const Util = require('util');
-const createOutputStream = require('create-output-stream');
 const Ansi = require('ansi-escape-sequences');
 
-const ConfigHelper = rfr('src/helpers/config.js');
 const Status = rfr('src/helpers/status.js');
 const FileParserHelper = rfr('src/helpers/fileparser.js');
-
-const Config = new ConfigHelper();
 
 class Core {
     constructor(server, config = null, next) {
@@ -55,16 +49,9 @@ class Core {
         }
 
         this.service = this.json.service;
-        this.logStream = undefined;
-        this.logStreamClosing = false;
-
         this.parser = new FileParserHelper(this.server);
 
         return next();
-    }
-
-    doQuery(next) {
-        return next(null);
     }
 
     onPreflight(next) {
@@ -107,39 +94,10 @@ class Core {
             if (err) {
                 this.server.emit('console', `${Ansi.style.red}[Pterodactyl Daemon] ${err.name} while processing ${lastFile}`);
                 this.server.emit('console', `${Ansi.style.red}[Pterodactyl Daemon] ${err.message}`);
-                return next(err);
             }
 
-            if (_.get(this.config, 'log.custom', false)) {
-                if (!this.logStreamClosing && isStream.isWritable(this.logStream)) {
-                    this.logStreamClosing = true;
-                    this.logStream.end(() => {
-                        this.logStream = false;
-                        this.logStreamClosing = false;
-                    });
-                }
-                Fs.remove(this.server.path(_.get(this.config, 'log.location', 'logs/latest.log')), removeErr => {
-                    if (removeErr && !_.includes(removeErr.message, 'ENOENT: no such file or directory')) {
-                        return next(removeErr);
-                    }
-                    return next();
-                });
-            } else {
-                return next();
-            }
+            return next(err);
         });
-    }
-
-    onAttached(next) {
-        if (_.isFunction(next)) {
-            return next();
-        }
-    }
-
-    onStart(next) {
-        if (_.isFunction(next)) {
-            return next();
-        }
     }
 
     onConsole(data) {
@@ -148,41 +106,19 @@ class Core {
                 this.server.emit('console', data);
             },
             () => {
-                // Custom Log?
-                if (_.get(this.config, 'log.custom', false) === true) {
-                    if (!this.logStreamClosing && isStream.isWritable(this.logStream)) {
-                        this.logStream.write(`${data}\n`);
-                    } else if(!this.logStreamClosing) { // Don't recreate the stream when its supposed to close.
-                        const LogFile = this.server.path(_.get(this.config, 'log.location', 'logs/latest.log'));
-                        Async.series([
-                            callback => {
-                                this.logStream = createOutputStream(LogFile, {
-                                    mode: '0o644',
-                                    defaultEncoding: 'utf8',
-                                });
-                                return callback();
-                            },
-                            callback => {
-                                Fs.chown(Path.dirname(LogFile), Config.get('docker.container.user', 1000), Config.get('docker.container.user', 1000), callback);
-                            },
-                        ], err => {
-                            if (err) this.server.log.warn(err);
-                        });
-                    }
+                const Stream = this.server.fs.getLogStream();
+                if (! this.server.fs.getLogStreamClosing() && isStream.isWritable(Stream)) {
+                    Stream.write(`${data}\n`);
                 }
             },
             () => {
+                if (this.server.status === Status.ON) {
+                    return;
+                }
+
                 // Started
                 if (_.includes(data, _.get(this.config, 'startup.done', null))) {
-                    Async.series([
-                        callback => {
-                            this.onStart(callback);
-                        },
-                        callback => {
-                            this.server.setStatus(Status.ON);
-                            callback();
-                        },
-                    ]);
+                    this.server.setStatus(Status.ON);
                 }
 
                 // Stopped; Don't trigger crash
@@ -202,24 +138,19 @@ class Core {
     }
 
     onStop(next) {
-        Async.series([
-            callback => {
-                if (!this.logStreamClosing && isStream.isWritable(this.logStream)) {
-                    this.logStreamClosing = true;
-                    this.logStream.end(() => {
-                        this.logStream = false;
-                        this.logStreamClosing = false;
-                        callback();
-                    });
-                } else {
-                    callback();
+        const Stream = this.server.fs.getLogStream(false);
+        if (isStream.isWritable(Stream)) {
+            this.server.fs.setLogStreamClosing(true);
+            Stream.end(() => {
+                if (_.isFunction(next)) {
+                    return next();
                 }
-            },
-        ], err => {
+            });
+        } else {
             if (_.isFunction(next)) {
-                return next(err);
+                return next();
             }
-        });
+        }
     }
 }
 

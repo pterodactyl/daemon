@@ -94,6 +94,14 @@ class Server extends EventEmitter {
                     this.socketIO = new Websocket(this).init();
                     this.uploadSocket = new UploadSocket(this).init();
                     this.fs = new FileSystem(this);
+
+                    if (this.status === Status.ON) {
+                        // Server is running, lets reattach to the log stream is possible.
+                        // Passing false as the second parameter will prevent the log that
+                        // already exists from being overwritten if it is there still.
+                        this.fs.getLogStream();
+                    }
+
                     this.option = new OptionController(this);
 
                     // Check disk usage on construct and then check it every 10 seconds.
@@ -313,6 +321,10 @@ class Server extends EventEmitter {
 
         Async.series([
             callback => {
+                this.log.debug('Cleaning out old process logs...');
+                this.fs.removeOldLogFiles(callback);
+            },
+            callback => {
                 this.log.debug('Checking size of server folder before booting.');
                 this.emit('console', `${Ansi.style.yellow}[Pterodactyl Daemon] Checking size of server data directory...`);
                 this.fs.size((err, size) => {
@@ -351,10 +363,6 @@ class Server extends EventEmitter {
             callback => {
                 this.emit('console', `${Ansi.style.green}[Pterodactyl Daemon] Server container started. Attaching...`);
                 this.docker.attach(callback);
-            },
-            callback => {
-                this.emit('console', `${Ansi.style.green}[Pterodactyl Daemon] Attached to server container.`);
-                this.service.onAttached(callback);
             },
         ], err => {
             if (err) {

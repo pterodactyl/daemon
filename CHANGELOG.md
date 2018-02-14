@@ -1,6 +1,10 @@
 # Changelog
 This file is a running track of new features and fixes to each version of the daemon released starting with `v0.2.0`.
 
+## v0.5.0-rc.2 (Dazzling Daohugoupterus)
+### Changed
+* Server process output is no longer gathered from defined log locations, but rather logged into a rotating log file for the daemon to read.
+
 ## v0.5.0-rc.1 (Dazzling Daohugoupterus)
 ### Fixed
 * Fixes a bug that would prevent daemon boot if a docker image was missing and assigned to a server that needed to be rebuilt.
