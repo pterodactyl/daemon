@@ -22,6 +22,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+const rfr = require('rfr');
 const Fs = require('fs-extra');
 const Async = require('async');
 const Path = require('path');
