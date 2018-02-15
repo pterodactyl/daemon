@@ -251,7 +251,6 @@ class FileSystem {
         // Don't try to read the end of a log stream if there is
         // no active stream currently.
         if (this.getLogStreamClosing() || !isStream.isWritable(this.getLogStream(false))) {
-            console.log('STREAM CLOSED/NOT WRITABLE');
             return next(null, '');
         }
 
