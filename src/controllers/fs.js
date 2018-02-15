@@ -35,8 +35,11 @@ const isStream = require('isstream');
 const RotatingFile = require('rotating-file-stream');
 const Klaw = require('klaw');
 
+const ConfigHelper = rfr('src/helpers/config.js');
 const Magic = Mmm.Magic;
 const Mime = new Magic(Mmm.MAGIC_MIME_TYPE);
+
+const Config = new ConfigHelper();
 
 class FileSystem {
     constructor(server) {
