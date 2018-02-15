@@ -58,9 +58,16 @@ class WebSocket {
             });
 
             activeSocket.on('send server log', () => {
-                this.server.fs.readEnd(this.server.service.object.log.location, (err, data) => {
-                    if (err) return this.websocket.emit('console', 'There was an error while attempting to get the log file.');
-                    activeSocket.emit('server log', data);
+                this.server.fs.readEndOfLogStream(80000, (err, lines) => {
+                    if (err) {
+                        this.websocket.emit('console', {
+                            line: `${Ansi.style.red}[Pterodactyl Daemon] An error was encountered while attempting to read the log file!`,
+                        });
+
+                        return this.server.log.error(err);
+                    }
+
+                    activeSocket.emit('server log', lines);
                 });
             });
 

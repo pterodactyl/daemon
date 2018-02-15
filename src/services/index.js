@@ -25,12 +25,9 @@
 const rfr = require('rfr');
 const Async = require('async');
 const _ = require('lodash');
-const Fs = require('fs-extra');
 const extendify = require('extendify');
 const isStream = require('isstream');
-const Path = require('path');
 const Util = require('util');
-const createOutputStream = require('create-output-stream');
 const Ansi = require('ansi-escape-sequences');
 
 const Status = rfr('src/helpers/status.js');
@@ -43,7 +40,6 @@ class Core {
         this.config = config || rfr(Util.format('src/services/%s/main.json', this.json.service.type));
         this.service = this.json.service;
         this.object = undefined;
-        this.logStream = undefined;
 
         this.parser = new FileParserHelper(this.server);
 
@@ -115,24 +111,9 @@ class Core {
             if (err) {
                 this.server.emit('console', `${Ansi.style.red}(Daemon) ${err.name} while processing ${lastFile}`);
                 this.server.emit('console', `${Ansi.style.red}(Daemon) ${err.message}`);
-                return next(err);
             }
 
-            if (_.get(this.object, 'log.custom', false)) {
-                if (isStream.isWritable(this.logStream)) {
-                    this.logStream.end(() => {
-                        this.logStream = false;
-                    });
-                }
-                Fs.remove(this.server.path(_.get(this.object, 'log.location', 'logs/latest.log')), removeErr => {
-                    if (removeErr && !_.includes(removeErr.message, 'ENOENT: no such file or directory')) {
-                        return next(removeErr);
-                    }
-                    return next();
-                });
-            } else {
-                return next();
-            }
+            return next(err);
         });
     }
 
@@ -154,30 +135,16 @@ class Core {
                 this.server.emit('console', data);
             },
             () => {
-                // Custom Log?
-                if (_.get(this.object, 'log.custom', false) === true) {
-                    if (isStream.isWritable(this.logStream)) {
-                        this.logStream.write(`${data}\n`);
-                    } else {
-                        const LogFile = this.server.path(_.get(this.object, 'log.location', 'logs/latest.log'));
-                        Async.series([
-                            callback => {
-                                this.logStream = createOutputStream(LogFile, {
-                                    mode: '0o644',
-                                    defaultEncoding: 'utf8',
-                                });
-                                return callback();
-                            },
-                            callback => {
-                                Fs.chown(Path.dirname(LogFile), this.json.build.user, this.json.build.user, callback);
-                            },
-                        ], err => {
-                            if (err) this.server.log.warn(err);
-                        });
-                    }
+                const Stream = this.server.fs.getLogStream();
+                if (! this.server.fs.getLogStreamClosing() && isStream.isWritable(Stream)) {
+                    Stream.write(`${data}\n`);
                 }
             },
             () => {
+                if (this.server.status === Status.ON) {
+                    return;
+                }
+
                 // Started
                 if (_.includes(data, _.get(this.object, 'startup.done', null))) {
                     Async.series([
@@ -208,22 +175,19 @@ class Core {
     }
 
     onStop(next) {
-        Async.series([
-            callback => {
-                if (isStream.isWritable(this.logStream)) {
-                    this.logStream.end(() => {
-                        this.logStream = false;
-                        callback();
-                    });
-                } else {
-                    callback();
+        const Stream = this.server.fs.getLogStream(false);
+        if (isStream.isWritable(Stream)) {
+            this.server.fs.setLogStreamClosing(true);
+            Stream.end(() => {
+                if (_.isFunction(next)) {
+                    return next();
                 }
-            },
-        ], err => {
+            });
+        } else {
             if (_.isFunction(next)) {
-                return next(err);
+                return next();
             }
-        });
+        }
     }
 }
 

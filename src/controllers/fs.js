@@ -31,6 +31,9 @@ const Mmm = require('mmmagic');
 const RandomString = require('randomstring');
 const Process = require('child_process');
 const Util = require('util');
+const isStream = require('isstream');
+const RotatingFile = require('rotating-file-stream');
+const Klaw = require('klaw');
 
 const Magic = Mmm.Magic;
 const Mime = new Magic(Mmm.MAGIC_MIME_TYPE);
@@ -38,6 +41,8 @@ const Mime = new Magic(Mmm.MAGIC_MIME_TYPE);
 class FileSystem {
     constructor(server) {
         this.server = server;
+        this.logStream = null;
+        this.logStreamClosing = false;
 
         const Watcher = Chokidar.watch(this.server.configLocation, {
             persistent: true,
@@ -147,6 +152,112 @@ class FileSystem {
                 return next(new Error('This file is too large to open.'));
             }
             Fs.readFile(this.server.path(file), 'utf8', next);
+        });
+    }
+
+    getLogStreamPath(withFileName) {
+        const configPath = Config.get('filesystem.server_logs', '/tmp/pterodactyl');
+
+        if (withFileName === false) {
+            return configPath;
+        }
+
+        return `${configPath}/${this.server.json.uuid}.log`;
+    }
+
+    getLogStreamClosing() {
+        return this.logStreamClosing;
+    }
+
+    setLogStreamClosing(value) {
+        this.logStreamClosing = value;
+    }
+
+    removeOldLogFiles(next) {
+        const filesToDelete = [];
+        Klaw(this.getLogStreamPath(false))
+            .on('data', item => {
+                if (item.stats.isFile() && _.startsWith(Path.basename(item.path), `${this.server.json.uuid}`)) {
+                    filesToDelete.push(`${this.getLogStreamPath(false)}/${Path.basename(item.path)}`);
+                }
+            }).on('end', () => {
+                Async.each(filesToDelete, (file, callback) => {
+                    Fs.truncate(file, 0, callback);
+                }, next);
+            });
+    }
+
+    getLogStream(createMissing) {
+        if (createMissing !== false && !isStream.isWritable(this.logStream)) {
+            this.logStream = RotatingFile(index => {
+                let BaseLogName = `${this.server.json.uuid}.log`;
+                if (index > 0) {
+                    BaseLogName += `.${index - 1}`;
+                }
+
+                return BaseLogName;
+            }, {
+                initialRotation: true,
+                path: this.getLogStreamPath(false),
+                size: '100K',
+                rotate: 1,
+                mode: 0o600,
+            }).on('finish', () => {
+                this.logStream = null;
+                this.setLogStreamClosing(false);
+            }).on('error', err => {
+                this.server.log.error(err);
+                this.logStream = null;
+                this.setLogStreamClosing(false);
+            });
+        }
+
+        return this.logStream;
+    }
+
+    readEndOfLogStream(bytes, next) {
+        // Don't try to read the end of a log stream if there is
+        // no active stream currently.
+        if (this.getLogStreamClosing() || !isStream.isWritable(this.getLogStream(false))) {
+            return next(null, '');
+        }
+
+        const paths = [this.getLogStreamPath(), `${this.getLogStreamPath()}.0`];
+        Async.map(paths, (path, callback) => { // eslint-disable-line
+            Fs.stat(path, (err, stat) => {
+                if (err && err.code !== 'ENOENT') {
+                    return callback(err);
+                } else if (err || !stat.isFile()) {
+                    return callback(null, '');
+                }
+
+                let opts = {};
+                let lines = '';
+                if (stat.size > bytes) {
+                    opts = {
+                        start: (stat.size - bytes),
+                        end: stat.size,
+                    };
+                }
+
+                const ReadStream = Fs.createReadStream(path, opts);
+
+                ReadStream.on('data', data => {
+                    lines += data;
+                });
+
+                ReadStream.on('end', () => {
+                    callback(null, lines);
+                });
+            });
+        }, (err, data) => {
+            if (err) return this.server.log.error(err);
+
+            const FinalOutput = _.get(data, 1, '') + _.get(data, 0, '');
+            const TotalLength = Buffer.byteLength(FinalOutput, 'utf8');
+            const StartPoint = (TotalLength > bytes) ? TotalLength - bytes : 0;
+
+            return next(null, Buffer.from(FinalOutput).toString('utf8', StartPoint, TotalLength));
         });
     }
 
