@@ -62,6 +62,10 @@ class Initialize {
 
                         // Initalize the Server
                         this.setup(json, (err, server) => {
+                            if (err) {
+                                err.server_uuid = json.uuid; // eslint-disable-line
+                            }
+
                             callback(err, server);
                         });
                     });

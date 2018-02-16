@@ -29,6 +29,7 @@ const Async = require('async');
 const Util = require('util');
 const _ = require('lodash');
 const Carrier = require('carrier');
+const Fs = require('fs-extra');
 
 const Log = rfr('src/helpers/logger.js');
 const Status = rfr('src/helpers/status.js');
@@ -302,6 +303,9 @@ class Docker {
         const exposed = {};
         const environment = [];
         Async.auto({
+            create_data_folder: callback => {
+                Fs.ensureDir(this.server.path(), callback);
+            },
             update_images: callback => {
                 // Skip local images.
                 if (_.startsWith(config.image, '~')) {
@@ -351,7 +355,7 @@ class Docker {
                     return eachCallback();
                 }, callback);
             },
-            create_container: ['update_images', 'update_ports', 'set_environment', (r, callback) => {
+            create_container: ['create_data_folder', 'update_images', 'update_ports', 'set_environment', (r, callback) => {
                 this.server.log.debug('Creating new container...');
 
                 if (_.get(config, 'image').length < 1) {
