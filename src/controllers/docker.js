@@ -30,6 +30,7 @@ const Util = require('util');
 const _ = require('lodash');
 const Carrier = require('carrier');
 const Fs = require('fs-extra');
+const ThrottledReader = require('throttled-reader');
 
 const Log = rfr('src/helpers/logger.js');
 const Status = rfr('src/helpers/status.js');
@@ -136,62 +137,6 @@ class Docker {
     }
 
     /**
-     * Pauses a running container and returns a callback when done.
-     * @param  {Function} next [description]
-     * @return {[type]}        [description]
-     */
-    pause(next) {
-        this.container.pause(next);
-    }
-
-    /**
-     * Unpauses a running container and returns a callback when done.
-     * @param  {Function} next [description]
-     * @return {[type]}        [description]
-     */
-    unpause(next) {
-        this.container.unpause(next);
-    }
-
-    /**
-     * Executes a command in the container requested.
-     * @param  array    command
-     * @param  function next
-     * @return callback
-     */
-    exec(command, next) {
-        // Check if we are already attached. If we don't do this then we encounter issues
-        // where the daemon thinks the container is crashed even if it is not. This
-        // is due to the exec() function calling steamClosed()
-        if (isStream(this.stream)) {
-            return next(new Error('An active stream is already in use for this container.'));
-        }
-
-        this.container.exec({
-            Cmd: command,
-            AttachStdin: true,
-            AttachStdout: true,
-            Tty: true,
-        }, (err, exec) => {
-            if (err) return next(err);
-            exec.start({ stdin: true }, (execErr, stream) => {
-                if (!execErr && stream) {
-                    stream.setEncoding('utf8');
-
-                    // Sends data once EOL is reached.
-                    Carrier.carry(this.stream, data => {
-                        this.server.output(data);
-                    });
-
-                    stream.on('end', this.server.streamClosed());
-                } else {
-                    return next(execErr);
-                }
-            });
-        });
-    }
-
-    /**
      * Writes input to the containers stdin.
      * @param  string   command
      * @param  {Function} next
@@ -228,18 +173,28 @@ class Docker {
             stderr: true,
         }, (err, stream) => {
             if (err) return next(err);
+
             this.stream = stream;
             this.stream.setEncoding('utf8');
 
+            const Throttled = new ThrottledReader(this.stream, {
+                rate: Config.get('docker.stream_throttle_bps', 512),
+                cooldownInterval: 250,
+            });
+
             // Sends data once EOL is reached.
-            Carrier.carry(this.stream, data => {
+            Carrier.carry(Throttled, data => {
                 this.server.output(data);
             });
 
-            this.stream.on('end', () => {
-                this.stream = undefined;
-                this.server.streamClosed();
-            });
+            this.stream
+                .on('end', () => {
+                    this.stream = undefined;
+                    this.server.streamClosed();
+                })
+                .on('error', streamError => {
+                    this.server.log.error(streamError);
+                });
 
             // Go ahead and setup the stats stream so we can pull data as needed.
             this.stats(next);

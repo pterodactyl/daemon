@@ -8,6 +8,7 @@ This file is a running track of new features and fixes to each version of the da
 
 ### Changed
 * Server process output is no longer gathered from defined log locations, but rather logged into a rotating log file for the daemon to read.
+* Adds a throttle to container output to mitigate potential DoS vectors from applications and prevent daemon lockups in certain instances.
 
 ## v0.5.0-rc.1 (Dazzling Daohugoupterus)
 ### Fixed
