@@ -77,42 +77,44 @@ class Server extends EventEmitter {
         this.currentDiskUsed = 0;
         this.log = Log.child({ server: this.uuid });
         this.lastCrash = undefined;
+        this.fs = new FileSystem(this);
 
-        this.initContainer(err => {
-            if (err && err.code === 'PTDL_IMAGE_MISSING') {
-                this.log.error({ error: err }, 'Unable to initalize the server container due to a missing docker image.');
-            } else if (err) {
-                return next(err);
-            }
+        if (this.status === Status.ON) {
+            // Server is running, lets reattach to the log stream is possible.
+            // Passing false as the second parameter will prevent the log that
+            // already exists from being overwritten if it is there still.
+            this.fs.getLogStream();
+        }
 
-            Async.series([
-                callback => {
-                    this.service = new ServiceCore(this, null, callback);
-                },
-                callback => {
-                    this.pack = new PackSystem(this);
-                    this.socketIO = new Websocket(this).init();
-                    this.uploadSocket = new UploadSocket(this).init();
-                    this.fs = new FileSystem(this);
-
-                    if (this.status === Status.ON) {
-                        // Server is running, lets reattach to the log stream is possible.
-                        // Passing false as the second parameter will prevent the log that
-                        // already exists from being overwritten if it is there still.
-                        this.fs.getLogStream();
+        Async.series([
+            callback => {
+                this.service = new ServiceCore(this, null, callback);
+            },
+            callback => {
+                this.initContainer(err => {
+                    if (err && err.code === 'PTDL_IMAGE_MISSING') {
+                        this.log.error({ error: err }, 'Unable to initalize the server container due to a missing docker image.');
+                    } else if (err) {
+                        return callback(err);
                     }
 
-                    this.option = new OptionController(this);
-
-                    // Check disk usage on construct and then check it every 10 seconds.
-                    this.diskUse(this);
-                    this.intervals.diskUse = setInterval(this.diskUse, 10000, this);
-
-                    this.containerInitialized = true;
                     return callback();
-                },
-            ], next);
-        });
+                });
+            },
+            callback => {
+                this.pack = new PackSystem(this);
+                this.socketIO = new Websocket(this).init();
+                this.uploadSocket = new UploadSocket(this).init();
+                this.option = new OptionController(this);
+
+                // Check disk usage on construct and then check it every 10 seconds.
+                this.diskUse(this);
+                this.intervals.diskUse = setInterval(this.diskUse, 10000, this);
+
+                this.containerInitialized = true;
+                return callback();
+            },
+        ], next);
     }
 
     initContainer(next) {
