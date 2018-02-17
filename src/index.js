@@ -90,8 +90,11 @@ Async.auto({
         });
     },
     check_structure: callback => {
+        const Config = rfr('config/core.json');
+
         Fs.ensureDirSync('config/credentials');
         Fs.ensureDirSync('config/servers');
+        Fs.ensureDirSync(_.get(Config, 'filesystem.server_logs', '/tmp/pterodactyl'));
         callback();
     },
     check_tar: callback => {
