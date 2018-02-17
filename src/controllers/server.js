@@ -33,6 +33,7 @@ const Fs = require('fs-extra');
 const extendify = require('extendify');
 const Util = require('util');
 const Ansi = require('ansi-escape-sequences');
+const isStream = require('isstream');
 
 const Log = rfr('src/helpers/logger.js');
 const Docker = rfr('src/controllers/docker.js');
@@ -186,6 +187,19 @@ class Server extends EventEmitter {
                 this.intervals.diskUse = null;
                 this.processData.process = {};
             }
+        }
+
+        if (status === Status.OFF) {
+            // Destroy the readable stream from the container. This fixes output buffer
+            // issues for servers with large amounts of data output. The stream will be
+            // destroyed after 2.5 seconds if it still exists.
+            setTimeout(() => {
+                if (this.status === Status.OFF && this.docker && isStream.isReadable(this.docker.stream)) {
+                    this.docker.stream.end();
+                    this.streamClosed();
+                    this.docker.stream = undefined;
+                }
+            }, 2500);
         }
 
         switch (status) {

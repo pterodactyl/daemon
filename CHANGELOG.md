@@ -3,8 +3,12 @@ This file is a running track of new features and fixes to each version of the da
 
 ## v0.4.6
 ### Fixed
-* Fixes a race condition occurring with Daemons running multiple high-output server processes.
+* Fixes a nasty race condition occurring when trying to start the daemon with large amounts of server output from containers.
 * Fixes error spam about undefined 'length' in some instances when checking process usage.
+
+### Changed
+* Server process output is no longer gathered from defined log locations, but rather logged into a rotating log file for the daemon to read.
+* Adds a throttle to container output to mitigate potential DoS vectors from applications and prevent daemon lockups in certain instances.
 
 ## v0.4.5
 ### Fixed
