@@ -1,9 +1,42 @@
 # Changelog
 This file is a running track of new features and fixes to each version of the daemon released starting with `v0.2.0`.
 
-## v0.5.0-rc.2 (Dazzling Daohugoupterus)
+## v0.5.0 (Dazzling Daohugoupterus)
 ### Fixed
 * Fixes an edge case scenario where a server's data directory might not exist when a container is created.
+* Fixes a bug that would prevent daemon boot if a docker image was missing and assigned to a server that needed to be rebuilt.
+* Fixes a bug prevent server installation when no script is defined.
+* Fixes bug causing packs to fail installation due to an unpacking issue.
+* Fixes support for symlinked files in the file manager and returns the proper mime type for them.
+* Fixes 404 error that would arise from bad symlinks in the server data directory.
+* Fixes race condition when attemping to boot a server after a rebuild has begun.
+* Fixes `Cannot get length of undefined` errors that would occasionally plauge certain servers on the daemon.
+* Fixes `write after end` error caused by race condition.
+* Fixes error caused by missing per cpu usage data.
+* Servers referencing a missing or empty configuration file will now still boot but be inoperable via the console.
+* Fixes a bug where times returned by file listing API endpoint were incorrect.
+
+### Added
+* Adds support for Docker Weave setups.
+* Adds support for parsing files using XML format.
+* Server boot process now sets the correct ownership on files when the server is booted.
+* Files uploaded via SFTP are now blocked if there is not enough server space available to store it.
+* File parsing now supports `env.VARIABLE` syntax as a shorter alternative to `server.build.env.VARIABLE` for egg configurations.
+* Adds support for inter-server private networking via Docker.
+* Added more data integrity checks when running a server. These changes make it impossible to boot a server that has an invalid service option configuration.
+* SFTP is now handled internally within the Daemon rather than relying on a Docker SFTP container. Authentication is performed using a Panel user.
+
+### Changed
+* Changed container creation logic to ensure that servers with no swap space assigned do not get allocated swap.
+* Servers are now killed by default when they run out of disk space rather than being gracefully stopped.
+* Authentication now uses dynamically changing tokens issued by the Panel.
+* All API routes now prefixed with `v1/`.
+* Service options now use the new panel structure and are stored in `src/services/configs/<uuid>.json`. All existing servers will need to be updated, the panel ships with a command to do this.
+* Rebuilding a server now allows the service to be changed on the fly and re-applied.
+* Server data is now stored in `/srv/daemon-data/<uuid>` rather than `/srv/daemon-data/<username>/data` by default.
+
+### Removed
+* `OOM` exceptions can no longer be disabled in Docker containers due to a startling number of users trying to use this to solve memory issues and causing more problems.
 
 ## v0.5.0-rc.1 (Dazzling Daohugoupterus)
 ### Fixed
