@@ -1,6 +1,11 @@
 # Changelog
 This file is a running track of new features and fixes to each version of the daemon released starting with `v0.2.0`.
 
+## v0.4.6
+### Fixed
+* Fixes a race condition occurring with Daemons running multiple high-output server processes.
+* Fixes error spam about undefined 'length' in some instances when checking process usage.
+
 ## v0.4.5
 ### Fixed
 * Fixes a bug that caused newly created nodes to fail during the server creation process due to a missing timezone file location in the configuration. [`#593`](https://github.com/Pterodactyl/Panel/issues/593)

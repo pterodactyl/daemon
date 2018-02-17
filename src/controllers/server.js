@@ -78,42 +78,42 @@ class Server extends EventEmitter {
         this.log = Log.child({ server: this.uuid });
         this.lastCrash = undefined;
 
-        this.initContainer(err => {
-            if (err) return next(err);
-
-            if (!_.isString(_.get(this.json, 'service.type', false))) {
-                return next(new Error('No service type was passed to the server configuration, unable to select a service.'));
-            }
-
-            const ServiceFilePath = Util.format('src/services/%s/index.js', this.json.service.type);
-            Async.series([
-                callback => {
-                    Fs.access(ServiceFilePath, Fs.constants.R_OK, callback);
-                },
-                callback => {
-                    const Service = rfr(ServiceFilePath);
-                    this.service = new Service(this, null, callback);
-                },
-                callback => {
-                    this.pack = new PackSystem(this);
-                    this.socketIO = new Websocket(this).init();
-                    this.uploadSocket = new UploadSocket(this).init();
-                    this.fs = new FileSystem(this);
-                    this.option = new OptionController(this);
-
-                    if (this.status === Status.ON) {
-                        // Server is running, lets reattach to the log stream is possible.
-                        // Passing false as the second parameter will prevent the log that
-                        // already exists from being overwritten if it is there still.
-                        this.fs.getLogStream();
-                    }
+        this.fs = new FileSystem(this);
+        if (this.status === Status.ON) {
+            // Server is running, lets reattach to the log stream is possible.
+            // Passing false as the second parameter will prevent the log that
+            // already exists from being overwritten if it is there still.
+            this.fs.getLogStream();
+        }
 
 
-                    this.containerInitialized = true;
-                    return callback();
-                },
-            ], next);
-        });
+        if (!_.isString(_.get(this.json, 'service.type', false))) {
+            return next(new Error('No service type was passed to the server configuration, unable to select a service.'));
+        }
+
+        const ServiceFilePath = Util.format('src/services/%s/index.js', this.json.service.type);
+
+        Async.series([
+            callback => {
+                Fs.access(ServiceFilePath, Fs.constants.R_OK, callback);
+            },
+            callback => {
+                const Service = rfr(ServiceFilePath);
+                this.service = new Service(this, null, callback);
+            },
+            callback => {
+                this.initContainer(callback);
+            },
+            callback => {
+                this.pack = new PackSystem(this);
+                this.socketIO = new Websocket(this).init();
+                this.uploadSocket = new UploadSocket(this).init();
+                this.option = new OptionController(this);
+                this.containerInitialized = true;
+
+                return callback();
+            },
+        ], next);
     }
 
     initContainer(next) {
@@ -500,7 +500,7 @@ class Server extends EventEmitter {
 
         const deltaTotal = cycle.cpu_usage.total_usage - priorCycle.cpu_usage.total_usage;
         const deltaSystem = cycle.system_cpu_usage - priorCycle.system_cpu_usage;
-        const totalUsage = (deltaTotal / deltaSystem) * cycle.cpu_usage.percpu_usage.length * 100;
+        const totalUsage = (deltaTotal / deltaSystem) * (cycle.cpu_usage.percpu_usage.length || 0) * 100;
 
         Async.forEachOf(cycle.cpu_usage.percpu_usage, (cpu, index, callback) => {
             if (_.isObject(priorCycle.cpu_usage.percpu_usage) && index in priorCycle.cpu_usage.percpu_usage) {
