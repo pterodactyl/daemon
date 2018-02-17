@@ -153,133 +153,157 @@ class InternalSftpServer {
                         });
 
                         sftp.on('READDIR', (reqId, handle) => {
-                            const requestData = _.get(clientContext.handles, handle, null);
-
-                            if (requestData.done) {
-                                return sftp.status(reqId, STATUS_CODE.EOF);
-                            }
-
-                            this.handleReadDir(clientContext, requestData.path, (err, attrs) => {
-                                if (err) {
-                                    if (err.code === 'ENOENT') {
-                                        return sftp.status(reqId, STATUS_CODE.NO_SUCH_FILE);
-                                    }
-
-                                    clientContext.server.log.warn({
-                                        path: requestData.path,
-                                        exception: err,
-                                        identifier: clientContext.request_id,
-                                    }, 'An error occurred while attempting to perform a READDIR operation in the SFTP server.');
-
-                                    return sftp.status(reqId, STATUS_CODE.FAILURE);
+                            clientContext.server.hasPermission('s:files:get', clientContext.token, (err, hasPermission) => {
+                                if (err || !hasPermission) {
+                                    return sftp.status(reqId, STATUS_CODE.PERMISSION_DENIED);
                                 }
 
-                                requestData.done = true;
-                                return sftp.name(reqId, attrs);
+                                const requestData = _.get(clientContext.handles, handle, null);
+
+                                if (requestData.done) {
+                                    return sftp.status(reqId, STATUS_CODE.EOF);
+                                }
+
+                                this.handleReadDir(clientContext, requestData.path, (error, attrs) => {
+                                    if (error) {
+                                        if (error.code === 'ENOENT') {
+                                            return sftp.status(reqId, STATUS_CODE.NO_SUCH_FILE);
+                                        }
+
+                                        clientContext.server.log.warn({
+                                            path: requestData.path,
+                                            exception: error,
+                                            identifier: clientContext.request_id,
+                                        }, 'An error occurred while attempting to perform a READDIR operation in the SFTP server.');
+
+                                        return sftp.status(reqId, STATUS_CODE.FAILURE);
+                                    }
+
+                                    requestData.done = true;
+                                    return sftp.name(reqId, attrs);
+                                });
                             });
                         });
 
                         sftp.on('OPENDIR', (reqId, location) => {
-                            const handle = this.makeHandle(clientContext);
-                            clientContext.handles[handle] = {
-                                path: location,
-                                done: false,
-                            };
+                            clientContext.server.hasPermission('s:files:get', clientContext.token, (err, hasPermission) => {
+                                if (err || !hasPermission) {
+                                    return sftp.status(reqId, STATUS_CODE.PERMISSION_DENIED);
+                                }
 
-                            clientContext.handles_count += 1;
+                                const handle = this.makeHandle(clientContext);
+                                clientContext.handles[handle] = {
+                                    path: location,
+                                    done: false,
+                                };
 
-                            sftp.handle(reqId, handle);
+                                clientContext.handles_count += 1;
+
+                                sftp.handle(reqId, handle);
+                            });
                         });
 
                         sftp.on('OPEN', (reqId, location, flags) => {
-                            const handle = this.makeHandle(clientContext);
-                            const data = {
-                                path: location,
-                                done: false,
-                            };
-
-                            // Handle GNOME sending improper signals (42)? Handle Cyberduck trying to overwrite
-                            // an existing file (18).
-                            if (flags === 42 || flags === 18) {
-                                flags = OPEN_MODE.TRUNC | OPEN_MODE.CREAT | OPEN_MODE.WRITE; // eslint-disable-line
-                            }
-
-                            switch (SftpStream.flagsToString(flags)) {
-                            case 'r':
-                                data.type = OPEN_MODE.READ;
-                                break;
-                            case 'w':
-                            case 'wx':
-                                data.type = OPEN_MODE.WRITE;
-                                break;
-                            default:
-                                clientContext.server.log.warn({
-                                    path: location,
-                                    flag_id: flags,
-                                    flag: SftpStream.flagsToString(flags),
-                                    identifier: clientContext.request_id,
-                                }, 'Received an unknown OPEN flag during SFTP operation.');
-
-                                return sftp.status(reqId, STATUS_CODE.OP_UNSUPPORTED);
-                            }
-
-                            Async.series({
-                                is_write: callback => {
-                                    let e = null;
-                                    if (data.type !== OPEN_MODE.WRITE) {
-                                        e = new Error();
-                                        e.code = 'E_ISREAD';
-                                    }
-
-                                    return callback(e);
-                                },
-                                ensure: callback => {
-                                    Fs.ensureFile(clientContext.server.path(location), callback);
-                                },
-                                open: callback => {
-                                    Fs.open(clientContext.server.path(location), 'w', 0o644, callback);
-                                },
-                            }, (err, results) => {
-                                if (err && err.code !== 'E_ISREAD') {
-                                    clientContext.server.log.warn({
-                                        path: location,
-                                        exception: err,
-                                        identifier: clientContext.request_id,
-                                    }, 'An error occurred while attempting to perform an OPEN operation in the SFTP server.');
-
-                                    return sftp.status(reqId, STATUS_CODE.FAILURE);
+                            clientContext.server.hasPermission('s:files:download', clientContext.token, (err, hasPermission) => {
+                                if (err || !hasPermission) {
+                                    return sftp.status(reqId, STATUS_CODE.PERMISSION_DENIED);
                                 }
 
-                                data.writer = _.get(results, 'open', undefined);
-                                clientContext.handles[handle] = data;
-                                clientContext.handles_count += 1;
+                                const handle = this.makeHandle(clientContext);
+                                const data = {
+                                    path: location,
+                                    done: false,
+                                };
 
-                                return sftp.handle(reqId, handle);
+                                // Handle GNOME sending improper signals (42)? Handle Cyberduck trying to overwrite
+                                // an existing file (18).
+                                if (flags === 42 || flags === 18) {
+                                    flags = OPEN_MODE.TRUNC | OPEN_MODE.CREAT | OPEN_MODE.WRITE; // eslint-disable-line
+                                }
+
+                                switch (SftpStream.flagsToString(flags)) {
+                                case 'r':
+                                    data.type = OPEN_MODE.READ;
+                                    break;
+                                case 'w':
+                                case 'wx':
+                                    data.type = OPEN_MODE.WRITE;
+                                    break;
+                                default:
+                                    clientContext.server.log.warn({
+                                        path: location,
+                                        flag_id: flags,
+                                        flag: SftpStream.flagsToString(flags),
+                                        identifier: clientContext.request_id,
+                                    }, 'Received an unknown OPEN flag during SFTP operation.');
+
+                                    return sftp.status(reqId, STATUS_CODE.OP_UNSUPPORTED);
+                                }
+
+                                Async.series({
+                                    is_write: callback => {
+                                        let e = null;
+                                        if (data.type !== OPEN_MODE.WRITE) {
+                                            e = new Error();
+                                            e.code = 'E_ISREAD';
+                                        }
+
+                                        return callback(e);
+                                    },
+                                    ensure: callback => {
+                                        Fs.ensureFile(clientContext.server.path(location), callback);
+                                    },
+                                    open: callback => {
+                                        Fs.open(clientContext.server.path(location), 'w', 0o644, callback);
+                                    },
+                                }, (error, results) => {
+                                    if (error && error.code !== 'E_ISREAD') {
+                                        clientContext.server.log.warn({
+                                            path: location,
+                                            exception: error,
+                                            identifier: clientContext.request_id,
+                                        }, 'An error occurred while attempting to perform an OPEN operation in the SFTP server.');
+
+                                        return sftp.status(reqId, STATUS_CODE.FAILURE);
+                                    }
+
+                                    data.writer = _.get(results, 'open', undefined);
+                                    clientContext.handles[handle] = data;
+                                    clientContext.handles_count += 1;
+
+                                    return sftp.handle(reqId, handle);
+                                });
                             });
                         });
 
                         sftp.on('READ', (reqId, handle, offset, length) => {
-                            const requestData = _.get(clientContext.handles, handle, null);
-                            if (requestData.done) {
-                                return sftp.status(reqId, STATUS_CODE.EOF);
-                            }
-
-                            clientContext.server.fs.readBytes(requestData.path, offset, length, (err, data, done) => {
-                                requestData.done = done || false;
-
-                                if ((err && err.code === 'EISDIR') || done) {
-                                    return sftp.status(reqId, STATUS_CODE.EOF);
-                                } else if (err) {
-                                    clientContext.server.log.warn({
-                                        path: requestData.path,
-                                        exception: err,
-                                        identifier: clientContext.request_id,
-                                    }, 'An error occurred while attempting to perform a READ operation in the SFTP server.');
-
-                                    return sftp.status(reqId, STATUS_CODE.FAILURE);
+                            clientContext.server.hasPermission('s:files:download', clientContext.token, (err, hasPermission) => {
+                                if (err || !hasPermission) {
+                                    return sftp.status(reqId, STATUS_CODE.PERMISSION_DENIED);
                                 }
 
-                                return sftp.data(reqId, data, 'utf8');
+                                const requestData = _.get(clientContext.handles, handle, null);
+                                if (requestData.done) {
+                                    return sftp.status(reqId, STATUS_CODE.EOF);
+                                }
+
+                                clientContext.server.fs.readBytes(requestData.path, offset, length, (error, data, done) => {
+                                    requestData.done = done || false;
+
+                                    if ((error && error.code === 'EISDIR') || done) {
+                                        return sftp.status(reqId, STATUS_CODE.EOF);
+                                    } else if (error) {
+                                        clientContext.server.log.warn({
+                                            path: requestData.path,
+                                            exception: error,
+                                            identifier: clientContext.request_id,
+                                        }, 'An error occurred while attempting to perform a READ operation in the SFTP server.');
+
+                                        return sftp.status(reqId, STATUS_CODE.FAILURE);
+                                    }
+
+                                    return sftp.data(reqId, data, 'utf8');
+                                });
                             });
                         });
 
@@ -310,64 +334,82 @@ class InternalSftpServer {
                         });
 
                         sftp.on('WRITE', (reqId, handle, offset, data) => {
-                            const requestData = _.get(clientContext.handles, handle, null);
-
-                            // Block operation if there is not enough available disk space on the server currently.
-                            if (
-                                clientContext.server.json.build.disk > 0
-                                && clientContext.server.currentDiskUsed > clientContext.server.json.build.disk
-                            ) {
-                                return sftp.status(reqId, STATUS_CODE.OP_UNSUPPORTED);
-                            }
-
-                            // The writer is closed in the sftp.on('CLOSE') listener.
-                            Fs.write(requestData.writer, data, 0, data.length, null, err => {
-                                if (err) {
-                                    clientContext.server.log.warn({
-                                        path: requestData.path,
-                                        exception: err,
-                                        identifier: clientContext.request_id,
-                                    }, 'An error occurred while attempting to perform a WRITE operation in the SFTP server.');
-
-                                    return sftp.status(reqId, STATUS_CODE.FAILURE);
+                            clientContext.server.hasPermission('s:files:upload', clientContext.token, (err, hasPermission) => {
+                                if (err || !hasPermission) {
+                                    return sftp.status(reqId, STATUS_CODE.PERMISSION_DENIED);
                                 }
 
-                                return sftp.status(reqId, STATUS_CODE.OK);
+                                const requestData = _.get(clientContext.handles, handle, null);
+
+                                // Block operation if there is not enough available disk space on the server currently.
+                                if (
+                                    clientContext.server.json.build.disk > 0
+                                        && clientContext.server.currentDiskUsed > clientContext.server.json.build.disk
+                                ) {
+                                    return sftp.status(reqId, STATUS_CODE.OP_UNSUPPORTED);
+                                }
+
+                                // The writer is closed in the sftp.on('CLOSE') listener.
+                                Fs.write(requestData.writer, data, 0, data.length, null, error => {
+                                    if (error) {
+                                        clientContext.server.log.warn({
+                                            path: requestData.path,
+                                            exception: error,
+                                            identifier: clientContext.request_id,
+                                        }, 'An error occurred while attempting to perform a WRITE operation in the SFTP server.');
+
+                                        return sftp.status(reqId, STATUS_CODE.FAILURE);
+                                    }
+
+                                    return sftp.status(reqId, STATUS_CODE.OK);
+                                });
                             });
                         });
 
                         sftp.on('MKDIR', (reqId, location) => {
-                            Fs.ensureDir(clientContext.server.path(location), err => {
-                                if (err) {
-                                    clientContext.server.log.warn({
-                                        path: location,
-                                        exception: err,
-                                        identifier: clientContext.request_id,
-                                    }, 'An error occurred while attempting to perform a MKDIR operation in the SFTP server.');
+                            clientContext.server.hasPermission('s:files:create', clientContext.token, (err, hasPermission) => {
+                                if (err || !hasPermission) {
+                                    return sftp.status(reqId, STATUS_CODE.PERMISSION_DENIED);
                                 }
 
-                                return sftp.status(reqId, err ? STATUS_CODE.FAILURE : STATUS_CODE.OK);
+                                Fs.ensureDir(clientContext.server.path(location), error => {
+                                    if (error) {
+                                        clientContext.server.log.warn({
+                                            path: location,
+                                            exception: error,
+                                            identifier: clientContext.request_id,
+                                        }, 'An error occurred while attempting to perform a MKDIR operation in the SFTP server.');
+                                    }
+
+                                    return sftp.status(reqId, err ? STATUS_CODE.FAILURE : STATUS_CODE.OK);
+                                });
                             });
                         });
 
                         sftp.on('RENAME', (reqId, oldPath, newPath) => {
-                            clientContext.server.fs.move(oldPath, newPath, err => {
-                                if (err) {
-                                    if (err.code === 'ENOENT') {
-                                        return sftp.status(reqId, STATUS_CODE.NO_SUCH_FILE);
-                                    }
-
-                                    clientContext.server.log.warn({
-                                        actions: {
-                                            from: oldPath,
-                                            to: newPath,
-                                        },
-                                        exception: err,
-                                        identifier: clientContext.request_id,
-                                    }, 'An error occurred while attempting to perform a RENAME operation in the SFTP server.');
+                            clientContext.server.hasPermission('s:files:move', clientContext.token, (err, hasPermission) => {
+                                if (err || !hasPermission) {
+                                    return sftp.status(reqId, STATUS_CODE.PERMISSION_DENIED);
                                 }
 
-                                return sftp.status(reqId, err ? STATUS_CODE.FAILURE : STATUS_CODE.OK);
+                                clientContext.server.fs.move(oldPath, newPath, error => {
+                                    if (error) {
+                                        if (error.code === 'ENOENT') {
+                                            return sftp.status(reqId, STATUS_CODE.NO_SUCH_FILE);
+                                        }
+
+                                        clientContext.server.log.warn({
+                                            actions: {
+                                                from: oldPath,
+                                                to: newPath,
+                                            },
+                                            exception: error,
+                                            identifier: clientContext.request_id,
+                                        }, 'An error occurred while attempting to perform a RENAME operation in the SFTP server.');
+                                    }
+
+                                    return sftp.status(reqId, err ? STATUS_CODE.FAILURE : STATUS_CODE.OK);
+                                });
                             });
                         });
 
@@ -378,20 +420,26 @@ class InternalSftpServer {
                         });
 
                         sftp.on('RMDIR', (reqId, location) => {
-                            clientContext.server.fs.rm(location, err => {
-                                if (err) {
-                                    if (err.code === 'ENOENT') {
-                                        return sftp.status(reqId, STATUS_CODE.NO_SUCH_FILE);
-                                    }
-
-                                    clientContext.server.log.warn({
-                                        path: location,
-                                        exception: err,
-                                        identifier: clientContext.request_id,
-                                    }, 'An error occurred while attempting to perform a RMDIR operation in the SFTP server.');
+                            clientContext.server.hasPermission('s:files:delete', clientContext.token, (err, hasPermission) => {
+                                if (err || !hasPermission) {
+                                    return sftp.status(reqId, STATUS_CODE.PERMISSION_DENIED);
                                 }
 
-                                return sftp.status(reqId, err ? STATUS_CODE.FAILURE : STATUS_CODE.OK);
+                                clientContext.server.fs.rm(location, error => {
+                                    if (error) {
+                                        if (error.code === 'ENOENT') {
+                                            return sftp.status(reqId, STATUS_CODE.NO_SUCH_FILE);
+                                        }
+
+                                        clientContext.server.log.warn({
+                                            path: location,
+                                            exception: error,
+                                            identifier: clientContext.request_id,
+                                        }, 'An error occurred while attempting to perform a RMDIR operation in the SFTP server.');
+                                    }
+
+                                    return sftp.status(reqId, err ? STATUS_CODE.FAILURE : STATUS_CODE.OK);
+                                });
                             });
                         });
 

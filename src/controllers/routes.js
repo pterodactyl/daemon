@@ -299,7 +299,7 @@ class RouteController {
 
     // Sends command to server
     postServerCommand() {
-        Auth.allowed('s:files:command', (allowedErr, isAllowed) => {
+        Auth.allowed('s:command', (allowedErr, isAllowed) => {
             if (allowedErr || !isAllowed) return;
 
             if (!_.isUndefined(this.req.params.command)) {
