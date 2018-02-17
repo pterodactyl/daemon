@@ -4,11 +4,6 @@ This file is a running track of new features and fixes to each version of the da
 ## v0.5.0-rc.2 (Dazzling Daohugoupterus)
 ### Fixed
 * Fixes an edge case scenario where a server's data directory might not exist when a container is created.
-* Fixes a nasty race condition occurring when trying to start the daemon with large amounts of server output from containers.
-
-### Changed
-* Server process output is no longer gathered from defined log locations, but rather logged into a rotating log file for the daemon to read.
-* Adds a throttle to container output to mitigate potential DoS vectors from applications and prevent daemon lockups in certain instances.
 
 ## v0.5.0-rc.1 (Dazzling Daohugoupterus)
 ### Fixed
@@ -74,6 +69,15 @@ This file is a running track of new features and fixes to each version of the da
 * Service options now use the new panel structure and are stored in `src/services/configs/<uuid>.json`. All existing servers will need to be updated, the panel ships with a command to do this.
 * Rebuilding a server now allows the service to be changed on the fly and re-applied.
 * Server data is now stored in `/srv/daemon-data/<uuid>` rather than `/srv/daemon-data/<username>/data` by default.
+
+## v0.4.6 (Candid Comodactylus)
+### Fixed
+* Fixes a nasty race condition occurring when trying to start the daemon with large amounts of server output from containers.
+* Fixes error spam about undefined 'length' in some instances when checking process usage.
+
+### Changed
+* Server process output is no longer gathered from defined log locations, but rather logged into a rotating log file for the daemon to read.
+* Adds a throttle to container output to mitigate potential DoS vectors from applications and prevent daemon lockups in certain instances.
 
 ## v0.4.5 (Candid Comodactylus)
 ### Fixed

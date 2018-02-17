@@ -70,13 +70,13 @@ class WebSocket {
                         return;
                     }
 
-                    this.server.fs.readEndOfLogStream(80000, (err, lines) => {
-                        if (err) {
+                    this.server.fs.readEndOfLogStream(80000, (readErr, lines) => {
+                        if (readErr) {
                             this.websocket.emit('console', {
                                 line: `${Ansi.style.red}[Pterodactyl Daemon] An error was encountered while attempting to read the log file!`,
                             });
 
-                            return this.server.log.error(err);
+                            return this.server.log.error(readErr);
                         }
 
                         activeSocket.emit('server log', lines);

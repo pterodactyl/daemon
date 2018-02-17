@@ -95,6 +95,8 @@ Async.auto({
     check_structure: callback => {
         Fs.ensureDirSync('config/servers');
         Fs.ensureDirSync('config/.sftp');
+        Fs.ensureDirSync(Config.get('filesystem.server_logs', '/tmp/pterodactyl'));
+
         callback();
     },
     check_tar: callback => {
