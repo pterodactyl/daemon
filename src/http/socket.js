@@ -24,6 +24,7 @@
  */
 const rfr = require('rfr');
 const _ = require('lodash');
+const Ansi = require('ansi-escape-sequences');
 
 const RestServer = rfr('src/http/restify.js');
 const Socket = require('socket.io').listen(RestServer.server);

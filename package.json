@@ -1,6 +1,6 @@
 {
   "name": "pteronode",
-  "version": "0.4.5",
+  "version": "0.4.6",
   "description": "Server management wrapper built for Pterodactyl Panel.",
   "main": "index.js",
   "directories": {
