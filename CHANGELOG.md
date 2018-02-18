@@ -1,6 +1,10 @@
 # Changelog
 This file is a running track of new features and fixes to each version of the daemon released starting with `v0.2.0`.
 
+## v0.5.1 (Dazzling Daohugoupterus)
+### Changed
+* Disk usage is now checked every 30 seconds by default to reduce the load on a server.
+
 ## v0.5.0 (Dazzling Daohugoupterus)
 ### Fixed
 * Fixes an edge case scenario where a server's data directory might not exist when a container is created.

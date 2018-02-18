@@ -108,9 +108,9 @@ class Server extends EventEmitter {
                 this.uploadSocket = new UploadSocket(this).init();
                 this.option = new OptionController(this);
 
-                // Check disk usage on construct and then check it every 10 seconds.
+                // Check disk usage on construct and then check it every 30 seconds.
                 this.diskUse(this);
-                this.intervals.diskUse = setInterval(this.diskUse, 10000, this);
+                this.intervals.diskUse = setInterval(this.diskUse, Config.get('internals.disk_use_seconds', 30) * 1000, this);
 
                 this.containerInitialized = true;
                 return callback();
