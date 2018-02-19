@@ -65,6 +65,7 @@
     "moment": "2.20.1",
     "node-yaml": "^3.1.1",
     "properties-parser": "0.3.1",
+    "pump": "3.0.0",
     "randomstring": "1.1.5",
     "request": "2.83.0",
     "restify": "4.3.1",
