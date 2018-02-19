@@ -30,7 +30,9 @@ const Util = require('util');
 const _ = require('lodash');
 const Carrier = require('carrier');
 const Fs = require('fs-extra');
-const ThrottledReader = require('throttled-reader');
+const Streams = require('memory-streams');
+const Ansi = require('ansi-escape-sequences');
+const Moment = require('moment');
 
 const Log = rfr('src/helpers/logger.js');
 const Status = rfr('src/helpers/status.js');
@@ -133,6 +135,9 @@ class Docker {
      * @return {[type]}        [description]
      */
     kill(next) {
+        if (isStream(this.stream)) {
+            this.stream.end();
+        }
         this.container.kill(next);
     }
 
@@ -177,24 +182,83 @@ class Docker {
             this.stream = stream;
             this.stream.setEncoding('utf8');
 
-            const Throttled = new ThrottledReader(this.stream, {
-                rate: Config.get('docker.stream_throttle_bps', 512),
-                cooldownInterval: 250,
+            if (!_.isNull(this.checkingThrottleInterval)) {
+                clearInterval(this.checkingThrottleInterval);
+                this.checkingThrottleInterval = null;
+            }
+
+            if (!_.isNull(this.checkingMessageInterval)) {
+                clearInterval(this.checkingMessageInterval);
+                this.checkingMessageInterval = null;
+            }
+
+            let ThrottledStream = new Streams.ReadableStream('');
+
+            ThrottledStream.on('data', data => {
+                this.server.output(data.toString());
             });
 
-            // Sends data once EOL is reached.
-            Carrier.carry(Throttled, data => {
-                this.server.output(data);
-            });
+            let MessageBuffer = '';
+            let ConsoleThrottleMessageSent = false;
+            let ThrottleMessageCount = 0;
+            let LastThrottleMessageTime = Moment().subtract(Config.get('internals.throttle.decay_seconds', 10), 'seconds');
+            let ShouldCheckThrottle = true;
 
             this.stream
+                .on('data', data => {
+                    if (!ShouldCheckThrottle) {
+                        return;
+                    }
+
+                    if (Buffer.byteLength(MessageBuffer, 'utf8') > Config.get('internals.throttle.bytes', 4096)) {
+                        ShouldCheckThrottle = false;
+
+                        if (ThrottleMessageCount >= Config.get('internals.throttle.kill_at_count', 5) && this.server.status !== Status.STOPPING) {
+                            this.server.output(`${Ansi.style.red} [Pterodactyl Daemon] Your server is sending too much data, process is being killed.`);
+                            this.server.log.warn('Server has triggered automatic kill due to excessive data output. Potential DoS attack.');
+                            this.server.kill(() => {}); // eslint-disable-line
+                        }
+
+                        if (!ConsoleThrottleMessageSent) {
+                            ThrottleMessageCount += 1;
+                            ConsoleThrottleMessageSent = true;
+                            LastThrottleMessageTime = Moment();
+                            this.server.log.debug({ throttleCount: ThrottleMessageCount }, 'Server is being throttled due too too much data being passed through the console.');
+                            this.server.output(`${Ansi.style.yellow} [Pterodactyl Daemon] This output is now being throttled due to output speed!`);
+                        }
+                    } else {
+                        MessageBuffer += data;
+                        ThrottledStream.append(data);
+                    }
+                })
                 .on('end', () => {
                     this.stream = undefined;
+                    ThrottledStream = undefined;
+
+                    clearInterval(this.checkingThrottleInterval);
+                    clearInterval(this.checkingMessageInterval);
+                    this.checkingThrottleInterval = null;
+                    this.checkingMessageInterval = null;
+
                     this.server.streamClosed();
                 })
                 .on('error', streamError => {
                     this.server.log.error(streamError);
                 });
+
+            this.checkingThrottleInterval = setInterval(() => {
+                MessageBuffer = '';
+                ShouldCheckThrottle = true;
+            }, Config.get('internals.throttle.check_interval_ms', 100));
+
+            this.checkingMessageInterval = setInterval(() => {
+                ConsoleThrottleMessageSent = false;
+                // Happened within 10 seconds of previous, increment the counter. Otherwise,
+                // subtract a throttle down to 0.
+                if (Moment(LastThrottleMessageTime).add(Config.get('internals.throttle.decay_seconds', 10), 'seconds').isBefore(Moment())) {
+                    ThrottleMessageCount = ThrottleMessageCount === 0 ? 0 : ThrottleMessageCount - 1;
+                }
+            }, 5000);
 
             // Go ahead and setup the stats stream so we can pull data as needed.
             this.stats(next);

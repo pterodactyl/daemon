@@ -4,6 +4,10 @@ This file is a running track of new features and fixes to each version of the da
 ## v0.5.1 (Dazzling Daohugoupterus)
 ### Fixed
 * Fixes command used to create a user on the Daemon to work with all supported OSes.
+* Fixes output throttling behavior to not lock up the daemon and adjusts limits to `40 KB` of data per second before data is tossed.
+
+### Added
+* Servers that trigger a data volume warning more than 5 times in the span of 25 seconds (with 10 second decay per warning) will be killed. This type of event should only occur when a server is flooding output to the console.
 
 ### Changed
 * Disk usage is now checked every 30 seconds by default to reduce the load on a server.
