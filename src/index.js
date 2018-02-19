@@ -30,6 +30,7 @@ const compareVersions = require('compare-versions');
 const Fs = require('fs-extra');
 const _ = require('lodash');
 const Keypair = require('keypair');
+const Getos = require('getos');
 
 const Log = rfr('src/helpers/logger.js');
 const Package = rfr('package.json');
@@ -152,16 +153,33 @@ Async.auto({
                 });
             },
             (exists, scall) => {
+                Getos((err, os) => {
+                    scall(err, exists, os);
+                });
+            },
+            (exists, os, scall) => {
                 if (exists) {
                     return scall();
                 }
 
-                let UserCommand = 'adduser --system --no-create-home --shell /bin/false --group';
-                if (!_.isUndefined(process.env.IS_ALPINE) && process.env.IS_ALPINE === 'true') {
-                    UserCommand = `addgroup -S ${Config.get('docker.container.username', 'pterodactyl')} && adduser -S -D -H -G ${Config.get('docker.container.username', 'pterodactyl')} -s /bin/false`;
+                let UserCommand = '';
+                const Username = Config.get('docker.container.username', 'pterodactyl');
+
+                switch (_.get(os, 'dist')) {
+                case 'Alpine Linux':
+                    UserCommand = `addgroup -S ${Username} && adduser -S -D -H -G ${Username} -s /bin/false ${Username}`;
+                    break;
+                case 'Ubuntu Linux':
+                case 'Debian':
+                case 'Centos':
+                    UserCommand = `useradd --system --no-create-home --shell /bin/false ${Username}`;
+                    break;
+                default:
+                    return scall(new Error('Unable to create a pterodactyl user and group, unknown operating system.'));
                 }
-                Proc.exec(`${UserCommand} ${Config.get('docker.container.username', 'pterodactyl')}`, {}, err => {
-                    if (err && (!_.includes(err.message, 'already exists') || !_.includes(err.message, `user '${Config.get('docker.container.username', 'pterodactyl')}' in use`))) {
+
+                Proc.exec(UserCommand, {}, err => {
+                    if (err && (!_.includes(err.message, 'already exists') || !_.includes(err.message, `user '${Username}' in use`))) {
                         return scall(err);
                     }
 

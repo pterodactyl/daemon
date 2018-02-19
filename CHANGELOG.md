@@ -2,6 +2,9 @@
 This file is a running track of new features and fixes to each version of the daemon released starting with `v0.2.0`.
 
 ## v0.5.1 (Dazzling Daohugoupterus)
+### Fixed
+* Fixes command used to create a user on the Daemon to work with all supported OSes.
+
 ### Changed
 * Disk usage is now checked every 30 seconds by default to reduce the load on a server.
 
