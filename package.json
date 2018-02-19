@@ -1,6 +1,6 @@
 {
   "name": "pteronode",
-  "version": "0.0.0-canary",
+  "version": "0.5.1",
   "description": "Server management wrapper built for Pterodactyl Panel.",
   "main": "index.js",
   "directories": {
