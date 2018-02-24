@@ -128,6 +128,9 @@ class Option {
                 this.server.log.debug('Running privileged docker container to perform the installation process.');
 
                 const environment = [];
+                environment.push(`SERVER_MEMORY=${this.server.json.build.memory}`);
+                environment.push(`SERVER_IP=${this.server.json.build.default.ip}`);
+                environment.push(`SERVER_PORT=${this.server.json.build.default.port}`);
                 _.forEach(_.get(results.details, 'env', []), (value, key) => {
                     environment.push(`${key}=${value}`);
                 });

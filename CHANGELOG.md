@@ -2,6 +2,9 @@
 This file is a running track of new features and fixes to each version of the daemon released starting with `v0.2.0`.
 
 ## v0.5.2 (Dazzling Daohugoupterus)
+### Fixed
+* Fixes missing environment variable in installation script for eggs.
+
 ### Added
 * Added a `internals.throttle.enabled` flag to the config to allow disabling the throttle entirely if needed.
 
