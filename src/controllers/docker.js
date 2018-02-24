@@ -210,7 +210,12 @@ class Docker {
                         return;
                     }
 
-                    if (Buffer.byteLength(MessageBuffer, 'utf8') > Config.get('internals.throttle.bytes', 4096)) {
+                    if (!Config.get('internals.throttle.enabled', true)) {
+                        ThrottledStream.append(data);
+                        return;
+                    }
+
+                    if (Buffer.byteLength(MessageBuffer, 'utf8') > Config.get('internals.throttle.bytes', 30720)) {
                         ShouldCheckThrottle = false;
 
                         if (ThrottleMessageCount >= Config.get('internals.throttle.kill_at_count', 5) && this.server.status !== Status.STOPPING) {

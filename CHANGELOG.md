@@ -1,6 +1,13 @@
 # Changelog
 This file is a running track of new features and fixes to each version of the daemon released starting with `v0.2.0`.
 
+## v0.5.2 (Dazzling Daohugoupterus)
+### Added
+* Added a `internals.throttle.enabled` flag to the config to allow disabling the throttle entirely if needed.
+
+### Changed
+* Bumped the default throttle limit to 30Kb every 100ms to hopefully prevent any issues with normal output.
+
 ## v0.5.1 (Dazzling Daohugoupterus)
 ### Fixed
 * Fixes command used to create a user on the Daemon to work with all supported OSes.
