@@ -1,8 +1,8 @@
-# Pterodactyl Daemon (Wings)
-[![Build Status](https://travis-ci.org/Pterodactyl/Daemon.svg?branch=develop)](https://travis-ci.org/Pterodactyl/Daemon) [![dependencies Status](https://david-dm.org/Pterodactyl/Daemon/status.svg)](https://david-dm.org/Pterodactyl/Daemon) [![NSP Status](https://nodesecurity.io/orgs/pterodactyl/projects/5570baa8-5a85-4e8b-afb7-51e1e0888c67/badge)](https://nodesecurity.io/orgs/pterodactyl/projects/5570baa8-5a85-4e8b-afb7-51e1e0888c67)
+[![Logo Image](https://cdn.pterodactyl.io/logos/Banner%20Logo%20Black@2x.png)](https://pterodactyl.io)
 
-[![bitHound Overall Score](https://www.bithound.io/github/Pterodactyl/Daemon/badges/score.svg)](https://www.bithound.io/github/Pterodactyl/Daemon) [![bitHound Dependencies](https://www.bithound.io/github/Pterodactyl/Daemon/badges/dependencies.svg)](https://www.bithound.io/github/Pterodactyl/Daemon/develop/dependencies/npm) [![bitHound Dev Dependencies](https://www.bithound.io/github/Pterodactyl/Daemon/badges/devDependencies.svg)](https://www.bithound.io/github/Pterodactyl/Daemon/develop/dependencies/npm)
+[![Build Status](https://travis-ci.org/pterodactyl/daemon.svg?branch=develop)](https://travis-ci.org/pterodactyl/daemon) [![Dependencies Status](https://david-dm.org/pterodactyl/daemon/status.svg)](https://david-dm.org/pterodactyl/daemon) [![NSP Status](https://nodesecurity.io/orgs/pterodactyl/projects/5570baa8-5a85-4e8b-afb7-51e1e0888c67/badge)](https://nodesecurity.io/orgs/pterodactyl/projects/5570baa8-5a85-4e8b-afb7-51e1e0888c67)
 
+# Wings
 The server control and management daemon built specifically for Pterodactyl Panel.
 
 # Contributing
@@ -11,7 +11,7 @@ Please see `CONTRIBUTING.md` for information needed if you want to contribute to
 # License
 ```
 Pterodactyl - Daemon
-Copyright (c) 2015 - 2017 Dane Everitt <dane@daneeveritt.com>.
+Copyright (c) 2015 - 2018 Dane Everitt <dane@daneeveritt.com>.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
