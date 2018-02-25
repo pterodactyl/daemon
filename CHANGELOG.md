@@ -1,6 +1,10 @@
 # Changelog
 This file is a running track of new features and fixes to each version of the daemon released starting with `v0.2.0`.
 
+## v0.5.3 (Dazzling Daohugoupterus)
+### Fixed
+* Fixes bad function call in `xml-headless` egg parser.
+
 ## v0.5.2 (Dazzling Daohugoupterus)
 ### Fixed
 * Fixes missing environment variable in installation script for eggs.
