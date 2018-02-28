@@ -34,6 +34,7 @@ const _ = require('lodash');
 const Os = require('os');
 const Cache = require('memory-cache');
 
+const Status = rfr('src/helpers/status.js');
 const ConfigHelper = rfr('src/helpers/config.js');
 const ResponseHelper = rfr('src/helpers/responses.js');
 const BuilderController = rfr('src/controllers/builder.js');
@@ -301,6 +302,15 @@ class RouteController {
     postServerCommand() {
         Auth.allowed('s:command', (allowedErr, isAllowed) => {
             if (allowedErr || !isAllowed) return;
+
+            if (Auth.server().status === Status.OFF) {
+                return this.res.send(412, {
+                    'error': 'Server is not running.',
+                    'route': this.req.path,
+                    'req_id': this.req.id,
+                    'type': this.req.contentType,
+                });
+            }
 
             if (!_.isUndefined(this.req.params.command)) {
                 if (_.startsWith(_.replace(_.trim(this.req.params.command), /^\/*/, ''), _.get(Auth.server(), 'services.config.stop'))) {

@@ -5,6 +5,9 @@ This file is a running track of new features and fixes to each version of the da
 ### Fixed
 * Fixes bad function call in `xml-headless` egg parser.
 
+### Changed
+* Sending a command when the server is offline now returns a HTTP/412 error.
+
 ## v0.5.2 (Dazzling Daohugoupterus)
 ### Fixed
 * Fixes missing environment variable in installation script for eggs.

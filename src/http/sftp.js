@@ -59,6 +59,7 @@ class InternalSftpServer {
                     Request({
                         method: 'POST',
                         url: endpoint,
+                        gzip: false,
                         json: {
                             username: ctx.username,
                             password: ctx.password,
