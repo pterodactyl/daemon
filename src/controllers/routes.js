@@ -212,9 +212,14 @@ class RouteController {
                 if (allowedErr || !isAllowed) return;
 
                 Auth.server().start(err => {
-                    if (err && (_.includes(err.message, 'Server is currently queued for a container rebuild') || _.includes(err.message, 'Server container was not found and needs to be rebuilt.'))) {
+                    if (err && (
+                        _.includes(err.message, 'Server is currently queued for a container rebuild') ||
+                        _.includes(err.message, 'Server container was not found and needs to be rebuilt.') ||
+                        _.startsWith(err.message, 'Server is already running')
+                    )) {
                         return this.res.send(202, { 'message': err.message });
                     }
+
                     Responses.generic204(err);
                 });
             });
@@ -242,6 +247,10 @@ class RouteController {
                 if (allowedErr || !isAllowed) return;
 
                 Auth.server().kill(err => {
+                    if (err && _.startsWith(err.message, 'Server is already stopped')) {
+                        return this.res.send(202, { 'message': err.message });
+                    }
+
                     Responses.generic204(err);
                 });
             });
