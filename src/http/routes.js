@@ -67,6 +67,11 @@ RestServer.on('uncaughtException', (req, res, route, err) => {
     }
 });
 
+RestServer.get('/', (req, res, next) => {
+    Routes.getIndex();
+    return next();
+});
+
 RestServer.get('/v1', (req, res, next) => {
     Routes.getIndex();
     return next();

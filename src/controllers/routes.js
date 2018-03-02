@@ -537,12 +537,14 @@ class RouteController {
     }
 
     downloadServerFile() {
-        Request.post(`${Config.get('remote.base')}/daemon/download`, {
-            form: {
+        Request(`${Config.get('remote.base')}/api/remote/download-file`, {
+            method: 'POST',
+            json: {
                 token: this.req.params.token,
             },
             headers: {
-                'X-Access-Node': Config.get('keys.0'),
+                'Accept': 'application/vnd.pterodactyl.v1+json',
+                'Authorization': `Bearer ${Config.get('keys.0')}`,
             },
             timeout: 5000,
         }, (err, response, body) => {
@@ -553,7 +555,7 @@ class RouteController {
 
             if (response.statusCode === 200) {
                 try {
-                    const json = JSON.parse(body);
+                    const json = _.isString(body) ? JSON.parse(body) : body;
                     if (!_.isUndefined(json) && json.path) {
                         const Server = Auth.allServers();
                         // Does the server even exist?
@@ -581,7 +583,13 @@ class RouteController {
                     return this.res.send(500, { 'error': 'An unexpected error occured while attempting to process this request.' });
                 }
             } else {
-                return this.res.send(502, { 'error': 'An error occured while attempting to authenticate with an upstream provider.', res_code: response.statusCode, res_body: JSON.parse(body) });
+                if (response.statusCode >= 500) {
+                    Log.warn({ res_code: response.statusCode, res_body: body }, 'An error occured while attempting to retrieve file download information for an upstream provider.');
+                }
+
+                this.res.redirect(this.req.header('Referer') || Config.get('remote.base'), () => {
+                    return '';
+                });
             }
         });
     }
