@@ -304,13 +304,13 @@ class Docker {
             CpuQuota: (config.cpu > 0) ? config.cpu * 1000 : -1,
             CpuPeriod: 100000,
             CpuShares: _.get(config, 'cpu_shares', 1024),
-            Memory: this.hardlimit(config.memory) * 1000000,
-            MemoryReservation: config.memory * 1000000,
+            Memory: Math.round(this.hardlimit(config.memory) * 1000000),
+            MemoryReservation: Math.round(config.memory * 1000000),
             MemorySwap: -1,
         };
 
         if (config.swap >= 0) {
-            ContainerConfiguration.MemorySwap = (this.hardlimit(config.memory) + config.swap) * 1000000;
+            ContainerConfiguration.MemorySwap = Math.round((this.hardlimit(config.memory) + config.swap) * 1000000);
         }
 
         this.container.update(ContainerConfiguration, next);

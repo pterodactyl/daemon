@@ -3,6 +3,10 @@ This file is a running track of new features and fixes to each version of the da
 
 ## v0.5.3 (Dazzling Daohugoupterus)
 ### Fixed
+* Fixes a potential docker issue from float64 values being passed in rather than int64.
+
+## v0.5.3 (Dazzling Daohugoupterus)
+### Fixed
 * Fixes bad function call in `xml-headless` egg parser.
 * Fixes issue with Filezilla SFTP client on uploads > 1GB preventing them from being resumed correctly.
 
