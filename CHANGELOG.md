@@ -4,6 +4,7 @@ This file is a running track of new features and fixes to each version of the da
 ## v0.5.3 (Dazzling Daohugoupterus)
 ### Fixed
 * Fixes bad function call in `xml-headless` egg parser.
+* Fixes issue with Filezilla SFTP client on uploads > 1GB preventing them from being resumed correctly.
 
 ### Changed
 * Sending a command when the server is offline now returns a HTTP/412 error.

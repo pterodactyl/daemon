@@ -222,6 +222,11 @@ class InternalSftpServer {
                                     flags = OPEN_MODE.TRUNC | OPEN_MODE.CREAT | OPEN_MODE.WRITE; // eslint-disable-line
                                 }
 
+                                // Filezilla sending request to "resume" an upload
+                                if (flags === 2) {
+                                    flags = OPEN_MODE.APPEND | OPEN_MODE.CREAT | OPEN_MODE.WRITE; // eslint-disable-line
+                                }
+
                                 switch (SftpStream.flagsToString(flags)) {
                                 case 'r':
                                     data.type = OPEN_MODE.READ;
@@ -229,6 +234,9 @@ class InternalSftpServer {
                                 case 'w':
                                 case 'wx':
                                     data.type = OPEN_MODE.WRITE;
+                                    break;
+                                case 'a':
+                                    data.type = OPEN_MODE.APPEND;
                                     break;
                                 default:
                                     clientContext.server.log.warn({
@@ -241,24 +249,24 @@ class InternalSftpServer {
                                     return sftp.status(reqId, STATUS_CODE.OP_UNSUPPORTED);
                                 }
 
+                                const isWriter = data.type !== OPEN_MODE.READ;
                                 Async.series({
-                                    is_write: callback => {
-                                        let e = null;
-                                        if (data.type !== OPEN_MODE.WRITE) {
-                                            e = new Error();
-                                            e.code = 'E_ISREAD';
+                                    ensure: callback => {
+                                        if (!isWriter) {
+                                            return callback();
                                         }
 
-                                        return callback(e);
-                                    },
-                                    ensure: callback => {
                                         Fs.ensureFile(clientContext.server.path(location), callback);
                                     },
                                     open: callback => {
-                                        Fs.open(clientContext.server.path(location), 'w', 0o644, callback);
+                                        if (!isWriter) {
+                                            return callback();
+                                        }
+
+                                        Fs.open(clientContext.server.path(location), data.type === OPEN_MODE.WRITE ? 'w' : 'a', 0o644, callback);
                                     },
                                 }, (error, results) => {
-                                    if (error && error.code !== 'E_ISREAD') {
+                                    if (error) {
                                         clientContext.server.log.warn({
                                             path: location,
                                             exception: error,
@@ -268,7 +276,7 @@ class InternalSftpServer {
                                         return sftp.status(reqId, STATUS_CODE.FAILURE);
                                     }
 
-                                    data.writer = _.get(results, 'open', undefined);
+                                    data.writer = _.get(results, 'open');
                                     clientContext.handles[handle] = data;
                                     clientContext.handles_count += 1;
 
