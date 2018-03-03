@@ -418,8 +418,8 @@ class Docker {
                             '/tmp': Config.get('docker.policy.container.tmpfs', 'rw,exec,nosuid,size=50M'),
                         },
                         PortBindings: bindings,
-                        Memory: this.hardlimit(config.memory) * 1000000,
-                        MemoryReservation: config.memory * 1000000,
+                        Memory: Math.round(this.hardlimit(config.memory) * 1000000),
+                        MemoryReservation: Math.round(config.memory * 1000000),
                         MemorySwap: -1,
                         CpuQuota: (config.cpu > 0) ? config.cpu * 1000 : -1,
                         CpuPeriod: 100000,
@@ -442,7 +442,7 @@ class Docker {
                 };
 
                 if (config.swap >= 0) {
-                    Container.HostConfig.MemorySwap = (this.hardlimit(config.memory) + config.swap) * 1000000;
+                    Container.HostConfig.MemorySwap = Math.round((this.hardlimit(config.memory) + config.swap) * 1000000);
                 }
 
                 DockerController.createContainer(Container, (err, container) => {
