@@ -59,7 +59,7 @@ const CONST_STDMEM = Config.get('docker.memory.std.value', 10240);
 class Docker {
     constructor(server, next) {
         this.server = server;
-        this.containerID = _.get(this.server.json, 'container.id', null);
+        this.containerID = _.get(this.server.json, 'uuid', null);
         this.container = DockerController.getContainer(this.containerID);
         this.stream = undefined;
         this.procStream = undefined;

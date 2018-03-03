@@ -4,6 +4,7 @@ This file is a running track of new features and fixes to each version of the da
 ## v0.5.3 (Dazzling Daohugoupterus)
 ### Fixed
 * Fixes a potential docker issue from float64 values being passed in rather than int64.
+* Fixes a bug where the daemon would not correctly identify a server's docker container, now uses the UUID to find the container.
 
 ## v0.5.3 (Dazzling Daohugoupterus)
 ### Fixed

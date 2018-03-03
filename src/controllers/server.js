@@ -103,6 +103,11 @@ class Server extends EventEmitter {
                 });
             },
             callback => {
+                this.modifyConfig({ container: { id: _.get(this.docker.container, 'id') } }, false, modifyError => {
+                    return callback(modifyError);
+                });
+            },
+            callback => {
                 this.pack = new PackSystem(this);
                 this.socketIO = new Websocket(this).init();
                 this.uploadSocket = new UploadSocket(this).init();
