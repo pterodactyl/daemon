@@ -34,6 +34,7 @@ const _ = require('lodash');
 const Os = require('os');
 const Cache = require('memory-cache');
 
+const Status = rfr('src/helpers/status.js');
 const ConfigHelper = rfr('src/helpers/config.js');
 const ResponseHelper = rfr('src/helpers/responses.js');
 const BuilderController = rfr('src/controllers/builder.js');
@@ -211,9 +212,14 @@ class RouteController {
                 if (allowedErr || !isAllowed) return;
 
                 Auth.server().start(err => {
-                    if (err && (_.includes(err.message, 'Server is currently queued for a container rebuild') || _.includes(err.message, 'Server container was not found and needs to be rebuilt.'))) {
+                    if (err && (
+                        _.includes(err.message, 'Server is currently queued for a container rebuild') ||
+                        _.includes(err.message, 'Server container was not found and needs to be rebuilt.') ||
+                        _.startsWith(err.message, 'Server is already running')
+                    )) {
                         return this.res.send(202, { 'message': err.message });
                     }
+
                     Responses.generic204(err);
                 });
             });
@@ -241,6 +247,10 @@ class RouteController {
                 if (allowedErr || !isAllowed) return;
 
                 Auth.server().kill(err => {
+                    if (err && _.startsWith(err.message, 'Server is already stopped')) {
+                        return this.res.send(202, { 'message': err.message });
+                    }
+
                     Responses.generic204(err);
                 });
             });
@@ -301,6 +311,15 @@ class RouteController {
     postServerCommand() {
         Auth.allowed('s:command', (allowedErr, isAllowed) => {
             if (allowedErr || !isAllowed) return;
+
+            if (Auth.server().status === Status.OFF) {
+                return this.res.send(412, {
+                    'error': 'Server is not running.',
+                    'route': this.req.path,
+                    'req_id': this.req.id,
+                    'type': this.req.contentType,
+                });
+            }
 
             if (!_.isUndefined(this.req.params.command)) {
                 if (_.startsWith(_.replace(_.trim(this.req.params.command), /^\/*/, ''), _.get(Auth.server(), 'services.config.stop'))) {
@@ -518,12 +537,14 @@ class RouteController {
     }
 
     downloadServerFile() {
-        Request.post(`${Config.get('remote.base')}/daemon/download`, {
-            form: {
+        Request(`${Config.get('remote.base')}/api/remote/download-file`, {
+            method: 'POST',
+            json: {
                 token: this.req.params.token,
             },
             headers: {
-                'X-Access-Node': Config.get('keys.0'),
+                'Accept': 'application/vnd.pterodactyl.v1+json',
+                'Authorization': `Bearer ${Config.get('keys.0')}`,
             },
             timeout: 5000,
         }, (err, response, body) => {
@@ -534,7 +555,7 @@ class RouteController {
 
             if (response.statusCode === 200) {
                 try {
-                    const json = JSON.parse(body);
+                    const json = _.isString(body) ? JSON.parse(body) : body;
                     if (!_.isUndefined(json) && json.path) {
                         const Server = Auth.allServers();
                         // Does the server even exist?
@@ -562,7 +583,13 @@ class RouteController {
                     return this.res.send(500, { 'error': 'An unexpected error occured while attempting to process this request.' });
                 }
             } else {
-                return this.res.send(502, { 'error': 'An error occured while attempting to authenticate with an upstream provider.', res_code: response.statusCode, res_body: JSON.parse(body) });
+                if (response.statusCode >= 500) {
+                    Log.warn({ res_code: response.statusCode, res_body: body }, 'An error occured while attempting to retrieve file download information for an upstream provider.');
+                }
+
+                this.res.redirect(this.req.header('Referer') || Config.get('remote.base'), () => {
+                    return '';
+                });
             }
         });
     }
