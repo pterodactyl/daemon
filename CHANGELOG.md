@@ -1,6 +1,15 @@
 # Changelog
 This file is a running track of new features and fixes to each version of the daemon released starting with `v0.2.0`.
 
+## v0.5.4 (Dazzling Daohugoupterus)
+### Fixed
+* Fixes a potential docker issue from float64 values being passed in rather than int64.
+* Fixes a bug where the daemon would not correctly identify a server's docker container, now uses the UUID to find the container.
+* Fix permissions checking when getting base information about a server to allow subusers to view status in panel.
+
+### Changed
+* Errors returned by the panel when checking a daemon access token are now logged properly.
+
 ## v0.5.3 (Dazzling Daohugoupterus)
 ### Fixed
 * Fixes bad function call in `xml-headless` egg parser.

@@ -103,6 +103,11 @@ class Server extends EventEmitter {
                 });
             },
             callback => {
+                this.modifyConfig({ container: { id: _.get(this.docker.container, 'id') } }, false, modifyError => {
+                    return callback(modifyError);
+                });
+            },
+            callback => {
                 this.pack = new PackSystem(this);
                 this.socketIO = new Websocket(this).init();
                 this.uploadSocket = new UploadSocket(this).init();
@@ -195,7 +200,12 @@ class Server extends EventEmitter {
             }
 
             if (response.statusCode !== 200) {
-                return next(new Error(`Panel returned a non-200 response code (${response.statusCode}) while attempting to authenticate a token.`));
+                this.log.warn({
+                    responseCode: response.statusCode,
+                    requestURL: `${Config.get('remote.base')}/api/remote/authenticate/[token hidden]`,
+                }, 'An error was returned by the Panel while attempting to authenticate a server access token.');
+
+                return next(new Error('Panel returned a non-200 response code while attempting to authenticate a token.'));
             }
 
             const data = JSON.parse(body);

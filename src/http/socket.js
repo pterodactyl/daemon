@@ -40,7 +40,11 @@ class WebSocket {
             }
 
             this.server.hasPermission('s:console', params.handshake.query.token, (err, hasPermission) => {
-                if (err || !hasPermission) {
+                if (err) {
+                    return next(new Error('There was an error while attempting to validate your permissions.'));
+                }
+
+                if (!hasPermission) {
                     return next(new Error('You do not have permission to access the socket for this server.'));
                 }
 
