@@ -294,12 +294,12 @@ class RouteController {
     }
 
     getServer() {
-        Auth.allowed('s:get', (allowedErr, isAllowed) => {
+        Auth.allowed('s:console', (allowedErr, isAllowed) => {
             if (allowedErr || !isAllowed) return;
 
             this.res.send({
-                container: Auth.server().json.container,
-                service: Auth.server().json.service,
+                // container: Auth.server().json.container,
+                // service: Auth.server().json.service,
                 status: Auth.server().status,
                 query: Auth.server().processData.query,
                 proc: Auth.server().processData.process,

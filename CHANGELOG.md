@@ -5,6 +5,7 @@ This file is a running track of new features and fixes to each version of the da
 ### Fixed
 * Fixes a potential docker issue from float64 values being passed in rather than int64.
 * Fixes a bug where the daemon would not correctly identify a server's docker container, now uses the UUID to find the container.
+* Fix permissions checking when getting base information about a server to allow subusers to view status in panel.
 
 ### Changed
 * Errors returned by the panel when checking a daemon access token are now logged properly.
