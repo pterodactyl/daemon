@@ -452,7 +452,6 @@ class Docker {
         }, (err, data) => {
             if (err) return next(err);
             return next(null, {
-                id: data.create_container.id,
                 image: _.trimStart(config.image, '~'),
             });
         });
@@ -466,7 +465,8 @@ class Docker {
         FindContainer.inspect(err => {
             if (!err) {
                 this.container.remove(next);
-            } else if (err && _.startsWith(_.get(err, 'json.message', 'error'), 'No such container')) { // no such container
+            } else if (err && _.startsWith(err.reason, 'no such container')) { // no such container
+                this.server.log.debug({ container_id: container }, 'Attempting to remove a container that does not exist, continuing without error.');
                 return next();
             } else {
                 return next(err);

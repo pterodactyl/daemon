@@ -4,6 +4,10 @@ This file is a running track of new features and fixes to each version of the da
 ## v0.5.5 (Dazzling Daohugoupterus)
 ### Fixed
 * Fixes diagnostics script to not die when reading large files and also includes the container name in output for easier linking to a server.
+* Fix a potential exception loop when attempting to rebuild a container that does not exist to begin with.
+
+### Changed
+* Cleans up docker container removal and makes debugging messages clearer.
 
 ## v0.5.4 (Dazzling Daohugoupterus)
 ### Fixed
