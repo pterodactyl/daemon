@@ -723,7 +723,7 @@ class Server extends EventEmitter {
         Async.auto({
             destroy: callback => {
                 this.log.debug('Checking for an existing docker container...');
-                this.docker.destroy(_.get(this.json, 'uuid', 'undefined_container_00'), callback);
+                this.docker.destroy(this.json.uuid, callback);
             },
             rebuild: ['destroy', (results, callback) => {
                 this.log.debug('Creating a new docker container for server...');
@@ -733,7 +733,7 @@ class Server extends EventEmitter {
                 });
             }],
             update_config: ['rebuild', (results, callback) => {
-                this.log.debug({ container_id: results.rebuild.id.substr(0, 12) }, 'New docker container successfully created for server.');
+                this.log.debug('New docker container successfully created for server.');
                 this.emit('console', `${Ansi.style.yellow}[Pterodactyl Daemon] New container built, rotating hamsters...`);
                 this.log.debug('Updating configuration file for server to point to new docker container.');
                 this.modifyConfig({
