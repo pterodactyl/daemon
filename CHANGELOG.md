@@ -1,6 +1,10 @@
 # Changelog
 This file is a running track of new features and fixes to each version of the daemon released starting with `v0.2.0`.
 
+## v0.5.5 (Dazzling Daohugoupterus)
+### Fixed
+* Fixes diagnostics script to not die when reading large files and also includes the container name in output for easier linking to a server.
+
 ## v0.5.4 (Dazzling Daohugoupterus)
 ### Fixed
 * Fixes a potential docker issue from float64 values being passed in rather than int64.
