@@ -30,7 +30,6 @@ const Util = require('util');
 const _ = require('lodash');
 const Carrier = require('carrier');
 const Fs = require('fs-extra');
-const Streams = require('memory-streams');
 const Ansi = require('ansi-escape-sequences');
 const Moment = require('moment');
 
@@ -192,31 +191,27 @@ class Docker {
                 this.checkingMessageInterval = null;
             }
 
-            let ThrottledStream = new Streams.ReadableStream('');
-
-            ThrottledStream.on('data', data => {
-                this.server.output(data.toString());
-            });
-
-            let MessageBuffer = '';
+            let DataBuffer = '';
             let ConsoleThrottleMessageSent = false;
             let ThrottleMessageCount = 0;
             let LastThrottleMessageTime = Moment().subtract(Config.get('internals.throttle.decay_seconds', 10), 'seconds');
-            let ShouldCheckThrottle = true;
+            let ConsoleIsThrottled = true;
+            let LinesSent = 0;
 
             this.stream
                 .on('data', data => {
-                    if (!ShouldCheckThrottle) {
+                    if (ConsoleIsThrottled) {
                         return;
                     }
 
-                    if (!Config.get('internals.throttle.enabled', true)) {
-                        ThrottledStream.append(data);
-                        return;
-                    }
+                    const lines = _.split(DataBuffer + data, /\r?\n/);
+                    const length = lines.length - 1;
 
-                    if (Buffer.byteLength(MessageBuffer, 'utf8') > Config.get('internals.throttle.bytes', 30720)) {
-                        ShouldCheckThrottle = false;
+                    DataBuffer = lines[length] || '';
+                    LinesSent += length;
+
+                    if (LinesSent > Config.get('internals.throttle.line_limit', 1000) && Config.get('internals.throttle.enabled', true)) {
+                        ConsoleIsThrottled = true;
 
                         if (ThrottleMessageCount >= Config.get('internals.throttle.kill_at_count', 5) && this.server.status !== Status.STOPPING) {
                             this.server.output(`${Ansi.style.red} [Pterodactyl Daemon] Your server is sending too much data, process is being killed.`);
@@ -226,19 +221,20 @@ class Docker {
 
                         if (!ConsoleThrottleMessageSent) {
                             ThrottleMessageCount += 1;
-                            ConsoleThrottleMessageSent = true;
                             LastThrottleMessageTime = Moment();
-                            this.server.log.debug({ throttleCount: ThrottleMessageCount }, 'Server is being throttled due too too much data being passed through the console.');
+                            this.server.log.debug({ throttleCount: ThrottleMessageCount }, 'Server is being throttled due to too much data being passed through the console.');
                             this.server.output(`${Ansi.style.yellow} [Pterodactyl Daemon] This output is now being throttled due to output speed!`);
                         }
-                    } else {
-                        MessageBuffer += data;
-                        ThrottledStream.append(data);
+
+                        return;
+                    }
+
+                    for (let i = 0; i < length; i++) { // eslint-disable-line
+                        this.server.output(lines[i]);
                     }
                 })
                 .on('end', () => {
                     this.stream = undefined;
-                    ThrottledStream = undefined;
 
                     clearInterval(this.checkingThrottleInterval);
                     clearInterval(this.checkingMessageInterval);
@@ -252,8 +248,8 @@ class Docker {
                 });
 
             this.checkingThrottleInterval = setInterval(() => {
-                MessageBuffer = '';
-                ShouldCheckThrottle = true;
+                ConsoleIsThrottled = false;
+                LinesSent = 0;
             }, Config.get('internals.throttle.check_interval_ms', 100));
 
             this.checkingMessageInterval = setInterval(() => {
