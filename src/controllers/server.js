@@ -508,10 +508,26 @@ class Server extends EventEmitter {
                 }
                 callback();
             },
-        ], err => {
+            callback => {
+                this.docker.inspect(callback);
+            },
+        ], (err, results) => {
             if (err) {
                 this.log.fatal(err);
                 return;
+            }
+
+            const props = {
+                ExitCode: _.get(results, '2.State.ExitCode', ''),
+                OOMKilled: _.get(results, '2.State.OOMKilled', ''),
+                Error: _.get(results, '2.State.Error', ''),
+            };
+
+            if (_.isObject(_.get(results, 2))) {
+                this.emit('console', `${Ansi.style['bg-red']}${Ansi.style.white}[Pterodactyl Daemon] ---------- Detected server process in a crashed state! ----------`);
+                this.emit('console', `${Ansi.style.red}[Pterodactyl Daemon] Exit Code: ${Ansi.style.reset}${_.get(results, '2.State.ExitCode', '')}`);
+                this.emit('console', `${Ansi.style.red}[Pterodactyl Daemon] Out of Memory: ${Ansi.style.reset}${_.get(results, '2.State.OOMKilled', '')}`);
+                this.emit('console', `${Ansi.style.red}[Pterodactyl Daemon] Error Response: ${Ansi.style.reset}${_.get(results, '2.State.Error', '')}`);
             }
 
             this.emit('crashed');
@@ -519,14 +535,14 @@ class Server extends EventEmitter {
             if (moment.isMoment(this.lastCrash)) {
                 if (moment(this.lastCrash).add(60, 'seconds').isAfter(moment())) {
                     this.setCrashTime();
-                    this.log.warn('Server detected as crashed but has crashed within the last 60 seconds, aborting reboot.');
-                    this.emit('console', `${Ansi.style.red}[Pterodactyl Daemon] Server detected as crashed! Unable to reboot due to crash within last 60 seconds.`);
+                    this.log.warn(props, 'Server detected as crashed but has crashed within the last 60 seconds, aborting reboot.');
+                    this.emit('console', `${Ansi.style.red}[Pterodactyl Daemon] Aborting automatic reboot due to crash within the last 60 seconds.`);
                     return;
                 }
             }
 
-            this.log.warn('Server detected as crashed! Attempting server reboot.');
-            this.emit('console', `${Ansi.style.red}[Pterodactyl Daemon] Server detected as crashed! Attempting to reboot server now.`);
+            this.log.warn(props, 'Server detected as crashed! Attempting server reboot.');
+            this.emit('console', `${Ansi.style.red}[Pterodactyl Daemon] Attempting to reboot server now.`);
             this.setCrashTime();
 
             this.start(startError => {

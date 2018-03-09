@@ -8,6 +8,7 @@ This file is a running track of new features and fixes to each version of the da
 
 ### Changed
 * Cleans up docker container removal and makes debugging messages clearer.
+* Reason for process crash (OOM, ErrorText, and ErrorCode) are now output into the logs and the console output for processes.
 
 ## v0.5.4 (Dazzling Daohugoupterus)
 ### Fixed
