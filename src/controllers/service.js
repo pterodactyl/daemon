@@ -2,7 +2,7 @@
 
 /**
  * Pterodactyl - Daemon
- * Copyright (c) 2015 - 2017 Dane Everitt <dane@daneeveritt.com>.
+ * Copyright (c) 2015 - 2018 Dane Everitt <dane@daneeveritt.com>.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -42,11 +42,12 @@ class Service {
                 this.getServices(callback);
             },
             compare: ['services', (results, callback) => {
-                Log.info('Checking current files aganist panel response.');
+                Log.info('Checking existing eggs aganist Panel response...');
 
                 const needsUpdate = [];
                 Async.eachOf(results.services, (hash, uuid, loopCallback) => {
                     const currentFile = `./src/services/configs/${uuid}.json`;
+                    Log.debug({ egg: uuid }, 'Checking that egg exists and is up-to-date.');
                     Fs.stat(currentFile, (err, stats) => {
                         if (err && err.code === 'ENOENT') {
                             needsUpdate.push(uuid);
@@ -71,6 +72,7 @@ class Service {
                 if (_.isEmpty(results.compare)) return callback();
 
                 Async.each(results.compare, (uuid, eCallback) => {
+                    Log.debug({ egg: uuid }, 'Egg detected as missing or in need of update, pulling now.');
                     this.pullFile(uuid, eCallback);
                 }, callback);
             }],
@@ -105,7 +107,7 @@ class Service {
     }
 
     pullFile(uuid, next) {
-        Log.debug(`Pulling updated Egg file: ${uuid}`);
+        Log.debug({ egg: uuid }, 'Retrieving an updated egg from the Panel.');
         Request({
             method: 'GET',
             url: `${Config.get('remote.base')}/api/remote/eggs/${uuid}`,
@@ -120,7 +122,7 @@ class Service {
                 return next(new Error(`Error while attempting to fetch updated Egg file (HTTP/${response.statusCode})`));
             }
 
-            Log.debug(`Saving updated Egg file: ${uuid}`);
+            Log.debug({ egg: uuid }, 'Writing new egg file to filesystem.');
             Fs.outputFile(`./src/services/configs/${uuid}.json`, body, next);
         });
     }

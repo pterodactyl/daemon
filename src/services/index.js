@@ -103,6 +103,10 @@ class Core {
     onConsole(data) {
         Async.parallel([
             () => {
+                if (_.startsWith(data, '> ' || _.startsWith(data, '=> '))) {
+                    data = data.substr(2);
+                }
+
                 this.server.emit('console', data);
             },
             () => {

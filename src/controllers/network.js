@@ -2,7 +2,7 @@
 
 /**
  * Pterodactyl - Daemon
- * Copyright (c) 2015 - 2017 Dane Everitt <dane@daneeveritt.com>.
+ * Copyright (c) 2015 - 2018 Dane Everitt <dane@daneeveritt.com>.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -92,7 +92,6 @@ class Network {
     }
 
     interface(next) {
-        Log.info('Checking gateway for pterodactyl0');
         const DockerNetwork = DockerController.getNetwork(NETWORK_NAME);
         DockerNetwork.inspect((err, data) => {
             if (err) return next(err);
@@ -155,7 +154,7 @@ class Network {
                 IPGateway = Split.join('.');
             }
 
-            Log.info(`Gateway detected as ${IPGateway} for pterodactyl0.`);
+            Log.info(`Networking gateway detected as ${IPGateway} for interface: pterodactyl0.`);
             Config.modify({
                 docker: {
                     interface: IPGateway,

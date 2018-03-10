@@ -2,7 +2,7 @@
 
 /**
  * Pterodactyl - Daemon
- * Copyright (c) 2015 - 2017 Dane Everitt <dane@daneeveritt.com>.
+ * Copyright (c) 2015 - 2018 Dane Everitt <dane@daneeveritt.com>.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -83,19 +83,17 @@ Inquirer.prompt([
             });
         },
         docker_containers: callback => {
-            Process.exec('docker ps --format \'table {{.ID}}\t{{.Image}}\t{{.Status}}\' -a', (err, stdout) => {
+            Process.exec('docker ps --format \'table {{.ID}}\t{{.Names}}\t{{.Image}}\t{{.Status}}\' -a', (err, stdout) => {
                 callback(err, stdout);
             });
         },
         bunyan_logs: callback => {
             if (answers.logs) {
-                const MainLog = (Fs.existsSync(Path.resolve('logs/wings.log')));
-                const SecondLog = (Fs.existsSync(Path.resolve('logs/wings.log.0')));
+                const MainLog = Fs.existsSync(Path.resolve('logs/wings.log'));
+                const SecondLog = Fs.existsSync(Path.resolve('logs/wings.log.0'));
 
                 let logFile;
-                if (MainLog && SecondLog) {
-                    logFile = 'logs/wings.log logs/wings.log.0';
-                } else if (MainLog) {
+                if (MainLog) {
                     logFile = 'logs/wings.log';
                 } else if (SecondLog) {
                     logFile = 'logs/wings.log.0';
@@ -103,7 +101,7 @@ Inquirer.prompt([
                     return callback(null, '[no logs found]');
                 }
 
-                Process.exec(`./node_modules/bunyan/bin/bunyan -o short ${logFile}`, { maxBuffer: 100 * 1024 }, (err, stdout) => {
+                Process.exec(`tail -n 200 ${logFile} | ./node_modules/bunyan/bin/bunyan -o short`, { maxBuffer: 100 * 1024 }, (err, stdout) => {
                     callback(err, stdout);
                 });
             } else {

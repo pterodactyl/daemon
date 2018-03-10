@@ -1,6 +1,17 @@
 # Changelog
 This file is a running track of new features and fixes to each version of the daemon released starting with `v0.2.0`.
 
+## v0.5.5 (Dazzling Daohugoupterus)
+### Fixed
+* Fixes diagnostics script to not die when reading large files and also includes the container name in output for easier linking to a server.
+* Fix a potential exception loop when attempting to rebuild a container that does not exist to begin with.
+* Server output is now correct and not split across lines.
+
+### Changed
+* Cleans up docker container removal and makes debugging messages clearer.
+* Reason for process crash (OOM, ErrorText, and ErrorCode) are now output into the logs and the console output for processes.
+* Server output throttling is handled differently now and should no longer kill processes that are simply outputting long amounts of data. DoS attacks are recognized and killed in under 1 second, rather than the 30 seconds of previous versions. `internals.throttle.bytes` was removed and replaced with `internals.throttle.lines` with a default value of `1000`.
+
 ## v0.5.4 (Dazzling Daohugoupterus)
 ### Fixed
 * Fixes a potential docker issue from float64 values being passed in rather than int64.

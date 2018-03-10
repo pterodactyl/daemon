@@ -2,7 +2,7 @@
 
 /**
  * Pterodactyl - Daemon
- * Copyright (c) 2015 - 2017 Dane Everitt <dane@daneeveritt.com>.
+ * Copyright (c) 2015 - 2018 Dane Everitt <dane@daneeveritt.com>.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -63,15 +63,20 @@ class Delete {
             // Delete the container (kills if running)
             delete_container: ['clear_object', (r, callback) => {
                 this.log.debug('Attempting to remove container...');
-                if (!_.get(this.json, 'container.id', false)) {
-                    this.log.warn('No container ID was defined in the server JSON, skipping container deletion step.');
-                    return callback();
-                }
 
-                const container = DockerController.getContainer(this.json.container.id);
-                container.remove({ v: true, force: true }, err => {
-                    if (!err) this.log.debug('Removed container.');
-                    return callback(err);
+                const container = DockerController.getContainer(this.json.uuid);
+                container.inspect(err => {
+                    if (!err) {
+                        container.remove({ v: true, force: true }, rErr => {
+                            if (!rErr) this.log.debug('Removed docker container from system.');
+                            callback(rErr);
+                        });
+                    } else if (err && _.startsWith(err.reason, 'no such container')) { // no such container
+                        this.log.debug({ container_id: this.json.uuid }, 'Attempting to remove a container that does not exist, continuing without error.');
+                        return callback();
+                    } else {
+                        return callback(err);
+                    }
                 });
             }],
             // Delete the configuration files for this server

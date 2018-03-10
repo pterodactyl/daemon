@@ -2,7 +2,7 @@
 
 /**
  * Pterodactyl - Daemon
- * Copyright (c) 2015 - 2017 Dane Everitt <dane@daneeveritt.com>.
+ * Copyright (c) 2015 - 2018 Dane Everitt <dane@daneeveritt.com>.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -100,11 +100,6 @@ class Server extends EventEmitter {
                     }
 
                     return callback();
-                });
-            },
-            callback => {
-                this.modifyConfig({ container: { id: _.get(this.docker.container, 'id') } }, false, modifyError => {
-                    return callback(modifyError);
                 });
             },
             callback => {
@@ -513,10 +508,26 @@ class Server extends EventEmitter {
                 }
                 callback();
             },
-        ], err => {
+            callback => {
+                this.docker.inspect(callback);
+            },
+        ], (err, results) => {
             if (err) {
                 this.log.fatal(err);
                 return;
+            }
+
+            const props = {
+                ExitCode: _.get(results, '2.State.ExitCode', ''),
+                OOMKilled: _.get(results, '2.State.OOMKilled', ''),
+                Error: _.get(results, '2.State.Error', ''),
+            };
+
+            if (_.isObject(_.get(results, 2))) {
+                this.emit('console', `${Ansi.style['bg-red']}${Ansi.style.white}[Pterodactyl Daemon] ---------- Detected server process in a crashed state! ----------`);
+                this.emit('console', `${Ansi.style.red}[Pterodactyl Daemon] Exit Code: ${Ansi.style.reset}${_.get(results, '2.State.ExitCode', '')}`);
+                this.emit('console', `${Ansi.style.red}[Pterodactyl Daemon] Out of Memory: ${Ansi.style.reset}${_.get(results, '2.State.OOMKilled', '')}`);
+                this.emit('console', `${Ansi.style.red}[Pterodactyl Daemon] Error Response: ${Ansi.style.reset}${_.get(results, '2.State.Error', '')}`);
             }
 
             this.emit('crashed');
@@ -524,14 +535,14 @@ class Server extends EventEmitter {
             if (moment.isMoment(this.lastCrash)) {
                 if (moment(this.lastCrash).add(60, 'seconds').isAfter(moment())) {
                     this.setCrashTime();
-                    this.log.warn('Server detected as crashed but has crashed within the last 60 seconds, aborting reboot.');
-                    this.emit('console', `${Ansi.style.red}[Pterodactyl Daemon] Server detected as crashed! Unable to reboot due to crash within last 60 seconds.`);
+                    this.log.warn(props, 'Server detected as crashed but has crashed within the last 60 seconds, aborting reboot.');
+                    this.emit('console', `${Ansi.style.red}[Pterodactyl Daemon] Aborting automatic reboot due to crash within the last 60 seconds.`);
                     return;
                 }
             }
 
-            this.log.warn('Server detected as crashed! Attempting server reboot.');
-            this.emit('console', `${Ansi.style.red}[Pterodactyl Daemon] Server detected as crashed! Attempting to reboot server now.`);
+            this.log.warn(props, 'Server detected as crashed! Attempting server reboot.');
+            this.emit('console', `${Ansi.style.red}[Pterodactyl Daemon] Attempting to reboot server now.`);
             this.setCrashTime();
 
             this.start(startError => {
@@ -708,7 +719,7 @@ class Server extends EventEmitter {
             if (err) return next(err);
 
             if (newObject.rebuild && !this.alreadyMarkedForRebuild) {
-                this.log.debug('Server is has been marked as requiring a rebuild on next boot cycle.');
+                this.log.debug('Server has been marked as requiring a rebuild on next boot cycle.');
             }
 
             return next();
@@ -727,29 +738,30 @@ class Server extends EventEmitter {
         if (this.buildInProgress !== true) this.buildInProgress = true;
         Async.auto({
             destroy: callback => {
-                this.log.debug('Removing old server container.');
-                this.docker.destroy(_.get(this.json, 'container.id', 'undefined_container_00'), callback);
+                this.log.debug('Checking for an existing docker container...');
+                this.docker.destroy(this.json.uuid, callback);
             },
             rebuild: ['destroy', (results, callback) => {
-                this.log.debug('Rebuilding server container...');
+                this.log.debug('Creating a new docker container for server...');
                 this.emit('console', `${Ansi.style.yellow}[Pterodactyl Daemon] Rebuilding server container...`);
                 this.docker.build((err, data) => {
                     callback(err, data);
                 });
             }],
             update_config: ['rebuild', (results, callback) => {
-                this.log.debug(`New container successfully created with ID ${results.rebuild.id.substr(0, 12)}`);
-                this.log.debug('Containers successfully rotated, updating stored configuration.');
+                this.log.debug('New docker container successfully created for server.');
                 this.emit('console', `${Ansi.style.yellow}[Pterodactyl Daemon] New container built, rotating hamsters...`);
+                this.log.debug('Updating configuration file for server to point to new docker container.');
                 this.modifyConfig({
                     rebuild: false,
                     container: {
-                        id: results.rebuild.id.substr(0, 12),
+                        id: this.json.uuid,
                         image: results.rebuild.image,
                     },
                 }, false, callback);
             }],
             init_service: ['update_config', (results, callback) => {
+                this.log.debug('Reinitializing egg core for server.');
                 this.service = new ServiceCore(this, null, callback);
             }],
             init_container: ['init_service', (results, callback) => {
@@ -767,6 +779,7 @@ class Server extends EventEmitter {
             return next(err);
         });
     }
+
     suspend(next) {
         Async.parallel([
             callback => {
