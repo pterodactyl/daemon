@@ -1,9 +1,9 @@
-FROM node:9-alpine
+FROM alpine:3.7
 
 # Create app directory
 WORKDIR /app
 
-RUN apk add --no-cache tar unzip make gcc g++ python && \
+RUN apk add --no-cache nodejs nodejs-npm tar unzip make gcc g++ python && \
     python -m ensurepip && \
     rm -r /usr/lib/python*/ensurepip && \
     pip install --upgrade pip setuptools && \
@@ -28,4 +28,4 @@ ENTRYPOINT ["/bin/ash", "/app/entrypoint.sh"]
 EXPOSE 8080
 EXPOSE 2022
 
-CMD [ "/usr/local/bin/npm", "start" ]
+CMD [ "/usr/bin/npm", "start" ]
