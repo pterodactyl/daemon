@@ -35,6 +35,7 @@ const rfr = require('rfr');
 const isStream = require('isstream');
 const RotatingFile = require('rotating-file-stream');
 const Klaw = require('klaw');
+const Getos = require('getos');
 
 const Magic = Mmm.Magic;
 const Mime = new Magic(Mmm.MAGIC_MIME_TYPE | Mmm.MAGIC_SYMLINK);
@@ -78,21 +79,39 @@ class FileSystem {
     }
 
     size(next) {
-        const Exec = Process.spawn('du', ['-hsb', this.server.path()], {});
-
-        Exec.stdout.on('data', data => {
-            next(null, parseInt(_.split(data.toString(), '\t')[0], 10));
-        });
-
-        Exec.on('error', execErr => {
-            this.server.log.error(execErr);
-            return next(new Error('There was an error while attempting to check the size of the server data folder.'));
-        });
-
-        Exec.on('exit', (code, signal) => {
-            if (code !== 0) {
-                return next(new Error(`Unable to determine size of server data folder, exited with code ${code} signal ${signal}.`));
+        let CommandParams;
+        let Multiplier = 1;
+        Getos((err, os) => {
+            switch (_.get(os, 'dist')) {
+                case 'Alpine Linux':
+                case 'Raspbian':    //special case for node:9-alpine
+                    CommandParams = '-s';
+                    Multiplier = 1024; //hack because BusyBox not handle du -shb <folder> command
+                    break;
+                case 'Ubuntu Linux':
+                case 'Debian':
+                case 'Centos':
+                    CommandParams = '-shb';
+                    break;
+                default:
+                    return next(new Error('There was an error while attempting to check the size of the server data folder, unknown operating system.'));
             }
+            const Exec = Process.spawn('du', [CommandParams, this.server.path()], {});
+
+            Exec.stdout.on('data', data => {
+                next(null, parseInt(_.split(data.toString(), '\t')[0], 10) * Multiplier);
+            });
+
+            Exec.on('error', execErr => {
+                this.server.log.error(execErr);
+                return next(new Error('There was an error while attempting to check the size of the server data folder.'));
+            });
+
+            Exec.on('exit', (code, signal) => {
+                if (code !== 0) {
+                    return next(new Error(`Unable to determine size of server data folder, exited with code ${code} signal ${signal}.`));
+                }
+            });
         });
     }
 
