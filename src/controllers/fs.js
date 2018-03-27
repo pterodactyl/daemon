@@ -84,9 +84,11 @@ class FileSystem {
         Getos((err, os) => {
             switch (_.get(os, 'dist')) {
             case 'Alpine Linux':
-            case 'Raspbian'://special case for node:9-alpine
+            //special case for node:9-alpine
+            case 'Raspbian':
+                //hack because BusyBox not handle du -shb <folder> command
                 CommandParams = '-s';
-                Multiplier = 1024;//hack because BusyBox not handle du -shb <folder> command
+                Multiplier = 1024;
                 break;
             case 'Ubuntu Linux':
             case 'Debian':
