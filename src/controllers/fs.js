@@ -83,18 +83,18 @@ class FileSystem {
         let Multiplier = 1;
         Getos((err, os) => {
             switch (_.get(os, 'dist')) {
-                case 'Alpine Linux':
-                case 'Raspbian':    //special case for node:9-alpine
-                    CommandParams = '-s';
-                    Multiplier = 1024; //hack because BusyBox not handle du -shb <folder> command
-                    break;
-                case 'Ubuntu Linux':
-                case 'Debian':
-                case 'Centos':
-                    CommandParams = '-shb';
-                    break;
-                default:
-                    return next(new Error('There was an error while attempting to check the size of the server data folder, unknown operating system.'));
+            case 'Alpine Linux':
+            case 'Raspbian'://special case for node:9-alpine
+                CommandParams = '-s';
+                Multiplier = 1024;//hack because BusyBox not handle du -shb <folder> command
+                break;
+            case 'Ubuntu Linux':
+            case 'Debian':
+            case 'Centos':
+                CommandParams = '-shb';
+                break;
+            default:
+                return next(new Error('There was an error while attempting to check the size of the server data folder, unknown operating system.'));
             }
             const Exec = Process.spawn('du', [CommandParams, this.server.path()], {});
 

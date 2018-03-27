@@ -167,7 +167,7 @@ Async.auto({
 
                 switch (_.get(os, 'dist')) {
                 case 'Alpine Linux':
-                case 'Raspbian':    //special case for node:9-alpine
+                case 'Raspbian'://special case for node:9-alpine
                     UserCommand = `addgroup -S ${Username} && adduser -S -D -H -G ${Username} -s /bin/false ${Username}`;
                     break;
                 case 'Ubuntu Linux':
