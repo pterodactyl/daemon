@@ -165,6 +165,8 @@ class InternalSftpServer {
                                     return sftp.status(reqId, STATUS_CODE.EOF);
                                 }
 
+                                requestData.done = true;
+
                                 this.handleReadDir(clientContext, requestData.path, (error, attrs) => {
                                     if (error) {
                                         if (error.code === 'ENOENT') {
@@ -180,7 +182,6 @@ class InternalSftpServer {
                                         return sftp.status(reqId, STATUS_CODE.FAILURE);
                                     }
 
-                                    requestData.done = true;
                                     return sftp.name(reqId, attrs);
                                 });
                             });
