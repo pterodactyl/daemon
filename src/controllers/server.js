@@ -632,11 +632,12 @@ class Server extends EventEmitter {
                 memory: {
                     total: self.docker.procData.memory_stats.usage,
                     cmax: self.docker.procData.memory_stats.max_usage,
-                    amax: self.json.build.memory * 1000000,
+                    amax: self.json.build.memory * 1000000, //This shoud be 1024 * 1024
                 },
                 cpu: {
                     cores: perCoreUsage,
                     total: parseFloat(totalUsage.toFixed(3).toString()),
+                    limit: self.json.build.cpu, //If container has a limit, it will be good to display it.
                 },
                 disk: {
                     used: self.currentDiskUsed,
