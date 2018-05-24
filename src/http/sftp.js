@@ -190,13 +190,10 @@ class InternalSftpServer {
                                         return sftp.status(reqId, STATUS_CODE.FAILURE);
                                     }
 
-                                    clientContext.requests[reqId] = true;
+                                    sftp.name(reqId, requestData.done ? {} : attrs);
                                     requestData.done = true;
-                                    if (clientContext.highestRequest !== reqId || _.isEmpty(clientContext.requests)) {
-                                        return sftp.name(reqId, {});
-                                    }
 
-                                    return sftp.name(reqId, attrs);
+                                    clientContext.requests[reqId] = true;
                                 });
                             });
                         });
@@ -510,6 +507,7 @@ class InternalSftpServer {
 
                 clientContext.server.log.error({
                     exception: err,
+                    stack: err.stack,
                     identifier: clientContext.request_id,
                 }, 'An exception was encountered while handling the SFTP subsystem.');
             });
