@@ -637,11 +637,14 @@ class Server extends EventEmitter {
                 cpu: {
                     cores: perCoreUsage,
                     total: parseFloat(totalUsage.toFixed(3).toString()),
+                    limit: self.json.build.cpu,
                 },
                 disk: {
                     used: self.currentDiskUsed,
                     limit: self.json.build.disk,
+                    io_limit: self.json.build.io,
                 },
+                network: self.docker.procData.networks,
             };
             self.emit('proc', self.processData.process);
         });
