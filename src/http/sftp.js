@@ -171,20 +171,25 @@ class InternalSftpServer {
                         const readDir = (reqId, handle, done) => {
                             clientContext.server.hasPermission('s:files:get', clientContext.token, (err, hasPermission) => {
                                 if (err || !hasPermission) {
-                                    return sftp.status(reqId, STATUS_CODE.PERMISSION_DENIED);
+                                    sftp.status(reqId, STATUS_CODE.PERMISSION_DENIED);
+                                    done();
+                                    return;
                                 }
 
                                 const requestData = _.get(clientContext.handles, handle, null);
 
                                 if (requestData.done) {
-                                    return sftp.status(reqId, STATUS_CODE.EOF);
+                                    sftp.status(reqId, STATUS_CODE.EOF);
+                                    done();
+                                    return;
                                 }
 
                                 this.handleReadDir(clientContext, requestData.path, (error, attrs) => {
                                     if (error) {
                                         if (error.code === 'ENOENT') {
+                                            sftp.status(reqId, STATUS_CODE.NO_SUCH_FILE);
                                             done();
-                                            return sftp.status(reqId, STATUS_CODE.NO_SUCH_FILE);
+                                            return;
                                         }
 
                                         clientContext.server.log.warn({
@@ -193,15 +198,16 @@ class InternalSftpServer {
                                             identifier: clientContext.request_id,
                                         }, 'An error occurred while attempting to perform a READDIR operation in the SFTP server.');
 
+                                        sftp.status(reqId, STATUS_CODE.FAILURE);
                                         done();
-                                        return sftp.status(reqId, STATUS_CODE.FAILURE);
+                                        return;
                                     }
 
                                     // eslint-disable-next-line no-param-reassign
                                     requestData.done = true;
                                     console.log(`responding to request: ${reqId}`);
+                                    sftp.name(reqId, attrs);
                                     done();
-                                    return sftp.name(reqId, attrs);
                                 });
                             });
                         };
@@ -241,7 +247,9 @@ class InternalSftpServer {
                         const open = (reqId, location, flags, done) => {
                             clientContext.server.hasPermission('s:files:download', clientContext.token, (err, hasPermission) => {
                                 if (err || !hasPermission) {
-                                    return sftp.status(reqId, STATUS_CODE.PERMISSION_DENIED);
+                                    sftp.status(reqId, STATUS_CODE.PERMISSION_DENIED);
+                                    done();
+                                    return;
                                 }
 
                                 const handle = this.makeHandle(clientContext);
@@ -280,7 +288,9 @@ class InternalSftpServer {
                                         identifier: clientContext.request_id,
                                     }, 'Received an unknown OPEN flag during SFTP operation.');
 
-                                    return sftp.status(reqId, STATUS_CODE.OP_UNSUPPORTED);
+                                    sftp.status(reqId, STATUS_CODE.OP_UNSUPPORTED);
+                                    done();
+                                    return;
                                 }
 
                                 const isWriter = data.type !== OPEN_MODE.READ;
@@ -307,15 +317,17 @@ class InternalSftpServer {
                                             identifier: clientContext.request_id,
                                         }, 'An error occurred while attempting to perform an OPEN operation in the SFTP server.');
 
-                                        return sftp.status(reqId, STATUS_CODE.FAILURE);
+                                        sftp.status(reqId, STATUS_CODE.FAILURE);
+                                        done();
+                                        return;
                                     }
 
                                     data.writer = _.get(results, 'open');
                                     clientContext.handles[handle] = data;
                                     clientContext.handles_count += 1;
 
+                                    sftp.handle(reqId, handle);
                                     done();
-                                    return sftp.handle(reqId, handle);
                                 });
                             });
                         };
