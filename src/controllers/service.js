@@ -42,7 +42,7 @@ class Service {
                 this.getServices(callback);
             },
             compare: ['services', (results, callback) => {
-                Log.info('Checking existing eggs aganist Panel response...');
+                Log.info('Checking existing eggs against Panel response...');
 
                 const needsUpdate = [];
                 Async.eachOf(results.services, (hash, uuid, loopCallback) => {
