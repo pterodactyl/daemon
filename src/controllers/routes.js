@@ -587,9 +587,7 @@ class RouteController {
                     Log.warn({ res_code: response.statusCode, res_body: body }, 'An error occured while attempting to retrieve file download information for an upstream provider.');
                 }
 
-                this.res.redirect(this.req.header('Referer') || Config.get('remote.base'), () => {
-                    return '';
-                });
+                this.res.redirect(this.req.header('Referer') || Config.get('remote.base'), _.constant(''));
             }
         });
     }

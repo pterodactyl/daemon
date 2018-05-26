@@ -42,6 +42,7 @@ const STATUS_CODE = Ssh2.SFTP_STATUS_CODE;
 const Log = rfr('src/helpers/logger.js');
 const ConfigHelper = rfr('src/helpers/config.js');
 const Servers = rfr('src/helpers/initialize.js').Servers;
+const SFTPQueue = rfr('src/helpers/sftpqueue.js');
 const Config = new ConfigHelper();
 
 class InternalSftpServer {
@@ -91,8 +92,6 @@ class InternalSftpServer {
                             token: body.token,
                             handles: {},
                             handles_count: 0,
-                            requests: {},
-                            highestRequest: 0,
                         };
 
                         return ctx.accept();
@@ -102,11 +101,13 @@ class InternalSftpServer {
                 }
             }).on('ready', () => {
                 client.on('session', accept => {
-                    const Session = accept();
-                    Session.on('sftp', a => {
+                    const session = accept();
+                    const queue = new SFTPQueue();
+
+                    session.on('sftp', a => {
                         const sftp = a();
 
-                        sftp.on('REALPATH', (reqId, location) => {
+                        const realPath = (reqId, location) => {
                             let path = _.replace(Path.resolve(clientContext.server.path(), location), clientContext.server.path(), '');
                             if (_.startsWith(path, '/')) {
                                 path = path.substr(1);
@@ -117,9 +118,15 @@ class InternalSftpServer {
                                 longname: `drwxrwxrwx 2 foo foo 3 Dec 8 2009 /${path}`,
                                 attrs: {},
                             });
+                        };
+                        sftp.on('REALPATH', (reqId, location) => {
+                            queue.push(location, done => {
+                                realPath(reqId, location);
+                                done();
+                            });
                         });
 
-                        sftp.on('STAT', (reqId, location) => {
+                        const stat = (reqId, location) => {
                             clientContext.server.fs.stat(location, (err, item) => {
                                 if (err) {
                                     if (err.code === 'ENOENT') {
@@ -145,6 +152,12 @@ class InternalSftpServer {
                                     mtime: parseInt(Moment(item.modified).format('X'), 10),
                                 });
                             });
+                        };
+                        sftp.on('STAT', (reqId, location) => {
+                            queue.push(location, done => {
+                                stat(reqId, location);
+                                done();
+                            });
                         });
 
                         sftp.on('FSTAT', (reqId, handle) => {
@@ -155,30 +168,28 @@ class InternalSftpServer {
                             sftp.emit('STAT', reqId, path);
                         });
 
-                        sftp.on('READDIR', (reqId, handle) => {
-                            const requestData = _.get(clientContext.handles, handle, null);
-                            if (clientContext.requests[reqId] || clientContext.requests[reqId - 1] || requestData.done) {
-                                if (reqId >= clientContext.highestRequest) {
-                                    clientContext.requests = {};
-                                    clientContext.highestRequest = 0;
-                                }
-
-                                requestData.done = false;
-                                return sftp.status(reqId, STATUS_CODE.EOF);
-                            }
-
-                            clientContext.highestRequest = reqId;
-                            clientContext.requests[reqId] = false;
-
+                        const readDir = (reqId, handle, done) => {
                             clientContext.server.hasPermission('s:files:get', clientContext.token, (err, hasPermission) => {
                                 if (err || !hasPermission) {
-                                    return sftp.status(reqId, STATUS_CODE.PERMISSION_DENIED);
+                                    sftp.status(reqId, STATUS_CODE.PERMISSION_DENIED);
+                                    done();
+                                    return;
+                                }
+
+                                const requestData = _.get(clientContext.handles, handle, null);
+
+                                if (requestData.done) {
+                                    sftp.status(reqId, STATUS_CODE.EOF);
+                                    done();
+                                    return;
                                 }
 
                                 this.handleReadDir(clientContext, requestData.path, (error, attrs) => {
                                     if (error) {
                                         if (error.code === 'ENOENT') {
-                                            return sftp.status(reqId, STATUS_CODE.NO_SUCH_FILE);
+                                            sftp.status(reqId, STATUS_CODE.NO_SUCH_FILE);
+                                            done();
+                                            return;
                                         }
 
                                         clientContext.server.log.warn({
@@ -187,18 +198,27 @@ class InternalSftpServer {
                                             identifier: clientContext.request_id,
                                         }, 'An error occurred while attempting to perform a READDIR operation in the SFTP server.');
 
-                                        return sftp.status(reqId, STATUS_CODE.FAILURE);
+                                        sftp.status(reqId, STATUS_CODE.FAILURE);
+                                        done();
+                                        return;
                                     }
 
-                                    sftp.name(reqId, requestData.done ? {} : attrs);
+                                    // eslint-disable-next-line no-param-reassign
                                     requestData.done = true;
-
-                                    clientContext.requests[reqId] = true;
+                                    sftp.name(reqId, attrs);
+                                    done();
                                 });
+                            });
+                        };
+
+                        sftp.on('READDIR', (reqId, handle) => {
+                            const requestData = _.get(clientContext.handles, handle, null);
+                            queue.push(requestData.path, done => {
+                                readDir(reqId, handle, done);
                             });
                         });
 
-                        sftp.on('OPENDIR', (reqId, location) => {
+                        const openDir = (reqId, location) => {
                             clientContext.server.hasPermission('s:files:get', clientContext.token, (err, hasPermission) => {
                                 if (err || !hasPermission) {
                                     return sftp.status(reqId, STATUS_CODE.PERMISSION_DENIED);
@@ -214,12 +234,20 @@ class InternalSftpServer {
 
                                 sftp.handle(reqId, handle);
                             });
+                        };
+                        sftp.on('OPENDIR', (reqId, location) => {
+                            queue.push(location, done => {
+                                openDir(reqId, location);
+                                done();
+                            });
                         });
 
-                        sftp.on('OPEN', (reqId, location, flags) => {
+                        const open = (reqId, location, flags, done) => {
                             clientContext.server.hasPermission('s:files:download', clientContext.token, (err, hasPermission) => {
                                 if (err || !hasPermission) {
-                                    return sftp.status(reqId, STATUS_CODE.PERMISSION_DENIED);
+                                    sftp.status(reqId, STATUS_CODE.PERMISSION_DENIED);
+                                    done();
+                                    return;
                                 }
 
                                 const handle = this.makeHandle(clientContext);
@@ -258,7 +286,9 @@ class InternalSftpServer {
                                         identifier: clientContext.request_id,
                                     }, 'Received an unknown OPEN flag during SFTP operation.');
 
-                                    return sftp.status(reqId, STATUS_CODE.OP_UNSUPPORTED);
+                                    sftp.status(reqId, STATUS_CODE.OP_UNSUPPORTED);
+                                    done();
+                                    return;
                                 }
 
                                 const isWriter = data.type !== OPEN_MODE.READ;
@@ -285,30 +315,39 @@ class InternalSftpServer {
                                             identifier: clientContext.request_id,
                                         }, 'An error occurred while attempting to perform an OPEN operation in the SFTP server.');
 
-                                        return sftp.status(reqId, STATUS_CODE.FAILURE);
+                                        sftp.status(reqId, STATUS_CODE.FAILURE);
+                                        done();
+                                        return;
                                     }
 
                                     data.writer = _.get(results, 'open');
                                     clientContext.handles[handle] = data;
                                     clientContext.handles_count += 1;
 
-                                    return sftp.handle(reqId, handle);
+                                    sftp.handle(reqId, handle);
+                                    done();
                                 });
+                            });
+                        };
+
+                        sftp.on('OPEN', (reqId, location, flags) => {
+                            queue.push(location, done => {
+                                open(reqId, location, flags, done);
                             });
                         });
 
-                        sftp.on('READ', (reqId, handle, offset, length) => {
+                        const read = (reqId, requestData, offset, length) => {
                             clientContext.server.hasPermission('s:files:download', clientContext.token, (err, hasPermission) => {
                                 if (err || !hasPermission) {
                                     return sftp.status(reqId, STATUS_CODE.PERMISSION_DENIED);
                                 }
 
-                                const requestData = _.get(clientContext.handles, handle, null);
                                 if (requestData.done) {
                                     return sftp.status(reqId, STATUS_CODE.EOF);
                                 }
 
                                 clientContext.server.fs.readBytes(requestData.path, offset, length, (error, data, done) => {
+                                    // eslint-disable-next-line no-param-reassign
                                     requestData.done = done || false;
 
                                     if ((error && error.code === 'EISDIR') || done) {
@@ -326,9 +365,17 @@ class InternalSftpServer {
                                     return sftp.data(reqId, data, 'utf8');
                                 });
                             });
+                        };
+
+                        sftp.on('READ', (reqId, handle, offset, length) => {
+                            const requestData = _.get(clientContext.handles, handle, null);
+                            queue.push(requestData.location, done => {
+                                read(reqId, requestData, offset, length);
+                                done();
+                            });
                         });
 
-                        sftp.on('SETSTAT', (reqId, location, attrs) => {
+                        const setStat = (reqId, location, attrs) => {
                             if (_.isNull(_.get(attrs, 'mode', null))) {
                                 return sftp.status(reqId, STATUS_CODE.OK);
                             }
@@ -348,24 +395,29 @@ class InternalSftpServer {
 
                                 return sftp.status(reqId, err ? STATUS_CODE.FAILURE : STATUS_CODE.OK);
                             });
+                        };
+
+                        sftp.on('SETSTAT', (reqId, location, attrs) => {
+                            queue.push(location, done => {
+                                setStat(reqId, location, attrs);
+                                done();
+                            });
                         });
 
                         sftp.on('FSETSTAT', (reqId, handle, attrs) => {
                             sftp.emit('SETSTAT', clientContext.handles[handle].path, attrs);
                         });
 
-                        sftp.on('WRITE', (reqId, handle, offset, data) => {
+                        const write = (reqId, requestData, offset, data) => {
                             clientContext.server.hasPermission('s:files:upload', clientContext.token, (err, hasPermission) => {
                                 if (err || !hasPermission) {
                                     return sftp.status(reqId, STATUS_CODE.PERMISSION_DENIED);
                                 }
 
-                                const requestData = _.get(clientContext.handles, handle, null);
-
                                 // Block operation if there is not enough available disk space on the server currently.
                                 if (
                                     clientContext.server.json.build.disk > 0
-                                        && clientContext.server.currentDiskUsed > clientContext.server.json.build.disk
+                                    && clientContext.server.currentDiskUsed > clientContext.server.json.build.disk
                                 ) {
                                     return sftp.status(reqId, STATUS_CODE.OP_UNSUPPORTED);
                                 }
@@ -385,9 +437,17 @@ class InternalSftpServer {
                                     return sftp.status(reqId, STATUS_CODE.OK);
                                 });
                             });
+                        };
+
+                        sftp.on('WRITE', (reqId, handle, offset, data) => {
+                            const requestData = _.get(clientContext.handles, handle, null);
+                            queue.push(requestData.path, done => {
+                                write(reqId, requestData, offset, data);
+                                done();
+                            });
                         });
 
-                        sftp.on('MKDIR', (reqId, location) => {
+                        const mkdir = (reqId, location) => {
                             clientContext.server.hasPermission('s:files:create', clientContext.token, (err, hasPermission) => {
                                 if (err || !hasPermission) {
                                     return sftp.status(reqId, STATUS_CODE.PERMISSION_DENIED);
@@ -405,9 +465,16 @@ class InternalSftpServer {
                                     return sftp.status(reqId, err ? STATUS_CODE.FAILURE : STATUS_CODE.OK);
                                 });
                             });
+                        };
+
+                        sftp.on('MKDIR', (reqId, location) => {
+                            queue.push(location, done => {
+                                mkdir(reqId, location);
+                                done();
+                            });
                         });
 
-                        sftp.on('RENAME', (reqId, oldPath, newPath) => {
+                        const rename = (reqId, oldPath, newPath) => {
                             clientContext.server.hasPermission('s:files:move', clientContext.token, (err, hasPermission) => {
                                 if (err || !hasPermission) {
                                     return sftp.status(reqId, STATUS_CODE.PERMISSION_DENIED);
@@ -432,6 +499,13 @@ class InternalSftpServer {
                                     return sftp.status(reqId, err ? STATUS_CODE.FAILURE : STATUS_CODE.OK);
                                 });
                             });
+                        };
+
+                        sftp.on('RENAME', (reqId, oldPath, newPath) => {
+                            queue.push(oldPath, done => {
+                                rename(reqId, oldPath, newPath);
+                                done();
+                            });
                         });
 
                         // Remove and RmDir function the exact same in terms of how the Daemon processes
@@ -440,7 +514,7 @@ class InternalSftpServer {
                             sftp.emit('RMDIR', reqId, path);
                         });
 
-                        sftp.on('RMDIR', (reqId, location) => {
+                        const rmdir = (reqId, location) => {
                             clientContext.server.hasPermission('s:files:delete', clientContext.token, (err, hasPermission) => {
                                 if (err || !hasPermission) {
                                     return sftp.status(reqId, STATUS_CODE.PERMISSION_DENIED);
@@ -462,6 +536,13 @@ class InternalSftpServer {
                                     return sftp.status(reqId, err ? STATUS_CODE.FAILURE : STATUS_CODE.OK);
                                 });
                             });
+                        };
+
+                        sftp.on('RMDIR', (reqId, path) => {
+                            queue.push(path, done => {
+                                rmdir(reqId, path);
+                                done();
+                            });
                         });
 
                         // Unsupported operations.
@@ -475,6 +556,8 @@ class InternalSftpServer {
 
                         // Cleanup things.
                         sftp.on('CLOSE', (reqId, handle) => {
+                            queue.clean();
+
                             const requestData = _.get(clientContext.handles, handle, null);
                             if (!_.isNull(requestData)) {
                                 // If the writer is still active, close it and chown the item
