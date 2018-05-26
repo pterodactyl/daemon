@@ -58,7 +58,7 @@ Inquirer.prompt([
     {
         name: 'docker',
         type: 'confirm',
-        message: 'Are you aware that you will need to run `docker system purge` after completing this migration?',
+        message: 'Are you aware that you will need to run `docker system prune` after completing this migration?',
         default: false,
     },
 ]).then(answers => {
