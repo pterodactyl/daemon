@@ -205,7 +205,6 @@ class InternalSftpServer {
 
                                     // eslint-disable-next-line no-param-reassign
                                     requestData.done = true;
-                                    console.log(`responding to request: ${reqId}`);
                                     sftp.name(reqId, attrs);
                                     done();
                                 });
@@ -213,9 +212,7 @@ class InternalSftpServer {
                         };
                         sftp.on('READDIR', (reqId, handle) => {
                             const requestData = _.get(clientContext.handles, handle, null);
-                            console.log(`queueing request: ${reqId} - path: ${requestData.path}`);
                             queue.push(requestData.path, done => {
-                                console.log(`handling request: ${reqId}`);
                                 readDir(reqId, handle, done);
                             });
                         });
@@ -585,6 +582,7 @@ class InternalSftpServer {
 
                 clientContext.server.log.error({
                     exception: err,
+                    stack: err.stack,
                     identifier: clientContext.request_id,
                 }, 'An exception was encountered while handling the SFTP subsystem.');
             });

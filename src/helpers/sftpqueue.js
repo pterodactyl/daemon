@@ -32,9 +32,7 @@ class SFTPQueue {
     }
 
     push(location, task) {
-        console.log(this.handlers)
         if (this.handlers[location]) {
-            console.log('queueing');
             if (this.tasks[location] == null) this.tasks[location] = [];
             this.tasks[location].push(task);
         } else {
