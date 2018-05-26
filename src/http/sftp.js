@@ -210,6 +210,7 @@ class InternalSftpServer {
                                 });
                             });
                         };
+
                         sftp.on('READDIR', (reqId, handle) => {
                             const requestData = _.get(clientContext.handles, handle, null);
                             queue.push(requestData.path, done => {
@@ -328,6 +329,7 @@ class InternalSftpServer {
                                 });
                             });
                         };
+
                         sftp.on('OPEN', (reqId, location, flags) => {
                             queue.push(location, done => {
                                 open(reqId, location, flags, done);
@@ -364,6 +366,7 @@ class InternalSftpServer {
                                 });
                             });
                         };
+
                         sftp.on('READ', (reqId, handle, offset, length) => {
                             const requestData = _.get(clientContext.handles, handle, null);
                             queue.push(requestData.location, done => {
@@ -393,6 +396,7 @@ class InternalSftpServer {
                                 return sftp.status(reqId, err ? STATUS_CODE.FAILURE : STATUS_CODE.OK);
                             });
                         };
+
                         sftp.on('SETSTAT', (reqId, location, attrs) => {
                             queue.push(location, done => {
                                 setStat(reqId, location, attrs);
@@ -434,6 +438,7 @@ class InternalSftpServer {
                                 });
                             });
                         };
+
                         sftp.on('WRITE', (reqId, handle, offset, data) => {
                             const requestData = _.get(clientContext.handles, handle, null);
                             queue.push(requestData.path, done => {
@@ -461,6 +466,7 @@ class InternalSftpServer {
                                 });
                             });
                         };
+
                         sftp.on('MKDIR', (reqId, location) => {
                             queue.push(location, done => {
                                 mkdir(reqId, location);
@@ -494,6 +500,7 @@ class InternalSftpServer {
                                 });
                             });
                         };
+
                         sftp.on('RENAME', (reqId, oldPath, newPath) => {
                             queue.push(oldPath, done => {
                                 rename(reqId, oldPath, newPath);
@@ -530,6 +537,7 @@ class InternalSftpServer {
                                 });
                             });
                         };
+
                         sftp.on('RMDIR', (reqId, path) => {
                             queue.push(path, done => {
                                 rmdir(reqId, path);

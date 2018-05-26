@@ -33,7 +33,10 @@ class SFTPQueue {
 
     push(location, task) {
         if (this.handlers[location]) {
-            if (this.tasks[location] == null) this.tasks[location] = [];
+            if (!_.isArray(this.tasks[location])) {
+                this.tasks[location] = [];
+            }
+
             this.tasks[location].push(task);
         } else {
             this.handleTask(location, task);
@@ -43,15 +46,13 @@ class SFTPQueue {
     handleTask(location, task) {
         this.handlers[location] = true;
 
-        const done = () => {
+        task(() => {
             if (_.isArray(this.tasks[location]) && this.tasks[location].length > 0) {
                 this.handleTask(location, this.tasks[location].shift());
             } else {
                 this.handlers[location] = false;
             }
-        };
-
-        task(done);
+        });
     }
 
     clean() {
