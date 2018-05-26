@@ -91,6 +91,8 @@ class InternalSftpServer {
                             token: body.token,
                             handles: {},
                             handles_count: 0,
+                            requests: {},
+                            highestRequest: 0,
                         };
 
                         return ctx.accept();
@@ -154,15 +156,23 @@ class InternalSftpServer {
                         });
 
                         sftp.on('READDIR', (reqId, handle) => {
+                            const requestData = _.get(clientContext.handles, handle, null);
+                            if (clientContext.requests[reqId] || clientContext.requests[reqId - 1] || requestData.done) {
+                                if (reqId >= clientContext.highestRequest) {
+                                    clientContext.requests = {};
+                                    clientContext.highestRequest = 0;
+                                }
+
+                                requestData.done = false;
+                                return sftp.status(reqId, STATUS_CODE.EOF);
+                            }
+
+                            clientContext.highestRequest = reqId;
+                            clientContext.requests[reqId] = false;
+
                             clientContext.server.hasPermission('s:files:get', clientContext.token, (err, hasPermission) => {
                                 if (err || !hasPermission) {
                                     return sftp.status(reqId, STATUS_CODE.PERMISSION_DENIED);
-                                }
-
-                                const requestData = _.get(clientContext.handles, handle, null);
-
-                                if (requestData.done) {
-                                    return sftp.status(reqId, STATUS_CODE.EOF);
                                 }
 
                                 this.handleReadDir(clientContext, requestData.path, (error, attrs) => {
@@ -180,8 +190,10 @@ class InternalSftpServer {
                                         return sftp.status(reqId, STATUS_CODE.FAILURE);
                                     }
 
+                                    sftp.name(reqId, requestData.done ? {} : attrs);
                                     requestData.done = true;
-                                    return sftp.name(reqId, attrs);
+
+                                    clientContext.requests[reqId] = true;
                                 });
                             });
                         });
@@ -495,6 +507,7 @@ class InternalSftpServer {
 
                 clientContext.server.log.error({
                     exception: err,
+                    stack: err.stack,
                     identifier: clientContext.request_id,
                 }, 'An exception was encountered while handling the SFTP subsystem.');
             });

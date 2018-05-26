@@ -1,6 +1,11 @@
 # Changelog
 This file is a running track of new features and fixes to each version of the daemon released starting with `v0.2.0`.
 
+## v0.5.6 (Dazzling Daohugoupterus)
+### Fixed
+* Fixes SFTP server to play nicely with FileZilla and not respond with 4 of the same file.
+* Fixes a bug when doing multiple replacements on a single line for configurations.
+
 ## v0.5.5 (Dazzling Daohugoupterus)
 ### Fixed
 * Fixes diagnostics script to not die when reading large files and also includes the container name in output for easier linking to a server.
