@@ -445,7 +445,7 @@ class Docker {
                     callback(err, container);
                 });
             }],
-        }, (err, data) => {
+        }, err => {
             if (err) return next(err);
             return next(null, {
                 image: _.trimStart(config.image, '~'),
