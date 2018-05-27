@@ -11,6 +11,9 @@ echo "Install nodejs"
 curl -sL https://deb.nodesource.com/setup_6.x | sudo -E bash - > /dev/null
 apt-get -y install nodejs > /dev/null
 
+echo "Install nodejs dependencies"
+npm install --prefix /srv/daemon/
+
 echo "Install additional dependencies"
 apt-get -y install tar unzip make gcc g++ python > /dev/null
 
