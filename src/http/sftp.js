@@ -556,8 +556,6 @@ class InternalSftpServer {
 
                         // Cleanup things.
                         sftp.on('CLOSE', (reqId, handle) => {
-                            queue.clean();
-
                             const requestData = _.get(clientContext.handles, handle, null);
                             if (!_.isNull(requestData)) {
                                 // If the writer is still active, close it and chown the item
