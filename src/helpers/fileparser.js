@@ -256,7 +256,7 @@ class FileParser {
     }
 
     xml(file, strings, next, headless) {
-        Fs.read(this.server.path(file), (err, data) => {
+        Fs.readFile(this.server.path(file), 'utf8' (err, data) => {
             if (err) {
                 if (_.startsWith(err.message, 'ENOENT: no such file or directory')) return next();
                 return next(err);
@@ -310,7 +310,7 @@ class FileParser {
                     const Builder = new Xml.Builder({
                         headless: headless === true,
                     });
-                    Fs.write(this.server.path(file), Builder.buildObject(result), next);
+                    Fs.writeFile(this.server.path(file), Builder.buildObject(result), 'utf8', next);
                 });
             });
         });
