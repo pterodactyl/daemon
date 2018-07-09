@@ -256,7 +256,7 @@ class FileParser {
     }
 
     xml(file, strings, next, headless) {
-        Fs.readFile(this.server.path(file), 'utf8' (err, data) => {
+        Fs.readFile(this.server.path(file), 'utf8', (err, data) => {
             if (err) {
                 if (_.startsWith(err.message, 'ENOENT: no such file or directory')) return next();
                 return next(err);
