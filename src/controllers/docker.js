@@ -32,6 +32,7 @@ const Carrier = require('carrier');
 const Fs = require('fs-extra');
 const Ansi = require('ansi-escape-sequences');
 const Moment = require('moment');
+const Tail = require('tail').Tail;
 
 const Log = rfr('src/helpers/logger.js');
 const Status = rfr('src/helpers/status.js');
@@ -60,9 +61,10 @@ class Docker {
         this.server = server;
         this.containerID = _.get(this.server.json, 'uuid', null);
         this.container = DockerController.getContainer(this.containerID);
+
         this.stream = undefined;
-        this.procStream = undefined;
         this.procData = undefined;
+        this.logStream = null;
 
         // Check status and attach if server is running currently.
         this.reattach(next);
@@ -86,9 +88,7 @@ class Docker {
             // and not in the process of booting or stopping.
             if (!_.isUndefined(data.State.Running) && data.State.Running !== false) {
                 this.server.setStatus(Status.ON);
-                this.attach(attachErr => {
-                    next(attachErr, (!attachErr));
-                });
+                this.attach().then(next).catch(next);
             } else {
                 return next();
             }
@@ -105,24 +105,38 @@ class Docker {
      * @return {[type]}        [description]
      */
     start(next) {
-        this.container.start(err => {
-            // Container is already running, we can just continue on and pretend we started it just now.
-            if (err && _.includes(err.message, 'container already started')) {
-                this.server.setStatus(Status.ON);
-                return next();
-            } else if (err) {
-                next(err);
-            } else {
-                this.server.setStatus(Status.STARTING);
-                return next();
-            }
-        });
+        this.container.inspect().then(data => {
+            // When a container is first created the log path is surprisingly not set. Because of this things
+            // will die when attempting to setup the tail. To avoid this, set the path manually if there is no
+            // path set.
+            const logPath = data.LogPath.length > 0 ? data.LogPath : `/var/lib/docker/containers/${data.Id}/${data.Id}-json.log`;
+
+            this.truncateLogs(logPath).then(() => {
+                this.container.start().then(() => {
+                    this.server.setStatus(Status.STARTING);
+
+                    Promise.all([
+                        this.attach(),
+                        this.readLogStream(logPath),
+                        this.stats(),
+                    ]).then(() => {
+                        next();
+                    }).catch(next);
+                }).catch(err => {
+                    if (err && _.includes(err.message, 'container already started')) {
+                        this.server.setStatus(Status.ON);
+                        return next();
+                    }
+                    throw err;
+                });
+            }).catch(next);
+        }).catch(next);
     }
 
     /**
      * Stops a given container and returns a callback when finished.
-     * @param  {Function} next [description]
-     * @return {[type]}        [description]
+     * @param  {Function} next
+     * @return {Function}
      */
     stop(next) {
         this.container.stop(next);
@@ -158,136 +172,164 @@ class Docker {
     }
 
     /**
-     * Attaches to a container's stdin and stdout/stderr.
-     * @param  {Function} next
-     * @return {Callback}
+     * Truncate the docker logs for a given server when it is started so that we know we will only have
+     * the most recent boot cycle logs.
+     *
+     * @param {String} path
+     * @return {Promise<any>}
      */
-    attach(next) {
-        // Check if we are currently running exec(). If we don't do this then we encounter issues
-        // where the daemon thinks the container is crashed even if it is not. Mostly an issue
-        // with exec(), but still worth checking out here.
-        if (!_.isUndefined(this.stream) || isStream(this.stream)) {
-            return next(new Error('An active stream is already in use for this container.'));
-        }
+    truncateLogs(path) {
+        return new Promise((resolve, reject) => {
+            Fs.ensureFile(path, err => {
+                if (err) {
+                    reject(err);
+                }
 
-        this.container.attach({
-            stream: true,
-            stdin: true,
-            stdout: true,
-            stderr: true,
-        }, (err, stream) => {
-            if (err) return next(err);
+                Fs.truncate(path, 0, truncateError => {
+                    if (truncateError) {
+                        return reject(truncateError);
+                    }
 
-            this.stream = stream;
-            this.stream.setEncoding('utf8');
+                    resolve();
+                });
+            });
+        });
+    }
 
-            if (!_.isNull(this.checkingThrottleInterval)) {
-                clearInterval(this.checkingThrottleInterval);
-                this.checkingThrottleInterval = null;
+    /**
+     * Rather than attaching to a container and reading the stream output, connect to the container's
+     * logs and use those as the console output. The container will still be attached to in order to
+     * handle sending data and monitoring for crashes.
+     *
+     * However, because attaching takes some time, often we lose important error messages that can help
+     * a user to understand why their server is crashing. By reading the logs we can avoid this problem
+     * and get them all of the important context.
+     *
+     * @param {String} path
+     * @return {Promise<any>}
+     */
+    readLogStream(path) {
+        return new Promise(resolve => {
+            this.logStream = new Tail(path);
+
+            this.logStream.on('line', data => {
+                // {"log":"Error: Unable to access jarfile bad_server.jar\r\n","stream":"stdout","time":"2018-08-05T21:58:23.280134385Z"}
+                const j = JSON.parse(data.toString());
+
+                this.server.output(_.trim(j.log));
+            });
+
+            this.logStream.on('error', err => {
+                this.server.log.error(err);
+            });
+
+            return resolve();
+        });
+    }
+
+    /**
+     * Attaches to a container's stdin and stdout/stderr.
+     *
+     * @return {Promise<any>}
+     */
+    attach() {
+        return new Promise((resolve, reject) => {
+            // Check if we are currently running exec(). If we don't do this then we encounter issues
+            // where the daemon thinks the container is crashed even if it is not. Mostly an issue
+            // with exec(), but still worth checking out here.
+            if (!_.isUndefined(this.stream) || isStream(this.stream)) {
+                return reject(new Error('An active stream is already in use for this container.'));
             }
 
-            if (!_.isNull(this.checkingMessageInterval)) {
-                clearInterval(this.checkingMessageInterval);
-                this.checkingMessageInterval = null;
-            }
+            this.container.attach({
+                stream: true,
+                stdin: true,
+                stdout: true,
+                stderr: true,
+            }).then(stream => {
+                this.stream = stream;
+                this.stream.setEncoding('utf8');
 
-            let DataBuffer = '';
-            let ConsoleThrottleMessageSent = false;
-            let ThrottleMessageCount = 0;
-            let LastThrottleMessageTime = Moment().subtract(Config.get('internals.throttle.decay_seconds', 10), 'seconds');
-            let ConsoleIsThrottled = true;
-            let LinesSent = 0;
+                let linesSent = 0;
+                let throttleTriggerCount = 0;
+                let throttleTriggered = false;
 
-            this.stream
-                .on('data', data => {
-                    if (ConsoleIsThrottled) {
+                const throttleEnabled = Config.get('internals.throttle.enabled', true);
+                const lastThrottleTime = Moment().subtract(Config.get('internals.throttle.decay_seconds', 10), 'seconds');
+                const maxLinesPerInterval = parseInt(Config.get('internals.throttle.line_limit', 1000), 10);
+                const maximumThrottleTriggers = parseInt(Config.get('internals.throttle.kill_at_count', 5), 10);
+
+                const checkInterval = setInterval(() => {
+                    throttleTriggered = false;
+                    linesSent = 0;
+                }, Config.get('internals.throttle.check_interval_ms', 100));
+
+                const decrementTriggerCountInterval = setInterval(() => {
+                    // Happened within 10 seconds of previous, increment the counter. Otherwise,
+                    // subtract a throttle down to 0.
+                    if (Moment(lastThrottleTime).add(Config.get('internals.throttle.decay_seconds', 10), 'seconds').isBefore(Moment())) {
+                        throttleTriggerCount = throttleTriggerCount === 0 ? 0 : throttleTriggerCount - 1;
+                    }
+                }, 5000);
+
+                // In this case we're still using the logs to actually output contents, but we will use the
+                // attached stream to monitor for excessive data sending.
+                this.stream.on('data', data => {
+                    if (!throttleEnabled || throttleTriggered) {
                         return;
                     }
 
-                    const lines = _.split(DataBuffer + data, /\r?\n/);
-                    const length = lines.length - 1;
+                    const lines = _.split(data, /\r?\n/);
+                    linesSent += (lines.length - 1);
 
-                    DataBuffer = lines[length] || '';
-                    LinesSent += length;
+                    // If we've suddenly gone over the trigger threshold send a message to the console and register
+                    // that event. The trigger will be reset automatically by the check interval time.
+                    if (linesSent > maxLinesPerInterval) {
+                        throttleTriggered = true;
+                        throttleTriggerCount += 1;
 
-                    if (LinesSent > Config.get('internals.throttle.line_limit', 1000) && Config.get('internals.throttle.enabled', true)) {
-                        ConsoleIsThrottled = true;
-
-                        if (ThrottleMessageCount >= Config.get('internals.throttle.kill_at_count', 5) && this.server.status !== Status.STOPPING) {
-                            this.server.output(`${Ansi.style.red} [Pterodactyl Daemon] Your server is sending too much data, process is being killed.`);
-                            this.server.log.warn('Server has triggered automatic kill due to excessive data output. Potential DoS attack.');
-                            this.server.kill(() => {}); // eslint-disable-line
-                        }
-
-                        if (!ConsoleThrottleMessageSent) {
-                            ThrottleMessageCount += 1;
-                            LastThrottleMessageTime = Moment();
-                            this.server.log.debug({ throttleCount: ThrottleMessageCount }, 'Server is being throttled due to too much data being passed through the console.');
-                            this.server.output(`${Ansi.style.yellow} [Pterodactyl Daemon] This output is now being throttled due to output speed!`);
-                        }
-
-                        return;
+                        this.server.log.debug({ throttleTriggerCount }, 'Server has passed the throttle detection threshold. Penalizing server process.');
+                        this.server.output(`${Ansi.style.yellow}[Pterodactyl Daemon] Your server is sending too much data too quickly! Automatic spam detection triggered.`);
                     }
 
-                    for (let i = 0; i < length; i++) { // eslint-disable-line
-                        this.server.output(lines[i]);
+                    // We've triggered it too many times now, kill the server because clearly something is not
+                    // working correctly.
+                    if (throttleTriggerCount > maximumThrottleTriggers) {
+                        this.server.output(`${Ansi.style.red}[Pterodactyl Daemon] Your server is sending too much data, process is being killed.`);
+                        this.server.log.warn('Server has triggered automatic kill due to excessive data output. Potential DoS attack.');
+                        this.server.kill(() => {}); // eslint-disable-line
                     }
-                })
-                .on('end', () => {
+                }).on('end', () => {
                     this.stream = undefined;
-
-                    clearInterval(this.checkingThrottleInterval);
-                    clearInterval(this.checkingMessageInterval);
-                    this.checkingThrottleInterval = null;
-                    this.checkingMessageInterval = null;
-
                     this.server.streamClosed();
-                })
-                .on('error', streamError => {
+
+                    clearInterval(checkInterval);
+                    clearInterval(decrementTriggerCountInterval);
+                }).on('error', streamError => {
                     this.server.log.error(streamError);
                 });
 
-            this.checkingThrottleInterval = setInterval(() => {
-                ConsoleIsThrottled = false;
-                LinesSent = 0;
-            }, Config.get('internals.throttle.check_interval_ms', 100));
-
-            this.checkingMessageInterval = setInterval(() => {
-                ConsoleThrottleMessageSent = false;
-                // Happened within 10 seconds of previous, increment the counter. Otherwise,
-                // subtract a throttle down to 0.
-                if (Moment(LastThrottleMessageTime).add(Config.get('internals.throttle.decay_seconds', 10), 'seconds').isBefore(Moment())) {
-                    ThrottleMessageCount = ThrottleMessageCount === 0 ? 0 : ThrottleMessageCount - 1;
-                }
-            }, 5000);
-
-            // Go ahead and setup the stats stream so we can pull data as needed.
-            this.stats(next);
+                resolve();
+            }).catch(reject);
         });
     }
 
     /**
      * Returns a stream of process usage data for the container.
-     * @param  {Function} next
-     * @return {Function}
+     *
+     * @return {Promise<any>}
      */
-    stats(next) {
-        this.container.stats({ stream: true }, (err, stream) => {
-            if (err) return next(err);
+    stats() {
+        return this.container.stats({ stream: true }).then(stream => {
+            stream.setEncoding('utf8');
 
-            this.procStream = stream;
-            this.procStream.setEncoding('utf8');
-
-            Carrier.carry(this.procStream, data => {
+            Carrier.carry(stream, data => {
                 this.procData = (_.isObject(data)) ? data : JSON.parse(data);
             });
 
-            this.procStream.on('end', () => {
-                this.procStream = undefined;
+            stream.on('end', () => {
                 this.procData = undefined;
             });
-
-            return next();
         });
     }
 
@@ -427,7 +469,11 @@ class Docker {
                         BlkioWeight: config.io,
                         Dns: Config.get('docker.dns', ['8.8.8.8', '8.8.4.4']),
                         LogConfig: {
-                            Type: Config.get('docker.policy.container.log_driver', 'none'),
+                            Type: Config.get('docker.policy.container.log_driver', 'json-file'),
+                            Config: {
+                                'max-size': Config.get('docker.policy.container.log_opts.max_size', '5m'),
+                                'max-file': Config.get('docker.policy.container.log_opts.max_files', '1'),
+                            },
                         },
                         SecurityOpt: Config.get('docker.policy.container.securityopts', ['no-new-privileges']),
                         ReadonlyRootfs: Config.get('docker.policy.container.readonly_root', true),
