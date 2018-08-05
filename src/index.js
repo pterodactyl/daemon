@@ -172,6 +172,8 @@ Async.auto({
                 case 'Ubuntu Linux':
                 case 'Debian':
                 case 'Centos':
+                case 'RHEL':
+                case 'Red Hat Linux':
                     UserCommand = `useradd --system --no-create-home --shell /bin/false ${Username}`;
                     break;
                 default:

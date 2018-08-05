@@ -9,6 +9,9 @@ This file is a running track of new features and fixes to each version of the da
 ### Changed
 * Changes the way that server output is handled to allow easier viewing of startup errors early in the process.
 
+### Added
+* Better support for RHEL when booting the daemon.
+
 ## v0.5.6 (Dazzling Daohugoupterus)
 ### Fixed
 * Fixes SFTP server to play nicely with FileZilla and not respond with 4 of the same file.
