@@ -36,7 +36,7 @@ const Cache = require('memory-cache');
 
 const Status = rfr('src/helpers/status.js');
 const ConfigHelper = rfr('src/helpers/config.js');
-const ResponseHelper = rfr('src/helpers/this.responses.js');
+const ResponseHelper = rfr('src/helpers/responses.js');
 const BuilderController = rfr('src/controllers/builder.js');
 const DeleteController = rfr('src/controllers/delete.js');
 const Log = rfr('src/helpers/logger.js');
