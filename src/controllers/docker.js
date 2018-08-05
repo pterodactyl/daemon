@@ -469,7 +469,7 @@ class Docker {
                         BlkioWeight: config.io,
                         Dns: Config.get('docker.dns', ['8.8.8.8', '8.8.4.4']),
                         LogConfig: {
-                            Type: Config.get('docker.policy.container.log_driver', 'json-file'),
+                            Type: 'json-file',
                             Config: {
                                 'max-size': Config.get('docker.policy.container.log_opts.max_size', '5m'),
                                 'max-file': Config.get('docker.policy.container.log_opts.max_files', '1'),
@@ -478,9 +478,8 @@ class Docker {
                         SecurityOpt: Config.get('docker.policy.container.securityopts', ['no-new-privileges']),
                         ReadonlyRootfs: Config.get('docker.policy.container.readonly_root', true),
                         CapDrop: Config.get('docker.policy.container.cap_drop', [
-                            'setpcap', 'mknod', 'audit_write', 'chown', 'net_raw',
-                            'dac_override', 'fowner', 'fsetid', 'kill', 'setgid',
-                            'setuid', 'net_bind_service', 'sys_chroot', 'setfcap',
+                            'setpcap', 'mknod', 'audit_write', 'net_raw', 'dac_override',
+                            'fowner', 'fsetid', 'net_bind_service', 'sys_chroot', 'setfcap',
                         ]),
                         NetworkMode: Config.get('docker.network.name', 'pterodactyl_nw'),
                         OomKillDisable: _.get(config, 'oom_disabled', false),
