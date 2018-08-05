@@ -119,7 +119,7 @@ class Server extends EventEmitter {
     }
 
     initContainer(next) {
-        this.docker = new Docker(this, (err, status) => {
+        this.docker = new Docker(this, err => {
             if (err && _.startsWith(_.get(err, 'json.message', 'error'), 'No such container')) {
                 this.log.warn('Container was not found. Attempting to recreate it.');
                 this.rebuild(rebuildErr => {
@@ -133,7 +133,7 @@ class Server extends EventEmitter {
                     return next(rebuildErr);
                 });
             } else {
-                if (!err && status) {
+                if (!err) {
                     this.log.info('Daemon detected that the server container is currently running, re-attaching to it now!');
                 }
                 return next(err);
@@ -251,17 +251,9 @@ class Server extends EventEmitter {
             }
         }
 
-        if (status === Status.OFF) {
-            // Destroy the readable stream from the container. This fixes output buffer
-            // issues for servers with large amounts of data output. The stream will be
-            // destroyed after 2.5 seconds if it still exists.
-            setTimeout(() => {
-                if (this.status === Status.OFF && this.docker && isStream.isReadable(this.docker.stream)) {
-                    this.docker.stream.end();
-                    this.streamClosed();
-                    this.docker.stream = undefined;
-                }
-            }, 2500);
+        if (status === Status.OFF && isStream(this.docker.logStream)) {
+            this.docker.logStream.unwatch();
+            this.docker.logStream = null;
         }
 
         switch (status) {
@@ -380,10 +372,6 @@ class Server extends EventEmitter {
             callback => {
                 this.emit('console', `${Ansi.style.green}[Pterodactyl Daemon] Starting server container.`);
                 this.docker.start(callback);
-            },
-            callback => {
-                this.emit('console', `${Ansi.style.green}[Pterodactyl Daemon] Server container started. Attaching...`);
-                this.docker.attach(callback);
             },
         ], err => {
             if (err) {
