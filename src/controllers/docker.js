@@ -269,20 +269,24 @@ class Docker {
     /**
      * Returns a stream of process usage data for the container.
      * @param  {Function} next
-     * @return {Callback}
+     * @return {Function}
      */
     stats(next) {
         this.container.stats({ stream: true }, (err, stream) => {
             if (err) return next(err);
+
             this.procStream = stream;
             this.procStream.setEncoding('utf8');
+
             Carrier.carry(this.procStream, data => {
                 this.procData = (_.isObject(data)) ? data : JSON.parse(data);
             });
-            this.procStream.on('end', function dockerTopSteamEnd() {
+
+            this.procStream.on('end', () => {
                 this.procStream = undefined;
                 this.procData = undefined;
             });
+
             return next();
         });
     }
