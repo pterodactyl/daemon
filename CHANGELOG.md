@@ -1,6 +1,19 @@
 # Changelog
 This file is a running track of new features and fixes to each version of the daemon released starting with `v0.2.0`.
 
+## v0.6.0 (Elasticized Elanodactylus)
+### Fixed
+* Fixes a bug with XML parsing that would cause Nodejs to be unhappy when reading and writing files.
+* Fixes a race condition in the route handling that would cause errors to be thrown on busy daemons.
+* Daemon no longer fails to boot if it is unable to pull a remote Docker image assuming one already exists on the host system.
+
+### Changed
+* Changes the way that server output is handled to allow easier viewing of startup errors early in the process.
+
+### Added
+* Better support for RHEL when booting the daemon.
+* Support for sending more specific stop signals to running processes. Prefix with `^` followed by the signal name, for example: `^SIGHUP` or `^SIGKILL`.
+
 ## v0.5.6 (Dazzling Daohugoupterus)
 ### Fixed
 * Fixes SFTP server to play nicely with FileZilla and not respond with 4 of the same file.

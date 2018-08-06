@@ -43,20 +43,19 @@ const Log = rfr('src/helpers/logger.js');
 const Package = rfr('package.json');
 
 const Config = new ConfigHelper();
-let Responses;
-let Auth;
 
 class RouteController {
     constructor(auth, req, res) {
         this.req = req;
         this.res = res;
-        Auth = auth;
-        Responses = new ResponseHelper(req, res);
+
+        this.auth = auth;
+        this.responses = new ResponseHelper(req, res);
     }
 
     // Returns Index
     getIndex() {
-        Auth.allowed('c:info', (allowedErr, isAllowed) => {
+        this.auth.allowed('c:info', (allowedErr, isAllowed) => {
             if (allowedErr || !isAllowed) return;
 
             this.res.send({
@@ -77,20 +76,20 @@ class RouteController {
 
     // Revoke an authentication key on demand
     revokeKey() {
-        Auth.allowed('c:revoke-key', (allowedErr, isAllowed) => {
+        this.auth.allowed('c:revoke-key', (allowedErr, isAllowed) => {
             if (allowedErr || !isAllowed) return;
 
             const key = _.get(this.req.params, 'key');
             Log.debug({ token: key }, 'Revoking authentication token per manual request.');
             Cache.del(`auth:token:${key}`);
 
-            return Responses.generic204(null);
+            return this.responses.generic204(null);
         });
     }
 
     // Similar to revokeKey except it allows for multiple keys at once
     batchDeleteKeys() {
-        Auth.allowed('c:revoke-key', (allowedErr, isAllowed) => {
+        this.auth.allowed('c:revoke-key', (allowedErr, isAllowed) => {
             if (allowedErr || !isAllowed) return;
 
             _.forEach(_.get(this.req.params, 'keys'), key => {
@@ -98,34 +97,34 @@ class RouteController {
                 Cache.del(`auth:token:${key}`);
             });
 
-            return Responses.generic204(null);
+            return this.responses.generic204(null);
         });
     }
 
     // Updates saved configuration on system.
     patchConfig() {
-        Auth.allowed('c:config', (allowedErr, isAllowed) => {
+        this.auth.allowed('c:config', (allowedErr, isAllowed) => {
             if (allowedErr || !isAllowed) return;
 
             Config.modify(this.req.params, err => {
-                Responses.generic204(err);
+                this.responses.generic204(err);
             });
         });
     }
 
     // Saves Daemon Configuration to Disk
     putConfig() {
-        Auth.allowed('c:config', (allowedErr, isAllowed) => {
+        this.auth.allowed('c:config', (allowedErr, isAllowed) => {
             if (allowedErr || !isAllowed) return;
 
             Config.save(this.req.params, err => {
-                Responses.generic204(err);
+                this.responses.generic204(err);
             });
         });
     }
 
     postNewServer() {
-        Auth.allowed('c:create', (allowedErr, isAllowed) => {
+        this.auth.allowed('c:create', (allowedErr, isAllowed) => {
             if (allowedErr || !isAllowed) return;
 
             const startOnCompletion = _.get(this.req.params, 'start_on_completion', false);
@@ -175,11 +174,11 @@ class RouteController {
     }
 
     getAllServers() {
-        Auth.allowed('c:list', (allowedErr, isAllowed) => {
+        this.auth.allowed('c:list', (allowedErr, isAllowed) => {
             if (allowedErr || !isAllowed) return;
 
             const responseData = {};
-            Async.each(Auth.allServers(), (server, callback) => {
+            Async.each(this.auth.allServers(), (server, callback) => {
                 responseData[server.json.uuid] = {
                     container: server.json.container,
                     service: server.json.service,
@@ -195,12 +194,12 @@ class RouteController {
     }
 
     deleteServer() {
-        Auth.allowed('g:server:delete', (allowedErr, isAllowed) => {
+        this.auth.allowed('g:server:delete', (allowedErr, isAllowed) => {
             if (allowedErr || !isAllowed) return;
 
-            const Delete = new DeleteController(Auth.server().json);
+            const Delete = new DeleteController(this.auth.server().json);
             Delete.delete(err => {
-                Responses.generic204(err);
+                this.responses.generic204(err);
             });
         });
     }
@@ -208,10 +207,10 @@ class RouteController {
     // Handles server power
     putServerPower() {
         if (this.req.params.action === 'start') {
-            Auth.allowed('s:power:start', (allowedErr, isAllowed) => {
+            this.auth.allowed('s:power:start', (allowedErr, isAllowed) => {
                 if (allowedErr || !isAllowed) return;
 
-                Auth.server().start(err => {
+                this.auth.server().start(err => {
                     if (err && (
                         _.includes(err.message, 'Server is currently queued for a container rebuild') ||
                         _.includes(err.message, 'Server container was not found and needs to be rebuilt.') ||
@@ -220,38 +219,38 @@ class RouteController {
                         return this.res.send(202, { 'message': err.message });
                     }
 
-                    Responses.generic204(err);
+                    this.responses.generic204(err);
                 });
             });
         } else if (this.req.params.action === 'stop') {
-            Auth.allowed('s:power:stop', (allowedErr, isAllowed) => {
+            this.auth.allowed('s:power:stop', (allowedErr, isAllowed) => {
                 if (allowedErr || !isAllowed) return;
 
-                Auth.server().stop(err => {
-                    Responses.generic204(err);
+                this.auth.server().stop(err => {
+                    this.responses.generic204(err);
                 });
             });
         } else if (this.req.params.action === 'restart') {
-            Auth.allowed('s:power:restart', (allowedErr, isAllowed) => {
+            this.auth.allowed('s:power:restart', (allowedErr, isAllowed) => {
                 if (allowedErr || !isAllowed) return;
 
-                Auth.server().restart(err => {
+                this.auth.server().restart(err => {
                     if (err && (_.includes(err.message, 'Server is currently queued for a container rebuild') || _.includes(err.message, 'Server container was not found and needs to be rebuilt.'))) {
                         return this.res.send(202, { 'message': err.message });
                     }
-                    Responses.generic204(err);
+                    this.responses.generic204(err);
                 });
             });
         } else if (this.req.params.action === 'kill') {
-            Auth.allowed('s:power:kill', (allowedErr, isAllowed) => {
+            this.auth.allowed('s:power:kill', (allowedErr, isAllowed) => {
                 if (allowedErr || !isAllowed) return;
 
-                Auth.server().kill(err => {
+                this.auth.server().kill(err => {
                     if (err && _.startsWith(err.message, 'Server is already stopped')) {
                         return this.res.send(202, { 'message': err.message });
                     }
 
-                    Responses.generic204(err);
+                    this.responses.generic204(err);
                 });
             });
         } else {
@@ -260,18 +259,18 @@ class RouteController {
     }
 
     reinstallServer() {
-        Auth.allowed('c:install-server', (allowedErr, isAllowed) => {
+        this.auth.allowed('c:install-server', (allowedErr, isAllowed) => {
             if (allowedErr || !isAllowed) return;
 
-            Auth.server().reinstall(this.req.params, err => {
+            this.auth.server().reinstall(this.req.params, err => {
                 if (err) Log.error(err);
 
                 const HMAC = Crypto.createHmac('sha256', Config.get('keys.0'));
-                HMAC.update(Auth.serverUuid());
+                HMAC.update(this.auth.serverUuid());
 
                 Request.post(`${Config.get('remote.base')}/daemon/install`, {
                     form: {
-                        server: Auth.serverUuid(),
+                        server: this.auth.serverUuid(),
                         signed: HMAC.digest('base64'),
                         installed: (err) ? 'error' : 'installed',
                     },
@@ -294,25 +293,25 @@ class RouteController {
     }
 
     getServer() {
-        Auth.allowed('s:console', (allowedErr, isAllowed) => {
+        this.auth.allowed('s:console', (allowedErr, isAllowed) => {
             if (allowedErr || !isAllowed) return;
 
             this.res.send({
-                // container: Auth.server().json.container,
-                // service: Auth.server().json.service,
-                status: Auth.server().status,
-                query: Auth.server().processData.query,
-                proc: Auth.server().processData.process,
+                // container: this.auth.server().json.container,
+                // service: this.auth.server().json.service,
+                status: this.auth.server().status,
+                query: this.auth.server().processData.query,
+                proc: this.auth.server().processData.process,
             });
         });
     }
 
     // Sends command to server
     postServerCommand() {
-        Auth.allowed('s:command', (allowedErr, isAllowed) => {
+        this.auth.allowed('s:command', (allowedErr, isAllowed) => {
             if (allowedErr || !isAllowed) return;
 
-            if (Auth.server().status === Status.OFF) {
+            if (this.auth.server().status === Status.OFF) {
                 return this.res.send(412, {
                     'error': 'Server is not running.',
                     'route': this.req.path,
@@ -322,17 +321,17 @@ class RouteController {
             }
 
             if (!_.isUndefined(this.req.params.command)) {
-                if (_.startsWith(_.replace(_.trim(this.req.params.command), /^\/*/, ''), _.get(Auth.server(), 'services.config.stop'))) {
-                    Auth.allowed('s:power:stop', (powerErr, powerIsAllowed) => {
+                if (_.startsWith(_.replace(_.trim(this.req.params.command), /^\/*/, ''), _.get(this.auth.server(), 'services.config.stop'))) {
+                    this.auth.allowed('s:power:stop', (powerErr, powerIsAllowed) => {
                         if (powerErr || !powerIsAllowed) return;
 
-                        Auth.server().command(this.req.params.command, err => {
-                            Responses.generic204(err);
+                        this.auth.server().command(this.req.params.command, err => {
+                            this.responses.generic204(err);
                         });
                     });
                 } else {
-                    Auth.server().command(this.req.params.command, err => {
-                        Responses.generic204(err);
+                    this.auth.server().command(this.req.params.command, err => {
+                        this.responses.generic204(err);
                     });
                 }
             } else {
@@ -343,16 +342,16 @@ class RouteController {
 
     // Returns listing of server files.
     getServerDirectory() {
-        Auth.allowed('s:files:get', (allowedErr, isAllowed) => {
+        this.auth.allowed('s:files:get', (allowedErr, isAllowed) => {
             if (allowedErr || !isAllowed) return;
 
-            Auth.server().fs.directory(this.req.params[0], (err, data) => {
+            this.auth.server().fs.directory(this.req.params[0], (err, data) => {
                 if (err) {
                     switch (err.code) {
                     case 'ENOENT':
                         return this.res.send(404);
                     default:
-                        return Responses.generic500(err);
+                        return this.responses.generic500(err);
                     }
                 }
                 return this.res.send(data);
@@ -362,16 +361,16 @@ class RouteController {
 
     // Return file contents
     getServerFile() {
-        Auth.allowed('s:files:read', (allowedErr, isAllowed) => {
+        this.auth.allowed('s:files:read', (allowedErr, isAllowed) => {
             if (allowedErr || !isAllowed) return;
 
-            Auth.server().fs.read(this.req.params[0], (err, data) => {
+            this.auth.server().fs.read(this.req.params[0], (err, data) => {
                 if (err) {
                     switch (err.code) {
                     case 'ENOENT':
                         return this.res.send(404);
                     default:
-                        return Responses.generic500(err);
+                        return this.responses.generic500(err);
                     }
                 }
                 return this.res.send({ content: data });
@@ -380,12 +379,12 @@ class RouteController {
     }
 
     getServerLog() {
-        Auth.allowed('s:console', (allowedErr, isAllowed) => {
+        this.auth.allowed('s:console', (allowedErr, isAllowed) => {
             if (allowedErr || !isAllowed) return;
 
-            Auth.server().fs.readEnd(Auth.server().service.object.log.location, (err, data) => {
+            this.auth.server().fs.readEnd(this.auth.server().service.object.log.location, (err, data) => {
                 if (err) {
-                    return Responses.generic500(err);
+                    return this.responses.generic500(err);
                 }
                 return this.res.send(data);
             });
@@ -393,16 +392,16 @@ class RouteController {
     }
 
     getServerFileStat() {
-        Auth.allowed('s:files:read', (allowedErr, isAllowed) => {
+        this.auth.allowed('s:files:read', (allowedErr, isAllowed) => {
             if (allowedErr || !isAllowed) return;
 
-            Auth.server().fs.stat(this.req.params[0], (err, data) => {
+            this.auth.server().fs.stat(this.req.params[0], (err, data) => {
                 if (err) {
                     switch (err.code) {
                     case 'ENOENT':
                         return this.res.send(404);
                     default:
-                        return Responses.generic500(err);
+                        return this.responses.generic500(err);
                     }
                 }
                 return this.res.send(data);
@@ -411,73 +410,73 @@ class RouteController {
     }
 
     postFileFolder() {
-        Auth.allowed('s:files:create', (allowedErr, isAllowed) => {
+        this.auth.allowed('s:files:create', (allowedErr, isAllowed) => {
             if (allowedErr || !isAllowed) return;
 
-            Auth.server().fs.mkdir(this.req.params.path, err => {
-                Responses.generic204(err);
+            this.auth.server().fs.mkdir(this.req.params.path, err => {
+                this.responses.generic204(err);
             });
         });
     }
 
     postFileCopy() {
-        Auth.allowed('s:files:copy', (allowedErr, isAllowed) => {
+        this.auth.allowed('s:files:copy', (allowedErr, isAllowed) => {
             if (allowedErr || !isAllowed) return;
 
-            Auth.server().fs.copy(this.req.params.from, this.req.params.to, err => {
-                Responses.generic204(err);
+            this.auth.server().fs.copy(this.req.params.from, this.req.params.to, err => {
+                this.responses.generic204(err);
             });
         });
     }
 
     // prevent breaking API change for now.
     deleteServerFile() {
-        Auth.allowed('s:files:delete', (allowedErr, isAllowed) => {
+        this.auth.allowed('s:files:delete', (allowedErr, isAllowed) => {
             if (allowedErr || !isAllowed) return;
 
-            Auth.server().fs.rm(this.req.params[0], err => {
-                Responses.generic204(err);
+            this.auth.server().fs.rm(this.req.params[0], err => {
+                this.responses.generic204(err);
             });
         });
     }
 
     postFileDelete() {
-        Auth.allowed('s:files:delete', (allowedErr, isAllowed) => {
+        this.auth.allowed('s:files:delete', (allowedErr, isAllowed) => {
             if (allowedErr || !isAllowed) return;
 
-            Auth.server().fs.rm(this.req.params.items, err => {
-                Responses.generic204(err);
+            this.auth.server().fs.rm(this.req.params.items, err => {
+                this.responses.generic204(err);
             });
         });
     }
 
     postFileMove() {
-        Auth.allowed('s:files:move', (allowedErr, isAllowed) => {
+        this.auth.allowed('s:files:move', (allowedErr, isAllowed) => {
             if (allowedErr || !isAllowed) return;
 
-            Auth.server().fs.move(this.req.params.from, this.req.params.to, err => {
-                Responses.generic204(err);
+            this.auth.server().fs.move(this.req.params.from, this.req.params.to, err => {
+                this.responses.generic204(err);
             });
         });
     }
 
     postFileDecompress() {
-        Auth.allowed('s:files:decompress', (allowedErr, isAllowed) => {
+        this.auth.allowed('s:files:decompress', (allowedErr, isAllowed) => {
             if (allowedErr || !isAllowed) return;
 
-            Auth.server().fs.decompress(this.req.params.files, err => {
-                Responses.generic204(err);
+            this.auth.server().fs.decompress(this.req.params.files, err => {
+                this.responses.generic204(err);
             });
         });
     }
 
     postFileCompress() {
-        Auth.allowed('s:files:compress', (allowedErr, isAllowed) => {
+        this.auth.allowed('s:files:compress', (allowedErr, isAllowed) => {
             if (allowedErr || !isAllowed) return;
 
-            Auth.server().fs.compress(this.req.params.files, this.req.params.to, (err, filename) => {
+            this.auth.server().fs.compress(this.req.params.files, this.req.params.to, (err, filename) => {
                 if (err) {
-                    return Responses.generic500(err);
+                    return this.responses.generic500(err);
                 }
                 return this.res.send({
                     saved_as: filename,
@@ -487,51 +486,51 @@ class RouteController {
     }
 
     postServerFile() {
-        Auth.allowed('s:files:post', (allowedErr, isAllowed) => {
+        this.auth.allowed('s:files:post', (allowedErr, isAllowed) => {
             if (allowedErr || !isAllowed) return;
 
-            Auth.server().fs.write(this.req.params.path, this.req.params.content, err => {
-                Responses.generic204(err);
+            this.auth.server().fs.write(this.req.params.path, this.req.params.content, err => {
+                this.responses.generic204(err);
             });
         });
     }
 
     updateServerConfig() {
-        Auth.allowed('g:server:patch', (allowedErr, isAllowed) => {
+        this.auth.allowed('g:server:patch', (allowedErr, isAllowed) => {
             if (allowedErr || !isAllowed) return;
 
-            Auth.server().modifyConfig(this.req.params, (this.req.method === 'PUT'), err => {
-                Responses.generic204(err);
+            this.auth.server().modifyConfig(this.req.params, (this.req.method === 'PUT'), err => {
+                this.responses.generic204(err);
             });
         });
     }
 
     rebuildServer() {
-        Auth.allowed('g:server:rebuild', (allowedErr, isAllowed) => {
+        this.auth.allowed('g:server:rebuild', (allowedErr, isAllowed) => {
             if (allowedErr || !isAllowed) return;
 
-            Auth.server().modifyConfig({ rebuild: true }, false, err => {
-                Responses.generic204(err);
+            this.auth.server().modifyConfig({ rebuild: true }, false, err => {
+                this.responses.generic204(err);
             });
         });
     }
 
     postServerSuspend() {
-        Auth.allowed('g:server:suspend', (allowedErr, isAllowed) => {
+        this.auth.allowed('g:server:suspend', (allowedErr, isAllowed) => {
             if (allowedErr || !isAllowed) return;
 
-            Auth.server().suspend(err => {
-                Responses.generic204(err);
+            this.auth.server().suspend(err => {
+                this.responses.generic204(err);
             });
         });
     }
 
     postServerUnsuspend() {
-        Auth.allowed('g:server:unsuspend', (allowedErr, isAllowed) => {
+        this.auth.allowed('g:server:unsuspend', (allowedErr, isAllowed) => {
             if (allowedErr || !isAllowed) return;
 
-            Auth.server().unsuspend(err => {
-                Responses.generic204(err);
+            this.auth.server().unsuspend(err => {
+                this.responses.generic204(err);
             });
         });
     }
@@ -557,7 +556,7 @@ class RouteController {
                 try {
                     const json = _.isString(body) ? JSON.parse(body) : body;
                     if (!_.isUndefined(json) && json.path) {
-                        const Server = Auth.allServers();
+                        const Server = this.auth.allServers();
                         // Does the server even exist?
                         if (_.isUndefined(Server[json.server])) {
                             return this.res.send(404, { 'error': 'No server found for the specified resource.' });

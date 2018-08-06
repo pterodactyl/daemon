@@ -82,12 +82,29 @@ class DockerImage {
             return i === image;
         });
 
-        DockerController.pull(image, (shouldUseAuth) ? pullWithConfig : {}, (err, stream) => {
+        DockerController.pull(image, (err, stream) => {
             if (err) return next(err);
 
             let SendOutput;
+            let receivedError = false;
             stream.setEncoding('utf8');
-            stream.on('data', () => {
+
+            stream.on('data', data => {
+                if (receivedError) {
+                    return;
+                }
+
+                const j = JSON.parse(data);
+                if (!_.isNil(_.get(j, 'error'))) {
+                    receivedError = true;
+
+                    if (!_.isNil(SendOutput)) {
+                        clearInterval(SendOutput);
+                    }
+
+                    return next(new Error(j.error));
+                }
+
                 if (_.isNil(SendOutput)) {
                     Log.info(`Pulling image ${image} ... this could take a few minutes.`);
                     const TimeInterval = (Config.get('logger.level', 'info') === 'debug') ? 2 : 10;
@@ -100,12 +117,17 @@ class DockerImage {
                     }, TimeInterval * 1000);
                 }
             });
-            stream.on('end', streamErr => {
+
+            stream.on('end', () => {
                 if (!_.isNil(SendOutput)) {
                     clearInterval(SendOutput);
                 }
-                return next(streamErr);
+
+                if (!receivedError) {
+                    return next();
+                }
             });
+
             stream.on('error', next);
         });
     }

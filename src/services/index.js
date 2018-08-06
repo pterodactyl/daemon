@@ -110,12 +110,6 @@ class Core {
                 this.server.emit('console', data);
             },
             () => {
-                const Stream = this.server.fs.getLogStream();
-                if (! this.server.fs.getLogStreamClosing() && isStream.isWritable(Stream)) {
-                    Stream.write(`${data}\n`);
-                }
-            },
-            () => {
                 if (this.server.status === Status.ON) {
                     return;
                 }
@@ -142,19 +136,7 @@ class Core {
     }
 
     onStop(next) {
-        const Stream = this.server.fs.getLogStream(false);
-        if (isStream.isWritable(Stream)) {
-            this.server.fs.setLogStreamClosing(true);
-            Stream.end(() => {
-                if (_.isFunction(next)) {
-                    return next();
-                }
-            });
-        } else {
-            if (_.isFunction(next)) {
-                return next();
-            }
-        }
+        // do nothing
     }
 }
 

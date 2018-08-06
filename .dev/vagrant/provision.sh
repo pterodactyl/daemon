@@ -14,6 +14,9 @@ apt-get -y install nodejs > /dev/null
 echo "Install additional dependencies"
 apt-get -y install tar unzip make gcc g++ python > /dev/null
 
+echo "Install nodejs dependencies"
+npm install --prefix /srv/daemon/
+
 echo "   ------------"
 echo "Provisioning is completed."
 echo "You'll still need to configure your node in the panel manually."
