@@ -382,6 +382,12 @@ class Server extends EventEmitter {
         });
     }
 
+    /**
+     * Stop a server using the defined egg stop capabilities.
+     *
+     * @param {Function} next
+     * @return {void|Function}
+     */
     stop(next) {
         if (this.status === Status.OFF) {
             return next();
@@ -393,6 +399,7 @@ class Server extends EventEmitter {
         }
 
         this.setStatus(Status.STOPPING);
+
         // So, technically docker sends a SIGTERM to the process when this is run.
         // This works out fine normally, however, there are times when a container might take
         // more than 10 seconds to gracefully stop, at which point docker resorts to sending
@@ -401,7 +408,26 @@ class Server extends EventEmitter {
         // So, what we will do is send a stop command, and then sit there and wait
         // until the container stops because the process stopped, at which point the crash
         // detection will not fire since we set the status to STOPPING.
-        this.command(_.get(this.service, 'config.stop'), next);
+        const stopCommand = _.get(this.service, 'config.stop');
+
+        // Maintain backwards compatability with old eggs that used ^C as a way of telling a container
+        // to stop using docker's default stop setup.
+        if (stopCommand === '^C') {
+            this.docker.stop(next);
+
+            return;
+        }
+
+        // If the stop command begins with a "^" we will interpret that as the desire to
+        // send a specific signal to the container to stop the application.
+        if (_.startsWith(stopCommand, '^')) {
+            this.docker.stopWithSignal(_.replace(stopCommand, '^', '')).then(next).catch(next);
+
+            return;
+        }
+
+        // Send the command to the instance to begin the shutdown procedures.
+        this.docker.write(stopCommand).then(next).catch(next);
     }
 
     kill(next) {
@@ -431,22 +457,6 @@ class Server extends EventEmitter {
      */
     output(output) {
         this.service.onConsole(output);
-    }
-
-    /**
-     * Send command to server.
-     */
-    command(command, next) {
-        if (this.status === Status.OFF) {
-            return next(new Error('Server is currently stopped.'));
-        }
-
-        // Prevent a user sending a stop command manually from crashing the server.
-        if (_.startsWith(_.replace(_.trim(command), /^\/*/, ''), _.get(this.service, 'config.stop'))) {
-            this.setStatus(Status.STOPPING);
-        }
-
-        this.docker.write(command, next);
     }
 
     /**

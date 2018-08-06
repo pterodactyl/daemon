@@ -11,6 +11,7 @@ This file is a running track of new features and fixes to each version of the da
 
 ### Added
 * Better support for RHEL when booting the daemon.
+* Support for sending more specific stop signals to running processes. Prefix with `^` followed by the signal name, for example: `^SIGHUP` or `^SIGKILL`.
 
 ## v0.5.6 (Dazzling Daohugoupterus)
 ### Fixed

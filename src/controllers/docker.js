@@ -178,21 +178,31 @@ class Docker {
         this.container.kill(next);
     }
 
+
     /**
-     * Writes input to the containers stdin.
-     * @param  string   command
-     * @param  {Function} next
-     * @return {Callback}
+     * Stops a given container by sending the provided signal through the kill command.
+     *
+     * @param {String} signal
+     * @return {Promise<any>}
      */
-    write(command, next) {
-        if (isStream.isWritable(this.stream)) {
-            if (command === '^C') {
-                return this.stop(next);
+    stopWithSignal(signal = 'SIGKILL') {
+        return this.container.kill({ signal });
+    }
+
+    /**
+     * Writes a string to the containers STDIN.
+     *
+     * @param {String} command
+     * @return {Promise<any>}
+     */
+    write(command) {
+        return new Promise((resolve, reject) => {
+            if (isStream.isWritable(this.stream)) {
+                return this.stream.write(`${command}\n`);
             }
-            this.stream.write(`${command}\n`);
-            return next();
-        }
-        return next(new Error('No writable stream was detected.'));
+
+            return reject(new Error('No writable stream was detected when attempting to write a command.'));
+        });
     }
 
     /**
