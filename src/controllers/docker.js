@@ -210,6 +210,11 @@ class Docker {
      */
     readLogStream(path) {
         return new Promise(resolve => {
+            if (!_.isNull(this.logStream)) {
+                this.logStream.unwatch();
+                this.logStream = null;
+            }
+
             this.logStream = new Tail(path);
 
             this.logStream.on('line', data => {

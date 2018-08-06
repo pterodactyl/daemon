@@ -244,11 +244,6 @@ class Server extends EventEmitter {
             }
         }
 
-        if (status === Status.OFF && isStream(this.docker.logStream)) {
-            this.docker.logStream.unwatch();
-            this.docker.logStream = null;
-        }
-
         switch (status) {
         case Status.OFF:
             this.emit('console', `${Ansi.style.cyan}[Pterodactyl Daemon] Server marked as ${Ansi.style.bold}OFF`);
