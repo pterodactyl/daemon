@@ -27,6 +27,7 @@ const _ = require('lodash');
 const Ansi = require('ansi-escape-sequences');
 
 const RestServer = rfr('src/http/restify.js');
+const Status = rfr('src/helpers/status.js');
 const Socket = require('socket.io').listen(RestServer.server);
 
 class WebSocket {
@@ -74,16 +75,18 @@ class WebSocket {
                         return;
                     }
 
-                    this.server.fs.readEndOfLogStream(80000, (readErr, lines) => {
-                        if (readErr) {
-                            this.websocket.emit('console', {
-                                line: `${Ansi.style.red}[Pterodactyl Daemon] An error was encountered while attempting to read the log file!`,
-                            });
+                    if (this.server.status === Status.OFF) {
+                        return;
+                    }
 
-                            return this.server.log.error(readErr);
-                        }
-
+                    this.server.docker.readEndOfLog(80000).then(lines => {
                         activeSocket.emit('server log', lines);
+                    }).catch(readError => {
+                        activeSocket.emit('console', {
+                            line: `${Ansi.style.red}[Pterodactyl Daemon] An error was encountered while attempting to read the log file!`,
+                        });
+
+                        return this.server.log.error(readError);
                     });
                 });
             });

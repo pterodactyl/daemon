@@ -228,6 +228,57 @@ class Docker {
     }
 
     /**
+     * Reads the last 'n' bytes of the server's log file.
+     *
+     * @param {Number} bytes
+     * @return {Promise<any>}
+     */
+    readEndOfLog(bytes) {
+        return new Promise((resolve, reject) => {
+            this.container.inspect().then(inspection => {
+                // When a container is first created the log path is surprisingly not set. Because of this things
+                // will die when attempting to setup the tail. To avoid this, set the path manually if there is no
+                // path set.
+                const logPath = inspection.LogPath.length > 0 ? inspection.LogPath : `/var/lib/docker/containers/${inspection.Id}/${inspection.Id}-json.log`;
+
+                Fs.stat(logPath, (err, stat) => {
+                    if (err && err.code === 'ENOENT') {
+                        return resolve('');
+                    } else if (err) {
+                        return reject(err);
+                    }
+
+                    let opts = {};
+                    let lines = '';
+                    if (stat.size > bytes) {
+                        opts = {
+                            start: (stat.size - bytes),
+                            end: stat.size,
+                        };
+                    }
+
+                    const ReadStream = Fs.createReadStream(logPath, opts);
+
+                    ReadStream.on('data', data => {
+                        try {
+                            _.split(data.toString(), /\r?\n/).forEach(line => {
+                                const j = JSON.parse(line);
+                                lines += j.log;
+                            });
+                        } catch (e) {
+                            // do nothing, bad line
+                        }
+                    });
+
+                    ReadStream.on('end', () => {
+                        resolve(lines);
+                    });
+                });
+            });
+        });
+    }
+
+    /**
      * Attaches to a container's stdin and stdout/stderr.
      *
      * @return {Promise<any>}

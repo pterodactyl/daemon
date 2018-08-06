@@ -80,13 +80,6 @@ class Server extends EventEmitter {
         this.lastCrash = undefined;
         this.fs = new FileSystem(this);
 
-        if (this.status === Status.ON) {
-            // Server is running, lets reattach to the log stream is possible.
-            // Passing false as the second parameter will prevent the log that
-            // already exists from being overwritten if it is there still.
-            this.fs.getLogStream();
-        }
-
         Async.series([
             callback => {
                 this.service = new ServiceCore(this, null, callback);
@@ -333,10 +326,6 @@ class Server extends EventEmitter {
         }
 
         Async.series([
-            callback => {
-                this.log.debug('Cleaning out old process logs...');
-                this.fs.removeOldLogFiles(callback);
-            },
             callback => {
                 this.log.debug('Checking size of server folder before booting.');
                 this.emit('console', `${Ansi.style.yellow}[Pterodactyl Daemon] Checking size of server data directory...`);
