@@ -1,6 +1,11 @@
 # Changelog
 This file is a running track of new features and fixes to each version of the daemon released starting with `v0.2.0`.
 
+## v0.6.1 (Elasticized Elanodactylus)
+### Fixed
+* Fixes a bug that prevented sending commands to a running server instance. This was due to a regression in the command
+handling logic. (aka, too much delete).
+
 ## v0.6.0 (Elasticized Elanodactylus)
 ### Fixed
 * Fixes a bug with XML parsing that would cause Nodejs to be unhappy when reading and writing files.
