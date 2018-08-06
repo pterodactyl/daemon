@@ -97,14 +97,20 @@ class Docker {
 
                     const logPath = data.LogPath.length > 0 ? data.LogPath : `/var/lib/docker/containers/${data.Id}/${data.Id}-json.log`;
 
-                    // Attach to the instance, and then connect to the logs and stats output.
-                    Promise.all([
-                        this.attach(),
-                        this.readLogStream(logPath),
-                        this.stats(),
-                    ]).then(() => {
-                        resolve(true);
-                    }).catch(reject);
+                    Fs.ensureFile(logPath, err => {
+                        if (err) {
+                            return reject(err);
+                        }
+
+                        // Attach to the instance, and then connect to the logs and stats output.
+                        Promise.all([
+                            this.attach(),
+                            this.readLogStream(logPath),
+                            this.stats(),
+                        ]).then(() => {
+                            resolve(true);
+                        }).catch(reject);
+                    });
                 } else {
                     return resolve(false);
                 }
