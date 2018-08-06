@@ -67,7 +67,9 @@ class Docker {
         this.logStream = null;
 
         // Check status and attach if server is running currently.
-        this.reattach(next);
+        this.reattach().then(running => {
+            next(null, running);
+        }).catch(next);
     }
 
     hardlimit(memory) {
@@ -81,17 +83,32 @@ class Docker {
         return memory;
     }
 
-    reattach(next) {
-        this.inspect((err, data) => {
-            if (err) return next(err);
-            // We kind of have to assume that if the server is running it is on
-            // and not in the process of booting or stopping.
-            if (!_.isUndefined(data.State.Running) && data.State.Running !== false) {
-                this.server.setStatus(Status.ON);
-                this.attach().then(next).catch(next);
-            } else {
-                return next();
-            }
+    /**
+     * Reattach to a running docker container and reconfigure the log streams. Returns a promise value of true
+     * if the container is actually running, or false if the container is stopped.
+     *
+     * @return {Promise<any>}
+     */
+    reattach() {
+        return new Promise((resolve, reject) => {
+            this.container.inspect().then(data => {
+                if (!_.isUndefined(data.State.Running) && data.State.Running !== false) {
+                    this.server.setStatus(Status.ON);
+
+                    const logPath = data.LogPath.length > 0 ? data.LogPath : `/var/lib/docker/containers/${data.Id}/${data.Id}-json.log`;
+
+                    // Attach to the instance, and then connect to the logs and stats output.
+                    Promise.all([
+                        this.attach(),
+                        this.readLogStream(logPath),
+                        this.stats(),
+                    ]).then(() => {
+                        resolve(true);
+                    }).catch(reject);
+                } else {
+                    return resolve(false);
+                }
+            }).catch(reject);
         });
     }
 
@@ -127,6 +144,7 @@ class Docker {
                         this.server.setStatus(Status.ON);
                         return next();
                     }
+
                     throw err;
                 });
             }).catch(next);

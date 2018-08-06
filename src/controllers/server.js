@@ -112,7 +112,7 @@ class Server extends EventEmitter {
     }
 
     initContainer(next) {
-        this.docker = new Docker(this, err => {
+        this.docker = new Docker(this, (err, status) => {
             if (err && _.startsWith(_.get(err, 'json.message', 'error'), 'No such container')) {
                 this.log.warn('Container was not found. Attempting to recreate it.');
                 this.rebuild(rebuildErr => {
@@ -126,7 +126,7 @@ class Server extends EventEmitter {
                     return next(rebuildErr);
                 });
             } else {
-                if (!err) {
+                if (!err && status) {
                     this.log.info('Daemon detected that the server container is currently running, re-attaching to it now!');
                 }
                 return next(err);
