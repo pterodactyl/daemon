@@ -5,6 +5,7 @@ This file is a running track of new features and fixes to each version of the da
 ### Fixed
 * Fixes a bug with XML parsing that would cause Nodejs to be unhappy when reading and writing files.
 * Fixes a race condition in the route handling that would cause errors to be thrown on busy daemons.
+* Daemon no longer fails to boot if it is unable to pull a remote Docker image assuming one already exists on the host system.
 
 ### Changed
 * Changes the way that server output is handled to allow easier viewing of startup errors early in the process.

@@ -478,7 +478,16 @@ class Docker {
                     });
                 } else {
                     Log.info(Util.format('Checking if we need to update image %s, if so it will happen now.', config.image));
-                    ImageHelper.pull(config.image, callback);
+                    ImageHelper.pull(config.image, pullErr => {
+                        if (pullErr) {
+                            Log.error({
+                                err: pullErr,
+                                image: config.image,
+                            }, 'Encountered an error while attempting to fetch a fresh image. Continuing with existing system image.');
+                        }
+
+                        return callback();
+                    });
                 }
             },
             update_ports: callback => {
