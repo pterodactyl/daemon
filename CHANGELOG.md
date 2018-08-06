@@ -1,7 +1,7 @@
 # Changelog
 This file is a running track of new features and fixes to each version of the daemon released starting with `v0.2.0`.
 
-## v0.6.0
+## v0.6.0 (Elasticized Elanodactylus)
 ### Fixed
 * Fixes a bug with XML parsing that would cause Nodejs to be unhappy when reading and writing files.
 * Fixes a race condition in the route handling that would cause errors to be thrown on busy daemons.
