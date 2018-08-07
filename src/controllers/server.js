@@ -35,7 +35,6 @@ const Ansi = require('ansi-escape-sequences');
 const Request = require('request');
 const Cache = require('memory-cache');
 const Randomstring = require('randomstring');
-const isStream = require('isstream');
 
 const Log = rfr('src/helpers/logger.js');
 const Docker = rfr('src/controllers/docker.js');
