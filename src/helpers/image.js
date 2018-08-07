@@ -82,7 +82,7 @@ class DockerImage {
             return i === image;
         });
 
-        DockerController.pull(image, (err, stream) => {
+        DockerController.pull(image, shouldUseAuth ? pullWithConfig : {}, (err, stream) => {
             if (err) return next(err);
 
             let SendOutput;
