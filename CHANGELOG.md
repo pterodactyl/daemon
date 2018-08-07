@@ -1,6 +1,11 @@
 # Changelog
 This file is a running track of new features and fixes to each version of the daemon released starting with `v0.2.0`.
 
+## v0.6.2 (Elasticized Elanodactylus)
+### Fixed
+* Changed behavior of Daemon initialization to check for the existance of a server's data directory before initializing
+that server. If the data directory cannot be found a warning is thrown and the server is not registered.
+
 ## v0.6.1 (Elasticized Elanodactylus)
 ### Fixed
 * Fixes a bug that prevented sending commands to a running server instance. This was due to a regression in the command
