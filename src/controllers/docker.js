@@ -96,7 +96,6 @@ class Docker {
                     this.server.setStatus(Status.ON);
 
                     const logPath = data.LogPath.length > 0 ? data.LogPath : `/var/lib/docker/containers/${data.Id}/${data.Id}-json.log`;
-
                     Fs.ensureFile(logPath, err => {
                         if (err) {
                             return reject(err);
@@ -299,14 +298,14 @@ class Docker {
                     const ReadStream = Fs.createReadStream(logPath, opts);
 
                     ReadStream.on('data', data => {
-                        try {
-                            _.split(data.toString(), /\r?\n/).forEach(line => {
+                        _.forEach(_.split(data.toString(), /\r?\n/), line => {
+                            try {
                                 const j = JSON.parse(line);
                                 lines += j.log;
-                            });
-                        } catch (e) {
-                            // do nothing, bad line
-                        }
+                            } catch (e) {
+                                // do nothing, JSON parse error because we caught the tail end of a line.
+                            }
+                        });
                     });
 
                     ReadStream.on('end', () => {

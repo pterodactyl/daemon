@@ -31,8 +31,10 @@ const _ = require('lodash');
 const Klaw = require('klaw');
 
 const Log = rfr('src/helpers/logger.js');
-
+const LoadConfig = rfr('src/helpers/config.js');
 const Server = rfr('src/controllers/server.js');
+
+const Config = new LoadConfig();
 const Servers = {};
 
 class Initialize {
@@ -47,31 +49,32 @@ class Initialize {
             this.folders.push(data.path);
         }).on('end', () => {
             Async.each(this.folders, (file, callback) => {
-                if (Path.extname(file) === '.json') {
-                    Fs.readJson(file, (errJson, json) => {
-                        if (errJson) {
-                            Log.warn(errJson, Util.format('Unable to parse JSON in %s due to an error, skipping...', file));
-                            return;
-                        }
-
-                        // Is this JSON valid enough?
-                        if (_.isUndefined(json.uuid)) {
-                            Log.warn(Util.format('Detected valid JSON, but server was missing a UUID in %s, skipping...', file));
-                            return;
-                        }
-
-                        // Initalize the Server
-                        this.setup(json, (err, server) => {
-                            if (err) {
-                                err.server_uuid = json.uuid; // eslint-disable-line
-                            }
-
-                            callback(err, server);
-                        });
-                    });
-                } else {
+                if (Path.extname(file) !== '.json') {
                     return callback();
                 }
+
+                Fs.readJson(file).then(json => {
+                    if (_.isUndefined(json.uuid)) {
+                        Log.warn(Util.format('Detected valid JSON, but server was missing a UUID in %s, skipping...', file));
+                        return callback();
+                    }
+
+                    const checkPath = Path.join(Config.get('sftp.path', '/srv/daemon-data'), json.uuid);
+                    Fs.stat(checkPath).then(stats => {
+                        if (!stats.isDirectory()) {
+                            Log.warn({ server: json.uuid }, 'Detected that the server data directory is not a directory.');
+                        }
+
+                        this.setup(json, callback);
+                    }).catch(err => {
+                        if (err.code === 'ENOENT') {
+                            Log.warn({ err, server: json.uuid }, 'Could not locate a server data directory. Skipping initialization of server.');
+                            return callback();
+                        }
+
+                        return callback(err);
+                    });
+                }).catch(callback);
             }, next);
         });
     }

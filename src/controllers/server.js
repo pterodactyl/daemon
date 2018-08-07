@@ -35,7 +35,6 @@ const Ansi = require('ansi-escape-sequences');
 const Request = require('request');
 const Cache = require('memory-cache');
 const Randomstring = require('randomstring');
-const isStream = require('isstream');
 
 const Log = rfr('src/helpers/logger.js');
 const Docker = rfr('src/controllers/docker.js');
@@ -428,6 +427,37 @@ class Server extends EventEmitter {
 
         // Send the command to the instance to begin the shutdown procedures.
         this.docker.write(stopCommand).then(next).catch(next);
+    }
+
+    /**
+     * Send a command to the server. If the command matches the stop argument, stop the server.
+     *
+     * @param {String} command
+     * @return {Promise<any>}
+     */
+    command(command) {
+        // If the server is offline don't attempt to send a command, it won't work...
+        if (this.status === Status.OFF) {
+            return new Promise(resolve => {
+                resolve();
+            });
+        }
+
+        // If this is the stop command, handle it correctly and pass it over to the
+        // stop function to do things.
+        if (command === _.get(this.service, 'config.stop')) {
+            return new Promise((resolve, reject) => {
+                this.stop(err => {
+                    if (err) {
+                        return reject(err);
+                    }
+
+                    resolve();
+                });
+            });
+        }
+
+        return this.docker.write(command);
     }
 
     kill(next) {

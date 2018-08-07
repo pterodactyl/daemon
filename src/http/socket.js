@@ -63,8 +63,12 @@ class WebSocket {
                         return;
                     }
 
-                    this.server.command(data, () => {
-                        _.noop();
+                    if (this.server.status === Status.OFF) {
+                        return;
+                    }
+
+                    this.server.command(data).catch(commandError => {
+                        this.server.log.error({ err: commandError, command: data }, 'Failed to send command to server.');
                     });
                 });
             });

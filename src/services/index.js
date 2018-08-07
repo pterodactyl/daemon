@@ -124,8 +124,7 @@ class Core {
                     Async.each(_.get(this.config, 'startup.userInteraction'), string => {
                         if (_.includes(data, string)) {
                             this.server.log.info('Server detected as requiring user interaction, stopping now.');
-                            this.server.setStatus(Status.STOPPING);
-                            this.server.command(_.get(this.config, 'stop'), err => {
+                            this.server.stop(err => {
                                 if (err) this.server.log.warn(err);
                             });
                         }

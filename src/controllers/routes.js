@@ -321,19 +321,11 @@ class RouteController {
             }
 
             if (!_.isUndefined(this.req.params.command)) {
-                if (_.startsWith(_.replace(_.trim(this.req.params.command), /^\/*/, ''), _.get(this.auth.server(), 'services.config.stop'))) {
-                    this.auth.allowed('s:power:stop', (powerErr, powerIsAllowed) => {
-                        if (powerErr || !powerIsAllowed) return;
-
-                        this.auth.server().command(this.req.params.command, err => {
-                            this.responses.generic204(err);
-                        });
-                    });
-                } else {
-                    this.auth.server().command(this.req.params.command, err => {
-                        this.responses.generic204(err);
-                    });
-                }
+                this.auth.server().command(this.req.params.command).then(() => {
+                    this.responses.generic204();
+                }).catch(err => {
+                    this.responses.generic204(err);
+                });
             } else {
                 this.res.send(500, { 'error': 'Missing command in request.' });
             }
