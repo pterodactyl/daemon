@@ -136,6 +136,7 @@ class Core {
 
     onStop(next) {
         // do nothing
+        return next();
     }
 }
 
