@@ -5,6 +5,7 @@ This file is a running track of new features and fixes to each version of the da
 ### Fixed
 * Changed behavior of Daemon initialization to check for the existance of a server's data directory before initializing
 that server. If the data directory cannot be found a warning is thrown and the server is not registered.
+* Fixes an error that would cause a loaded console to not display any previous logs due to a supressed JSON parse error.
 
 ## v0.6.1 (Elasticized Elanodactylus)
 ### Fixed
