@@ -495,7 +495,7 @@ class Server extends EventEmitter {
     streamClosed() {
         if (this.status === Status.OFF || this.status === Status.STOPPING) {
             this.setStatus(Status.OFF);
-            this.service.onStop();
+            this.service.onStop(_.noop);
 
             if (this.shouldRestart) {
                 this.shouldRestart = false;
