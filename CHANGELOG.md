@@ -4,12 +4,13 @@ This file is a running track of new features and fixes to each version of the da
 ## v0.6.3 (Elasticized Elanodactylus)
 ### Fixed
 * Fixes a broken crash detection system due to a forgotten callback.
+* Fixes an error that would occur when a server was rebuilt and the Docker container log path changed on the Daemon.
 
 ### Changed
 * Changes the way crash handling works to not forcibly restart the server process if it exits cleanly. This means you
 can have plugins stop your server and it will not automatically restart on you. Only processes that exit with code `0`
 will be left in the stopped state, all other unexpected stops will result in an automatic restart.
-
+* Less confusing server status indicators when being rebuilt, now completely stops before rebuilding.
 
 ## v0.6.2 (Elasticized Elanodactylus)
 ### Fixed
