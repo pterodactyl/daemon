@@ -308,6 +308,7 @@ class Server extends EventEmitter {
                     },
                     callback => {
                         this.emit('console', `${Ansi.style.cyan}[Pterodactyl Daemon] Your server container needs to be rebuilt. This should only take a few seconds, but could take a few minutes. You do not need to do anything else while this occurs. Your server will automatically continue with startup once this process is completed.`);
+                        this.setStatus(Status.STOPPING);
                         this.setStatus(Status.OFF);
                         this.rebuild(callback);
                     },
