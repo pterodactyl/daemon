@@ -505,7 +505,9 @@ class Server extends EventEmitter {
     }
 
     /**
-     * Determines if the container stream should have ended yet, if not, mark server crashed.
+     * Handle the server stream instance closing on us. Runs through to attempt to determine if this was
+     * an expected closing, or if it was a sudden crash. If it was a crash, restart the server, otherwise
+     * just continue with whatever process got us into this situation.
      */
     streamClosed() {
         if (this.status === Status.OFF || this.status === Status.STOPPING) {
@@ -522,58 +524,58 @@ class Server extends EventEmitter {
             return;
         }
 
-        Async.series([
-            callback => {
-                if (!_.get(this.json, 'container.crashDetection', true)) {
-                    this.setStatus(Status.OFF);
-                    this.log.warn('Server detected as potentially crashed but crash detection has been disabled on this server.');
-                    return;
-                }
-                callback();
-            },
-            callback => {
-                this.docker.inspect(callback);
-            },
-        ], (err, results) => {
-            if (err) {
-                this.log.fatal(err);
+        // Mark the server as off at this point, we don't do any further checks about
+        // the current status from here.
+        this.setStatus(Status.OFF);
+
+        // Inspect the instance to get the exit code results to display to the user and to determine
+        // how we should handle this crash.
+        this.docker.container.inspect().then(results => {
+            const props = {
+                ExitCode: results.State.ExitCode,
+                OOMKilled: results.State.OOMKilled,
+                Error: results.State.Error,
+            };
+
+            // If the server "crashed" with a normal exit code indicating that it was stopped successfully
+            // don't force it to reboot. This can happen if a plugin stops the server for someone.
+            if (parseInt(props.ExitCode, 10) === 0 && !props.OOMKilled) {
                 return;
             }
 
-            const props = {
-                ExitCode: _.get(results, '1.State.ExitCode', ''),
-                OOMKilled: _.get(results, '1.State.OOMKilled', ''),
-                Error: _.get(results, '1.State.Error', ''),
-            };
-
-            if (_.isObject(_.get(results, 2))) {
-                this.emit('console', `${Ansi.style['bg-red']}${Ansi.style.white}[Pterodactyl Daemon] ---------- Detected server process in a crashed state! ----------`);
-                this.emit('console', `${Ansi.style.red}[Pterodactyl Daemon] Exit Code: ${Ansi.style.reset}${_.get(results, '1.State.ExitCode', '')}`);
-                this.emit('console', `${Ansi.style.red}[Pterodactyl Daemon] Out of Memory: ${Ansi.style.reset}${_.get(results, '1.State.OOMKilled', '')}`);
-                this.emit('console', `${Ansi.style.red}[Pterodactyl Daemon] Error Response: ${Ansi.style.reset}${_.get(results, '1.State.Error', '')}`);
+            // If crash detection is disabled for the server don't do anything.
+            if (!_.get(this.json, 'container.crashDetection', true)) {
+                this.log.warn(props, 'Server detected as entering a crashed state; crash handler is disabled; aborting reboot.');
+                return;
             }
 
+            this.emit('console', `${Ansi.style['bg-red']}${Ansi.style.white}[Pterodactyl Daemon] ---------- Detected server process in a crashed state! ----------`);
+            this.emit('console', `${Ansi.style.red}[Pterodactyl Daemon] Exit Code: ${Ansi.style.reset}${props.ExitCode}`);
+            this.emit('console', `${Ansi.style.red}[Pterodactyl Daemon] Out of Memory: ${Ansi.style.reset}${props.OOMKilled}`);
+            this.emit('console', `${Ansi.style.red}[Pterodactyl Daemon] Error Response: ${Ansi.style.reset}${props.Error}`);
             this.emit('crashed');
-            this.setStatus(Status.OFF);
-            if (moment.isMoment(this.lastCrash)) {
-                if (moment(this.lastCrash).add(60, 'seconds').isAfter(moment())) {
-                    this.setCrashTime();
-                    this.log.warn(props, 'Server detected as crashed but has crashed within the last 60 seconds, aborting reboot.');
-                    this.emit('console', `${Ansi.style.red}[Pterodactyl Daemon] Aborting automatic reboot due to crash within the last 60 seconds.`);
-                    return;
-                }
+
+            if (moment.isMoment(this.lastCrash) && moment(this.lastCrash).add(60, 'seconds').isAfter(moment())) {
+                this.setCrashTime();
+                this.log.warn(props, 'Server detected as crashed but has crashed within the last 60 seconds; aborting reboot.');
+                this.emit('console', `${Ansi.style.red}[Pterodactyl Daemon] Aborting automatic reboot due to crash within the last 60 seconds.`);
+
+                return;
             }
 
             this.log.warn(props, 'Server detected as crashed! Attempting server reboot.');
-            this.emit('console', `${Ansi.style.red}[Pterodactyl Daemon] Attempting to reboot server now.`);
+            this.emit('console', `${Ansi.style.red}[Pterodactyl Daemon] Server process detected as entering a crashed state; rebooting.`);
             this.setCrashTime();
 
-            this.start(startError => {
-                if (startError) this.log.fatal(startError);
+            this.start(err => {
+                if (err) throw err;
             });
-        });
+        }).catch(this.log.fatal);
     }
 
+    /**
+     * Set the last time that the server crashed.
+     */
     setCrashTime() {
         this.lastCrash = moment();
     }

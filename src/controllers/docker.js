@@ -110,10 +110,6 @@ class Docker {
         });
     }
 
-    inspect(next) {
-        this.container.inspect(next);
-    }
-
     /**
      * Starts a given container and returns a callback when finished.
      * @param  {Function} next [description]

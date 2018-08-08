@@ -1,6 +1,16 @@
 # Changelog
 This file is a running track of new features and fixes to each version of the daemon released starting with `v0.2.0`.
 
+## v0.6.3 (Elasticized Elanodactylus)
+### Fixed
+* Fixes a broken crash detection system due to a forgotten callback.
+
+### Changed
+* Changes the way crash handling works to not forcibly restart the server process if it exits cleanly. This means you
+can have plugins stop your server and it will not automatically restart on you. Only processes that exit with code `0`
+will be left in the stopped state, all other unexpected stops will result in an automatic restart.
+
+
 ## v0.6.2 (Elasticized Elanodactylus)
 ### Fixed
 * Changed behavior of Daemon initialization to check for the existance of a server's data directory before initializing
