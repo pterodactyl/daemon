@@ -95,21 +95,14 @@ class Docker {
                 if (!_.isUndefined(data.State.Running) && data.State.Running !== false) {
                     this.server.setStatus(Status.ON);
 
-                    const logPath = data.LogPath.length > 0 ? data.LogPath : `/var/lib/docker/containers/${data.Id}/${data.Id}-json.log`;
-                    Fs.ensureFile(logPath, err => {
-                        if (err) {
-                            return reject(err);
-                        }
-
-                        // Attach to the instance, and then connect to the logs and stats output.
-                        Promise.all([
-                            this.attach(),
-                            this.readLogStream(logPath),
-                            this.stats(),
-                        ]).then(() => {
-                            resolve(true);
-                        }).catch(reject);
-                    });
+                    // Attach to the instance, and then connect to the logs and stats output.
+                    Promise.all([
+                        this.attach(),
+                        this.readLogStream(),
+                        this.stats(),
+                    ]).then(() => {
+                        resolve(true);
+                    }).catch(reject);
                 } else {
                     return resolve(false);
                 }
@@ -139,7 +132,7 @@ class Docker {
 
                     Promise.all([
                         this.attach(),
-                        this.readLogStream(logPath),
+                        this.readLogStream(),
                         this.stats(),
                     ]).then(() => {
                         next();
@@ -238,30 +231,33 @@ class Docker {
      * a user to understand why their server is crashing. By reading the logs we can avoid this problem
      * and get them all of the important context.
      *
-     * @param {String} path
-     * @return {Promise<any>}
+     * @return {Promise<void>}
      */
-    readLogStream(path) {
-        return new Promise(resolve => {
+    readLogStream() {
+        return new Promise((resolve, reject) => {
             if (!_.isNull(this.logStream)) {
                 this.logStream.unwatch();
                 this.logStream = null;
             }
 
-            this.logStream = new Tail(path);
+            this.container.inspect().then(inspection => {
+                const logPath = inspection.LogPath.length > 0 ? inspection.LogPath : `/var/lib/docker/containers/${inspection.Id}/${inspection.Id}-json.log`;
 
-            this.logStream.on('line', data => {
-                // {"log":"Error: Unable to access jarfile bad_server.jar\r\n","stream":"stdout","time":"2018-08-05T21:58:23.280134385Z"}
-                const j = JSON.parse(data.toString());
+                Fs.ensureFile(logPath).then(() => {
+                    this.logStream = new Tail(logPath);
 
-                this.server.output(_.trim(j.log));
-            });
+                    this.logStream.on('line', data => {
+                        const j = JSON.parse(data.toString());
+                        this.server.output(_.trim(j.log));
+                    });
 
-            this.logStream.on('error', err => {
-                this.server.log.error(err);
-            });
+                    this.logStream.on('error', err => {
+                        this.server.log.error(err);
+                    });
 
-            return resolve();
+                    resolve();
+                });
+            }).catch(reject);
         });
     }
 
@@ -606,6 +602,11 @@ class Docker {
     destroy(container, next) {
         const FindContainer = DockerController.getContainer(container);
         FindContainer.inspect(err => {
+            if (!_.isNull(this.logStream)) {
+                this.logStream.unwatch();
+                this.logStream = null;
+            }
+
             if (!err) {
                 this.container.remove(next);
             } else if (err && _.startsWith(err.reason, 'no such container')) { // no such container
