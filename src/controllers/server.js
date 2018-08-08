@@ -22,7 +22,6 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-const rfr = require('rfr');
 const Async = require('async');
 const moment = require('moment');
 const _ = require('lodash');
@@ -36,16 +35,17 @@ const Request = require('request');
 const Cache = require('memory-cache');
 const Randomstring = require('randomstring');
 
-const Log = rfr('src/helpers/logger.js');
-const Docker = rfr('src/controllers/docker.js');
-const Status = rfr('src/helpers/status.js');
-const ConfigHelper = rfr('src/helpers/config.js');
-const Websocket = rfr('src/http/socket.js').ServerSockets;
-const UploadSocket = rfr('src/http/upload.js');
-const PackSystem = rfr('src/controllers/pack.js');
-const FileSystem = rfr('src/controllers/fs.js');
-const OptionController = rfr('src/controllers/option.js');
-const ServiceCore = rfr('src/services/index.js');
+const Log = require('./../helpers/logger');
+const Docker = require('./docker');
+const Status = require('./../helpers/status');
+const ConfigHelper = require('./../helpers/config');
+const Websocket = require('./../http/socket').ServerSockets;
+const UploadSocket = require('./../http/upload');
+const PackSystem = require('./pack');
+const FileSystem = require('./fs');
+const OptionController = require('./option');
+const ServiceCore = require('./../services/index');
+const Errors = require('./../errors/index');
 
 const Config = new ConfigHelper();
 
@@ -78,10 +78,11 @@ class Server extends EventEmitter {
         this.log = Log.child({ server: this.uuid });
         this.lastCrash = undefined;
         this.fs = new FileSystem(this);
+        this.service = new ServiceCore(this);
 
         Async.series([
             callback => {
-                this.service = new ServiceCore(this, null, callback);
+                this.service.init().then(callback).catch(callback);
             },
             callback => {
                 this.initContainer(err => {
@@ -271,7 +272,19 @@ class Server extends EventEmitter {
         if (this.status !== Status.STARTING) {
             return next(new Error('Server must be in starting state to run preflight.'));
         }
-        return this.service.onPreflight(next);
+
+        this.service.onPreflight().then(next).catch(err => {
+            if (err instanceof Errors.FileParseError) {
+                this.server.emit('console', `${Ansi.style.red}[Pterodactyl Daemon] Encountered an error while processing ${err.file}; aborting startup.`);
+                this.server.emit('console', `${Ansi.style.red}[Pterodactyl Daemon] ${err.message}`);
+            }
+
+            if (err instanceof Errors.NoEggConfigurationError) {
+                this.server.emit('console', `${Ansi.style['bg-red']}${Ansi.style.white}[Pterodactyl Daemon] No server egg configuration could be located; aborting startup.`);
+            }
+
+            return next(err);
+        });
     }
 
     start(next) {
@@ -495,7 +508,6 @@ class Server extends EventEmitter {
     streamClosed() {
         if (this.status === Status.OFF || this.status === Status.STOPPING) {
             this.setStatus(Status.OFF);
-            this.service.onStop(_.noop);
 
             if (this.shouldRestart) {
                 this.shouldRestart = false;
@@ -509,9 +521,6 @@ class Server extends EventEmitter {
         }
 
         Async.series([
-            callback => {
-                this.service.onStop(callback);
-            },
             callback => {
                 if (!_.get(this.json, 'container.crashDetection', true)) {
                     this.setStatus(Status.OFF);
@@ -530,16 +539,16 @@ class Server extends EventEmitter {
             }
 
             const props = {
-                ExitCode: _.get(results, '2.State.ExitCode', ''),
-                OOMKilled: _.get(results, '2.State.OOMKilled', ''),
-                Error: _.get(results, '2.State.Error', ''),
+                ExitCode: _.get(results, '1.State.ExitCode', ''),
+                OOMKilled: _.get(results, '1.State.OOMKilled', ''),
+                Error: _.get(results, '1.State.Error', ''),
             };
 
             if (_.isObject(_.get(results, 2))) {
                 this.emit('console', `${Ansi.style['bg-red']}${Ansi.style.white}[Pterodactyl Daemon] ---------- Detected server process in a crashed state! ----------`);
-                this.emit('console', `${Ansi.style.red}[Pterodactyl Daemon] Exit Code: ${Ansi.style.reset}${_.get(results, '2.State.ExitCode', '')}`);
-                this.emit('console', `${Ansi.style.red}[Pterodactyl Daemon] Out of Memory: ${Ansi.style.reset}${_.get(results, '2.State.OOMKilled', '')}`);
-                this.emit('console', `${Ansi.style.red}[Pterodactyl Daemon] Error Response: ${Ansi.style.reset}${_.get(results, '2.State.Error', '')}`);
+                this.emit('console', `${Ansi.style.red}[Pterodactyl Daemon] Exit Code: ${Ansi.style.reset}${_.get(results, '1.State.ExitCode', '')}`);
+                this.emit('console', `${Ansi.style.red}[Pterodactyl Daemon] Out of Memory: ${Ansi.style.reset}${_.get(results, '1.State.OOMKilled', '')}`);
+                this.emit('console', `${Ansi.style.red}[Pterodactyl Daemon] Error Response: ${Ansi.style.reset}${_.get(results, '1.State.Error', '')}`);
             }
 
             this.emit('crashed');
@@ -777,7 +786,9 @@ class Server extends EventEmitter {
             }],
             init_service: ['update_config', (results, callback) => {
                 this.log.debug('Reinitializing egg core for server.');
-                this.service = new ServiceCore(this, null, callback);
+
+                this.service = new ServiceCore(this);
+                this.service.init().then(callback).catch(callback);
             }],
             init_container: ['init_service', (results, callback) => {
                 this.emit('console', `${Ansi.style.yellow}[Pterodactyl Daemon] Container is being initialized...`);
@@ -874,7 +885,8 @@ class Server extends EventEmitter {
                     return callback(new Error('No Egg was passed to the server configuration, unable to select an egg.'));
                 }
 
-                this.service = new ServiceCore(this, null, callback);
+                this.service = new ServiceCore(this);
+                this.service.init().then(callback).catch(callback);
             },
             callback => {
                 this.pack = new PackSystem(this);
