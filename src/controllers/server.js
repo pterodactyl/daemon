@@ -34,7 +34,6 @@ const Ansi = require('ansi-escape-sequences');
 const Request = require('request');
 const Cache = require('memory-cache');
 const Randomstring = require('randomstring');
-const Lockfile = require('proper-lockfile');
 
 const Log = require('./../helpers/logger');
 const Docker = require('./docker');
@@ -676,122 +675,89 @@ class Server extends EventEmitter {
         });
     }
 
-    /**
-     * Updates the configuration for a server. This function can be called in an asynchronous manner
-     * if you are making configuration changes that do not need to immediately be available to the
-     * process after making them (for example, setting the current server state).
-     *
-     * In almost all cases you should wait until this function's callback is called to continue doing
-     * whatever operations you're doing.
-     *
-     * If overwrite is set to 'true' then the JSON configuration is completely replaced with the new
-     * object keys and keeps any that are not listed. If overwrite is set to 'false' then only the
-     * specified configuration keys are updated (or added). Check out the _.extend documentation
-     * to see more.
-     *
-     * @param {Object} object
-     * @param {Function|Boolean} overwrite
-     * @param {Function|null} next
-     */
+    // If overwrite = true (PUT request) then the JSON is simply replaced with the new object keys
+    // while keeping any that are not listed. If overwrite = false (PATCH request) then only the
+    // specific data keys that exist are changed or added. (see _.extend documentation).
     modifyConfig(object, overwrite, next) {
         if (_.isFunction(overwrite)) {
             next = overwrite; // eslint-disable-line
             overwrite = false; // eslint-disable-line
         }
 
-        if (!_.isFunction(next)) {
-            next = () => { _.noop(); }; // eslint-disable-line
-        }
+        const deepExtend = extendify({
+            inPlace: false,
+            arrays: 'replace',
+        });
 
-        const deepExtend = extendify({ inPlace: false, arrays: 'replace' });
+        const newObject = (overwrite) ? _.assignIn(this.json, object) : deepExtend(this.json, object);
 
-        // Obtain an exclusive lock on the configuration file to avoid writing to it while something
-        // else is modifying information. The factor under the retries block allows us to attempt to
-        // obtain said lock for up to 3000ms. See the Wolfram Alpha link and information from the 'retry'
-        // package below:
-        //
-        // https://www.npmjs.com/package/retry#retrytimeoutsoptions
-        // http://www.wolframalpha.com/input/?i=Sum%5B100*x%5Ek,+%7Bk,+0,+9%7D%5D+%3D+3000
-        Lockfile.lock(this.configLocation, { retries: { factor: 1.22924 } }).then(release => {
-            const newObject = (overwrite) ? _.assignIn(this.json, object) : deepExtend(this.json, object);
-
-            // Ports are a pain in the butt.
-            if (!_.isUndefined(newObject.build)) {
-                _.forEach(newObject.build, (obj, ident) => {
-                    if (_.endsWith(ident, '|overwrite')) {
-                        const item = _.split(ident, '|')[0];
-                        newObject.build[item] = obj;
-                        delete newObject.build[ident];
-                    }
-                });
-            }
-
-            newObject.rebuild = (_.isUndefined(object.rebuild) || object.rebuild);
-
-            // Update 127.0.0.1 to point to the docker0 interface.
-            if (newObject.build.default.ip === '127.0.0.1') {
-                newObject.build.default.ip = Config.get('docker.network.ispn', false) ? '' : Config.get('docker.interface');
-            }
-
-            _.forEach(newObject.build.ports, (ports, ip) => {
-                if (ip === '127.0.0.1') {
-                    if (!Config.get('docker.network.ispn', false)) {
-                        newObject.build.ports[Config.get('docker.interface')] = ports;
-                    }
-                    delete newObject.build.ports[ip];
+        // Ports are a pain in the butt.
+        if (!_.isUndefined(newObject.build)) {
+            _.forEach(newObject.build, (obj, ident) => {
+                if (_.endsWith(ident, '|overwrite')) {
+                    const item = _.split(ident, '|')[0];
+                    newObject.build[item] = obj;
+                    delete newObject.build[ident];
                 }
             });
+        }
 
-            this.knownWrite = true;
-            this.alreadyMarkedForRebuild = this.json.rebuild;
+        newObject.rebuild = (_.isUndefined(object.rebuild) || object.rebuild);
 
-            Fs.outputJson(this.configLocation, newObject, { spaces: 2 })
-                .then(() => {
-                    this.json = newObject;
-                    if (newObject.rebuild && !this.alreadyMarkedForRebuild) {
-                        this.log.debug('Server has been marked as requiring a rebuild on next boot cycle.');
-                    }
+        // Update 127.0.0.1 to point to the docker0 interface.
+        if (newObject.build.default.ip === '127.0.0.1') {
+            newObject.build.default.ip = Config.get('docker.network.ispn', false) ? '' : Config.get('docker.interface');
+        }
 
-                    if (
-                        !_.isUndefined(_.get(object, 'build.io', undefined)) ||
-                        !_.isUndefined(_.get(object, 'build.cpu', undefined)) ||
-                        !_.isUndefined(_.get(object, 'build.memory', undefined)) ||
-                        !_.isUndefined(_.get(object, 'build.swap', undefined))
-                    ) {
-                        return this.updateCGroups();
-                    }
+        _.forEach(newObject.build.ports, (ports, ip) => {
+            if (ip === '127.0.0.1') {
+                if (!Config.get('docker.network.ispn', false)) {
+                    newObject.build.ports[Config.get('docker.interface')] = ports;
+                }
+                delete newObject.build.ports[ip];
+            }
+        });
 
-                    return new Promise(resolve => { resolve(); });
-                })
-                .catch(err => { // eslint-disable-line
-                    // Return a promise here with the error. This solves the woes we face because
-                    // the entire chain has to return promises, but we want to perform the same logic
-                    // regardless of success or failure at this point.
-                    return new Promise(resolve => { resolve(err); });
-                })
-                .then(err => {
-                    this.knownWrite = false;
-                    release();
-
-                    next(err);
+        Async.auto({
+            set_knownwrite: callback => {
+                this.knownWrite = true;
+                this.alreadyMarkedForRebuild = this.json.rebuild;
+                callback();
+            },
+            write_config: ['set_knownwrite', (results, callback) => {
+                Fs.outputJson(this.configLocation, newObject, { spaces: 2 }, err => {
+                    if (!err) this.json = newObject;
+                    return callback(err);
                 });
-        }).catch(err => {
-            this.log.fatal({ err }, 'Could not write server configuration change!');
+            }],
+            update_live: ['write_config', (results, callback) => {
+                if (
+                    !_.isUndefined(_.get(object, 'build.io', undefined)) ||
+                    !_.isUndefined(_.get(object, 'build.cpu', undefined)) ||
+                    !_.isUndefined(_.get(object, 'build.memory', undefined)) ||
+                    !_.isUndefined(_.get(object, 'build.swap', undefined))
+                ) {
+                    this.updateCGroups(callback);
+                } else {
+                    return callback();
+                }
+            }],
+        }, err => {
+            this.knownWrite = false;
+            if (err) return next(err);
 
-            next(err);
+            if (newObject.rebuild && !this.alreadyMarkedForRebuild) {
+                this.log.debug('Server has been marked as requiring a rebuild on next boot cycle.');
+            }
+
+            return next();
         });
     }
 
-    /**
-     * Update the CGroup configuration for a running container instance.
-     *
-     * @return {Promise<void>}
-     */
-    updateCGroups() {
+    updateCGroups(next) {
         this.log.debug('Updating some container resource limits prior to rebuild.');
         this.emit('console', `${Ansi.style.yellow}[Pterodactyl Daemon] Your server has had some resource limits modified, you may need to restart to apply them.`);
-
-        return this.docker.update();
+        this.docker.update(next);
     }
 
     rebuild(next) {

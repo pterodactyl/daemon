@@ -9,8 +9,6 @@ commands over and over in scheduled tasks.
 ### Changed
 * Archives created by the Panel are now named in a more logical manner based on the name of the file that they
 were created from.
-* Server configiuration changes now obtain an exclusive lock on the file to avoid duplicate operations on the same
-file at the same time.
 
 ## v0.6.3 (Elasticized Elanodactylus)
 ### Fixed
