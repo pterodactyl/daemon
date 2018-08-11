@@ -57,7 +57,7 @@ const CONST_LOWMEM = Config.get('docker.memory.low.value', 1024);
 const CONST_STDMEM = Config.get('docker.memory.std.value', 10240);
 
 class Docker {
-    constructor(server) {
+    constructor(server, next) {
         this.server = server;
         this.containerID = _.get(this.server.json, 'uuid', null);
         this.container = DockerController.getContainer(this.containerID);
@@ -65,6 +65,11 @@ class Docker {
         this.stream = undefined;
         this.procData = undefined;
         this.logStream = null;
+
+        // Check status and attach if server is running currently.
+        this.reattach().then(running => {
+            next(null, running);
+        }).catch(next);
     }
 
     hardlimit(memory) {
