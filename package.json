@@ -63,6 +63,7 @@
     "mmmagic": "^0.4",
     "moment": "^2.20",
     "node-yaml": "^3.1",
+    "proper-lockfile": "^3.0.2",
     "properties-parser": "^0.3",
     "randomstring": "^1.1",
     "request": "^2.87.0",

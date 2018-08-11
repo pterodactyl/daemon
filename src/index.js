@@ -278,3 +278,10 @@ process.on('uncaughtException', err => {
 process.on('SIGUSR2', () => {
     Log.reopenFileStreams();
 });
+
+// Map SIGINT & SIGTERM to process exit so that file locks are released.
+process.once('SIGINT', () => {
+    process.exit(1);
+}).once('SIGTERM', () => {
+    process.exit(1);
+});

@@ -417,11 +417,11 @@ class Docker {
     }
 
     /**
-     * Updates usage liits without requiring a rebuild.
-     * @param  {Function} next
-     * @return {Callback}
+     * Updates usage limits without requiring a rebuild.
+     *
+     * @return {Promise<void>}
      */
-    update(next) {
+    update() {
         const config = this.server.json.build;
 
         const ContainerConfiguration = {
@@ -438,7 +438,7 @@ class Docker {
             ContainerConfiguration.MemorySwap = Math.round((this.hardlimit(config.memory) + config.swap) * 1000000);
         }
 
-        this.container.update(ContainerConfiguration, next);
+        return this.container.update(ContainerConfiguration);
     }
 
     /**

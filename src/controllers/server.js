@@ -34,6 +34,7 @@ const Ansi = require('ansi-escape-sequences');
 const Request = require('request');
 const Cache = require('memory-cache');
 const Randomstring = require('randomstring');
+const Lockfile = require('proper-lockfile');
 
 const Log = require('./../helpers/logger');
 const Docker = require('./docker');
@@ -684,6 +685,10 @@ class Server extends EventEmitter {
             overwrite = false; // eslint-disable-line
         }
 
+        if (!_.isFunction(next)) {
+            next = () => { _.noop(); }; // eslint-disable-line
+        }
+
         const deepExtend = extendify({
             inPlace: false,
             arrays: 'replace',
@@ -718,46 +723,64 @@ class Server extends EventEmitter {
             }
         });
 
-        Async.auto({
-            set_knownwrite: callback => {
-                this.knownWrite = true;
-                this.alreadyMarkedForRebuild = this.json.rebuild;
-                callback();
-            },
-            write_config: ['set_knownwrite', (results, callback) => {
-                Fs.outputJson(this.configLocation, newObject, { spaces: 2 }, err => {
-                    if (!err) this.json = newObject;
-                    return callback(err);
+        // Obtain an exclusive lock on the configuration file to avoid writing to it while something
+        // else is modifying information. The factor under the retries block allows us to attempt to
+        // obtain said lock for up to 3000ms. See the Wolfram Alpha link and information from the 'retry'
+        // package below:
+        //
+        // https://www.npmjs.com/package/retry#retrytimeoutsoptions
+        // http://www.wolframalpha.com/input/?i=Sum%5B100*x%5Ek,+%7Bk,+0,+9%7D%5D+%3D+3000
+        Lockfile.lock(this.configLocation, { retries: { factor: 1.22924 } }).then(release => {
+            this.knownWrite = true;
+            this.alreadyMarkedForRebuild = this.json.rebuild;
+
+            Fs.outputJson(this.configLocation, newObject, { spaces: 2 })
+                .then(() => {
+                    this.json = newObject;
+                    if (newObject.rebuild && !this.alreadyMarkedForRebuild) {
+                        this.log.debug('Server has been marked as requiring a rebuild on next boot cycle.');
+                    }
+
+                    if (
+                        !_.isUndefined(_.get(object, 'build.io', undefined)) ||
+                        !_.isUndefined(_.get(object, 'build.cpu', undefined)) ||
+                        !_.isUndefined(_.get(object, 'build.memory', undefined)) ||
+                        !_.isUndefined(_.get(object, 'build.swap', undefined))
+                    ) {
+                        return this.updateCGroups();
+                    }
+
+                    return new Promise(resolve => { resolve(); });
+                })
+                .catch(err => { // eslint-disable-line
+                    // Return a promise here with the error. This solves the woes we face because
+                    // the entire chain has to return promises, but we want to perform the same logic
+                    // regardless of success or failure at this point.
+                    return new Promise(resolve => { resolve(err); });
+                })
+                .then(err => {
+                    this.knownWrite = false;
+                    release();
+
+                    next(err);
                 });
-            }],
-            update_live: ['write_config', (results, callback) => {
-                if (
-                    !_.isUndefined(_.get(object, 'build.io', undefined)) ||
-                    !_.isUndefined(_.get(object, 'build.cpu', undefined)) ||
-                    !_.isUndefined(_.get(object, 'build.memory', undefined)) ||
-                    !_.isUndefined(_.get(object, 'build.swap', undefined))
-                ) {
-                    this.updateCGroups(callback);
-                } else {
-                    return callback();
-                }
-            }],
-        }, err => {
-            this.knownWrite = false;
-            if (err) return next(err);
+        }).catch(err => {
+            this.log.fatal({ err }, 'Could not write server configuration change!');
 
-            if (newObject.rebuild && !this.alreadyMarkedForRebuild) {
-                this.log.debug('Server has been marked as requiring a rebuild on next boot cycle.');
-            }
-
-            return next();
+            next(err);
         });
     }
 
-    updateCGroups(next) {
+    /**
+     * Update the CGroup configuration for a running container instance.
+     *
+     * @return {Promise<void>}
+     */
+    updateCGroups() {
         this.log.debug('Updating some container resource limits prior to rebuild.');
         this.emit('console', `${Ansi.style.yellow}[Pterodactyl Daemon] Your server has had some resource limits modified, you may need to restart to apply them.`);
-        this.docker.update(next);
+
+        return this.docker.update();
     }
 
     rebuild(next) {
