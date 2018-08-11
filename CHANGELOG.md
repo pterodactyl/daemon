@@ -6,6 +6,10 @@ This file is a running track of new features and fixes to each version of the da
 * Fixes a bug with command sending that would cause the request to never complete, thus leading the Panel sending
 commands over and over in scheduled tasks.
 
+### Changed
+* Archives created by the Panel are now named in a more logical manner based on the name of the file that they
+were created from.
+
 ## v0.6.3 (Elasticized Elanodactylus)
 ### Fixed
 * Fixes a broken crash detection system due to a forgotten callback.
