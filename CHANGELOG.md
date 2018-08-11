@@ -6,6 +6,11 @@ This file is a running track of new features and fixes to each version of the da
 * Fixes a bug with command sending that would cause the request to never complete, thus leading the Panel sending
 commands over and over in scheduled tasks.
 
+### Added
+* Servers now restore themselves to their previous Daemon state when their container is not found and subsequently
+re-created, or if the Docker container is not running but the last Daemon state indicates that the server should
+be running.
+
 ### Changed
 * Archives created by the Panel are now named in a more logical manner based on the name of the file that they
 were created from.

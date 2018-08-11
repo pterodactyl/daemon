@@ -80,6 +80,7 @@ class Server extends EventEmitter {
         this.lastCrash = undefined;
         this.fs = new FileSystem(this);
         this.service = new ServiceCore(this);
+        this.docker = new Docker(this);
 
         Async.series([
             callback => {
@@ -112,27 +113,47 @@ class Server extends EventEmitter {
         ], next);
     }
 
+    /**
+     * Initialize the server Docker container. Checks if there is a container already, and if not creates a new one
+     * for the server. If the container exists, we check if the container is running (and update the server status
+     * accordingly), and if it is not running but the server _should_ be running we start it.
+     *
+     * @param {Function} next
+     */
     initContainer(next) {
-        this.docker = new Docker(this, (err, status) => {
-            if (err && _.startsWith(_.get(err, 'json.message', 'error'), 'No such container')) {
-                this.log.warn('Container was not found. Attempting to recreate it.');
+        this.docker.reattach()
+            .catch(err => {
+                if (err && !_.startsWith(_.get(err, 'json.message', 'error'), 'No such container')) {
+                    throw err;
+                }
+
                 this.rebuild(rebuildErr => {
-                    if (rebuildErr && !_.isUndefined(rebuildErr.statusCode)) {
-                        if (_.startsWith(_.get(rebuildErr, 'json.message'), 'No such image')) {
+                    if (rebuildErr) {
+                        if (!_.isUndefined(rebuildErr.statusCode) && _.startsWith(_.get(rebuildErr, 'json.message'), 'No such image')) {
                             rebuildErr.code = 'PTDL_IMAGE_MISSING'; // eslint-disable-line
-                            return next(rebuildErr);
                         }
+
+                        throw rebuildErr;
                     }
 
-                    return next(rebuildErr);
+                    return new Promise(resolve => { resolve(false); });
                 });
-            } else {
-                if (!err && status) {
-                    this.log.info('Daemon detected that the server container is currently running, re-attaching to it now!');
+            })
+            .then(running => {
+                if (!running && (this.json.state === Status.ON || this.json.state === Status.STARTING)) {
+                    this.log.info('Daemon detected server is not running but was previously running; booting server now.');
+                    this.start(startErr => {
+                        if (startErr) throw startErr;
+
+                        next();
+                    });
+                } else {
+                    this.log.info('Daemon detected that the server container is currently running; re-attaching.');
+
+                    next();
                 }
-                return next(err);
-            }
-        });
+            })
+            .catch(next);
     }
 
     isSuspended() {
@@ -223,6 +244,19 @@ class Server extends EventEmitter {
             this.log.debug(`Recieved request to mark server as ${inverted[status]} but the server is currently marked as STOPPING.`);
             return;
         }
+
+        // Track changes in server status so we can quickly start any servers that got stopped
+        // when the daemon restarts. This generally isn't of much concern since servers run in
+        // Docker, but can be beneficial if the Daemon is stopped and all running instances need
+        // to be stopped as well.
+        //
+        // We're going to track all of the state changes here so that if a server is "stopping"
+        // when the Daemon powers off and we don't see that container running when we start back
+        // up we can skip it. Also avoids us starting up a server that was stopping before the
+        // Daemon lost the ability to track that state. This is an asynchronous action, so don't
+        // delay the rest of the status setting.
+        this.json.state = status;
+        this.modifyConfig({ state: status }, false);
 
         // Handle Internal Tracking
         if (status === Status.ON || status === Status.STARTING) {
