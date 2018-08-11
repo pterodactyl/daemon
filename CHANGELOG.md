@@ -1,6 +1,26 @@
 # Changelog
 This file is a running track of new features and fixes to each version of the daemon released starting with `v0.2.0`.
 
+## v0.6.4 (Elasticized Elanodactylus)
+### Fixed
+* Fixes a bug with command sending that would cause the request to never complete, thus leading the Panel sending
+commands over and over in scheduled tasks.
+
+### Changed
+* Archives created by the Panel are now named in a more logical manner based on the name of the file that they
+were created from.
+
+## v0.6.3 (Elasticized Elanodactylus)
+### Fixed
+* Fixes a broken crash detection system due to a forgotten callback.
+* Fixes an error that would occur when a server was rebuilt and the Docker container log path changed on the Daemon.
+
+### Changed
+* Changes the way crash handling works to not forcibly restart the server process if it exits cleanly. This means you
+can have plugins stop your server and it will not automatically restart on you. Only processes that exit with code `0`
+will be left in the stopped state, all other unexpected stops will result in an automatic restart.
+* Less confusing server status indicators when being rebuilt, now completely stops before rebuilding.
+
 ## v0.6.2 (Elasticized Elanodactylus)
 ### Fixed
 * Changed behavior of Daemon initialization to check for the existance of a server's data directory before initializing

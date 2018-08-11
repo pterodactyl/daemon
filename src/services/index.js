@@ -22,84 +22,111 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-const rfr = require('rfr');
+
 const Async = require('async');
 const _ = require('lodash');
-const isStream = require('isstream');
-const Util = require('util');
-const Ansi = require('ansi-escape-sequences');
 
-const Status = rfr('src/helpers/status.js');
-const FileParserHelper = rfr('src/helpers/fileparser.js');
+const { FileParseError, NoEggConfigurationError } = require('./../errors/index');
+const Status = require('./../helpers/status');
+const FileParserHelper = require('./../helpers/fileparser');
 
-class Core {
-    constructor(server, config = null, next) {
+module.exports = class Core {
+    /**
+     * Create a new base service instance for a server.
+     *
+     * @param {Object} server
+     * @param {Object|null} config
+     */
+    constructor(server, config = null) {
         this.server = server;
-        this.json = server.json;
-
-        try {
-            this.config = config || rfr(Util.format('src/services/configs/%s.json', this.json.service.egg));
-        } catch (ex) {
-            if (ex.code === 'MODULE_NOT_FOUND') {
-                this.server.log.warn('Could not locate an Egg configuration for server, a rebuild will be required.');
-                this.config = {};
-            } else {
-                throw ex;
-            }
-        }
-
-        this.service = this.json.service;
+        this.service = server.json.service;
         this.parser = new FileParserHelper(this.server);
-
-        return next();
+        this.config = config || {};
     }
 
-    onPreflight(next) {
-        if (_.isEmpty(this.config)) {
-            this.server.emit('console', `${Ansi.style['bg-red']}${Ansi.style.white}[Pterodactyl Daemon] No Egg configuration located. This server cannot be started.`);
-            return next(new Error('A server cannot be started if there is no configuration loaded for the Egg.'));
-        }
-
-        let lastFile;
-
-        // Check each configuration file and set variables as needed.
-        Async.forEachOf(_.get(this.config, 'configs', {}), (data, file, callback) => {
-            lastFile = file;
-            switch (_.get(data, 'parser', 'file')) {
-            case 'file':
-                this.parser.file(file, _.get(data, 'find', {}), callback);
-                break;
-            case 'yaml':
-                this.parser.yaml(file, _.get(data, 'find', {}), callback);
-                break;
-            case 'properties':
-                this.parser.prop(file, _.get(data, 'find', {}), callback);
-                break;
-            case 'ini':
-                this.parser.ini(file, _.get(data, 'find', {}), callback);
-                break;
-            case 'json':
-                this.parser.json(file, _.get(data, 'find', {}), callback);
-                break;
-            case 'xml':
-                this.parser.xml(file, _.get(data, 'find', {}), callback);
-                break;
-            case 'xml-headless':
-                this.parser.xmlHeadless(file, _.get(data, 'find', {}), callback);
-                break;
-            default:
-                return callback(new Error('Parser assigned to file is not valid.'));
-            }
-        }, err => {
-            if (err) {
-                this.server.emit('console', `${Ansi.style.red}[Pterodactyl Daemon] ${err.name} while processing ${lastFile}`);
-                this.server.emit('console', `${Ansi.style.red}[Pterodactyl Daemon] ${err.message}`);
+    /**
+     * Initialize the configuration for a given egg on the Daemon.
+     *
+     * @return {Promise<any>}
+     */
+    init() {
+        return new Promise((resolve, reject) => {
+            if (this.config.length > 0) {
+                return resolve();
             }
 
-            return next(err);
+            try {
+                this.config = require(`./configs/${this.service.egg}.json`);
+            } catch (ex) {
+                if (ex.code !== 'MODULE_NOT_FOUND') {
+                    return reject(ex);
+                }
+            }
+
+            resolve();
         });
     }
 
+    /**
+     * Handles server preflight (things that need to happen before server boot). By default this will
+     * iterate over all of the files to be edited for a server's egg and make any necessary modifications
+     * to the file.
+     *
+     * @return {Promise<any>}
+     */
+    onPreflight() {
+        return new Promise((resolve, reject) => {
+            if (_.isEmpty(this.config)) {
+                return reject(new NoEggConfigurationError());
+            }
+
+            // Check each configuration file and set variables as needed.
+            let lastFile;
+            Async.forEachOf(_.get(this.config, 'configs', {}), (data, file, callback) => {
+                lastFile = file;
+                switch (_.get(data, 'parser', 'file')) {
+                    case 'file':
+                        this.parser.file(file, _.get(data, 'find', {}), callback);
+                        break;
+                    case 'yaml':
+                        this.parser.yaml(file, _.get(data, 'find', {}), callback);
+                        break;
+                    case 'properties':
+                        this.parser.prop(file, _.get(data, 'find', {}), callback);
+                        break;
+                    case 'ini':
+                        this.parser.ini(file, _.get(data, 'find', {}), callback);
+                        break;
+                    case 'json':
+                        this.parser.json(file, _.get(data, 'find', {}), callback);
+                        break;
+                    case 'xml':
+                        this.parser.xml(file, _.get(data, 'find', {}), callback);
+                        break;
+                    case 'xml-headless':
+                        this.parser.xmlHeadless(file, _.get(data, 'find', {}), callback);
+                        break;
+                    default:
+                        return callback(new Error('Parser assigned to file is not valid.'));
+                }
+            }, err => {
+                if (err) {
+                    return reject(new FileParseError(error.message, lastFile));
+                }
+
+                return resolve();
+            });
+
+        });
+    }
+
+    /**
+     * Process console data from a server. This function can perform a number of different operations,
+     * but by default it will push data over the console socket, and check if the server requires
+     * user interaction to continue with startup.
+     *
+     * @param {String} data
+     */
     onConsole(data) {
         Async.parallel([
             () => {
@@ -133,10 +160,4 @@ class Core {
             },
         ]);
     }
-
-    onStop(next) {
-        // do nothing
-    }
-}
-
-module.exports = Core;
+};

@@ -394,12 +394,15 @@ class FileSystem {
             return next(new Error('The to field must be a string for the folder in which the file should be saved.'));
         }
 
-        const SaveAsName = `ptdlfm.${RandomString.generate(8)}.tar`;
+        let saveAsName = `pterodactyl.archive.${RandomString.generate(4)}.tar`;
         if (!_.isArray(files)) {
             if (this.isSelf(to, files)) {
                 return next(new Error('Unable to compress folder into itself.'));
             }
-            this.systemCompress([_.replace(this.server.path(files), `${this.server.path()}/`, '')], Path.join(this.server.path(to), SaveAsName), next);
+
+            saveAsName = `${Path.basename(files, Path.extname(files))}.${RandomString.generate(4)}.tar`;
+
+            this.systemCompress([_.replace(this.server.path(files), `${this.server.path()}/`, '')], Path.join(this.server.path(to), saveAsName), next);
         } else if (_.isArray(files)) {
             const FileEntries = [];
             Async.series([
@@ -418,10 +421,11 @@ class FileSystem {
                     if (_.isEmpty(FileEntries)) {
                         return next(new Error('None of the files passed to the command were valid.'));
                     }
-                    this.systemCompress(FileEntries, Path.join(this.server.path(to), SaveAsName), callback);
+
+                    this.systemCompress(FileEntries, Path.join(this.server.path(to), saveAsName), callback);
                 },
             ], err => {
-                next(err, SaveAsName);
+                next(err, saveAsName);
             });
         } else {
             return next(new Error('Invalid datatype passed to decompression function.'));
