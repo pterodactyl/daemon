@@ -1,6 +1,11 @@
 # Changelog
 This file is a running track of new features and fixes to each version of the daemon released starting with `v0.2.0`.
 
+## v0.6.4 (Elasticized Elanodactylus)
+### Fixed
+* Fixes a bug with command sending that would cause the request to never complete, thus leading the Panel sending
+commands over and over in scheduled tasks.
+
 ## v0.6.3 (Elasticized Elanodactylus)
 ### Fixed
 * Fixes a broken crash detection system due to a forgotten callback.

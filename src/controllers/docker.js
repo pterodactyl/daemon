@@ -186,7 +186,9 @@ class Docker {
     write(command) {
         return new Promise((resolve, reject) => {
             if (isStream.isWritable(this.stream)) {
-                return this.stream.write(`${command}\n`);
+                this.stream.write(`${command}\n`);
+
+                return resolve();
             }
 
             return reject(new Error('No writable stream was detected when attempting to write a command.'));
