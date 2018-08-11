@@ -34,13 +34,13 @@ const _ = require('lodash');
 const Os = require('os');
 const Cache = require('memory-cache');
 
-const Status = rfr('src/helpers/status.js');
-const ConfigHelper = rfr('src/helpers/config.js');
-const ResponseHelper = rfr('src/helpers/responses.js');
-const BuilderController = rfr('src/controllers/builder.js');
-const DeleteController = rfr('src/controllers/delete.js');
-const Log = rfr('src/helpers/logger.js');
-const Package = rfr('package.json');
+const Status = require('./../helpers/status');
+const ConfigHelper = require('./../helpers/config');
+const ResponseHelper = require('./../helpers/responses');
+const BuilderController = require('./../controllers/builder');
+const DeleteController = require('./../controllers/delete');
+const Log = require('./../helpers/logger');
+const Package = require('./../../package');
 
 const Config = new ConfigHelper();
 
@@ -324,7 +324,7 @@ class RouteController {
                 this.auth.server().command(this.req.params.command).then(() => {
                     this.responses.generic204();
                 }).catch(err => {
-                    this.responses.generic204(err);
+                    this.responses.generic500(err);
                 });
             } else {
                 this.res.send(500, { 'error': 'Missing command in request.' });
