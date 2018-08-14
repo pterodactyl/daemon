@@ -539,7 +539,7 @@ class Server extends EventEmitter {
 
             // If the server "crashed" with a normal exit code indicating that it was stopped successfully
             // don't force it to reboot. This can happen if a plugin stops the server for someone.
-            if (parseInt(props.ExitCode, 10) === 0 && !props.OOMKilled) {
+            if (!Config.get('internals.clean_exit_is_crash', true) && parseInt(props.ExitCode, 10) === 0 && !props.OOMKilled) {
                 return;
             }
 
