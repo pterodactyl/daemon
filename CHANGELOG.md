@@ -4,6 +4,7 @@ This file is a running track of new features and fixes to each version of the da
 ## v0.6.6 (Elasticized Elanodactylus)
 ### Fixed
 * Fixes an issue with the `mmmagic` dependency not installing correctly when using Nodejs v10.
+* Close the server logs correctly when a server is deleted.
 
 ## v0.6.5 (Elasticized Elanodactylus)
 ### Changed
