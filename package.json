@@ -13,7 +13,7 @@
     "diagnostics": "node scripts/diagnostics.js",
     "migrate": "node scripts/migrate.js"
   },
-  "repository": "git+https://github.com/Pterodactyl/Daemon.git",
+  "repository": "git+https://github.com/pterodactyl/daemon.git",
   "keywords": [
     "pterodactyl",
     "daemon",
@@ -22,15 +22,15 @@
   "author": "Dane Everitt <dane@daneeveritt.com>",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/Pterodactyl/Daemon/issues"
+    "url": "https://github.com/pterodactyl/daemon/issues"
   },
   "engines": {
-    "node": ">=6.0.0"
+    "node": ">=8.0.0"
   },
   "os": [
     "linux"
   ],
-  "homepage": "https://github.com/Pterodactyl/Daemon",
+  "homepage": "https://github.com/pterodactyl/daemon",
   "devDependencies": {
     "eslint": "4.16.0",
     "eslint-config-airbnb": "16.1.0",
@@ -60,7 +60,7 @@
     "lodash": "^4.17",
     "memory-cache": "^0.2",
     "mime": "^2.2",
-    "mmmagic": "^0.4",
+    "mmmagic": "^0.5",
     "moment": "^2.20",
     "node-yaml": "^3.1",
     "properties-parser": "^0.3",

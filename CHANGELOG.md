@@ -1,6 +1,10 @@
 # Changelog
 This file is a running track of new features and fixes to each version of the daemon released starting with `v0.2.0`.
 
+## v0.6.6 (Elasticized Elanodactylus)
+### Fixed
+* Fixes an issue with the `mmmagic` dependency not installing correctly when using Nodejs v10.
+
 ## v0.6.5 (Elasticized Elanodactylus)
 ### Changed
 * A server that stops cleanly (`ExitCode: 0`) will still trigger crash detection by default. In a previous release we
