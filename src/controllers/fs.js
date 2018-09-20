@@ -369,6 +369,12 @@ class FileSystem {
                     uid: Config.get('docker.container.user', 1000),
                     gid: Config.get('docker.container.user', 1000),
                 });
+            } else if (result === 'application/x-rar') {
+                Exec = Process.spawn('unrar', ['x', '-y', Path.basename(file), to], {
+                    cwd: Path.dirname(file),
+                    uid: Config.get('docker.container.user', 1000),
+                    gid: Config.get('docker.container.user', 1000),
+                });
             } else {
                 return next(new Error(`Decompression of file failed: ${result} is not a decompessible Mimetype.`));
             }
