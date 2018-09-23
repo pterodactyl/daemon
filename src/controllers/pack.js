@@ -215,7 +215,7 @@ class Pack {
                 });
             },
             callback => {
-                Log.debug('Downlaod complete, moving on.');
+                Log.debug('Download complete, moving on.');
                 Cache.del(`pack.updating.${this.pack}`);
                 return callback();
             },
