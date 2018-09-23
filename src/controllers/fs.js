@@ -357,19 +357,30 @@ class FileSystem {
             if (err) return next(err);
 
             let Exec;
-            if (result === 'application/x-gzip' || result === 'application/gzip') {
+            switch (result) {
+            case ('application/x-gzip'):
+            case ('application/gzip'):
                 Exec = Process.spawn('tar', ['xzf', Path.basename(file), '-C', to], {
                     cwd: Path.dirname(file),
                     uid: Config.get('docker.container.user', 1000),
                     gid: Config.get('docker.container.user', 1000),
                 });
-            } else if (result === 'application/zip') {
+                break;
+            case ('application/zip'):
                 Exec = Process.spawn('unzip', ['-q', '-o', Path.basename(file), '-d', to], {
                     cwd: Path.dirname(file),
                     uid: Config.get('docker.container.user', 1000),
                     gid: Config.get('docker.container.user', 1000),
                 });
-            } else {
+                break;
+            case ('application/x-rar'):
+                Exec = Process.spawn('unrar', ['x', '-y', Path.basename(file), to], {
+                    cwd: Path.dirname(file),
+                    uid: Config.get('docker.container.user', 1000),
+                    gid: Config.get('docker.container.user', 1000),
+                });
+                break;
+            default:
                 return next(new Error(`Decompression of file failed: ${result} is not a decompessible Mimetype.`));
             }
 
