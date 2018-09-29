@@ -22,6 +22,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+const https = require('https');
 const rfr = require('rfr');
 const Async = require('async');
 const Proc = require('child_process');
@@ -57,6 +58,16 @@ const Stats = new LiveStats();
 const Service = new ServiceController();
 const Timezone = new TimezoneHelper();
 const Sftp = new SftpServer();
+
+const userDefinedCAStores = Config.get('internals.ca_stores', []);
+if (userDefinedCAStores.length > 0) {
+    Log.info('Found user provided CA store settings, synchronously applying those now...');
+
+    https.globalAgent.options.ca = [];
+    _.forEach(userDefinedCAStores, store => {
+        https.globalAgent.options.ca.push(Fs.readFileSync(store));
+    });
+}
 
 Log.info('Modules loaded, starting Pterodactyl Daemon...');
 Async.auto({

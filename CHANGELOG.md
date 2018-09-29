@@ -10,6 +10,10 @@ This file is a running track of new features and fixes to each version of the da
 ### Changed
 * A non-zero response code from an installer script will now mark a server as having failed installation.
 
+### Added
+* Adds initial beta support for defining custom CA stores that the daemon will use when making HTTPS requests. These
+can be set by defining an array of file locations using `internals.ca_stores` in the Daemon configuration.
+
 ## v0.6.6 (Elasticized Elanodactylus)
 ### Fixed
 * Fixes an issue with the `mmmagic` dependency not installing correctly when using Nodejs v10.
