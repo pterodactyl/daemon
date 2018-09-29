@@ -33,7 +33,6 @@ const extendify = require('extendify');
 const Ansi = require('ansi-escape-sequences');
 const Request = require('request');
 const Cache = require('memory-cache');
-const Randomstring = require('randomstring');
 
 const Log = require('./../helpers/logger');
 const Docker = require('./docker');
