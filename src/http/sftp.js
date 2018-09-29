@@ -260,8 +260,9 @@ class InternalSftpServer {
                                 };
 
                                 // Handle GNOME sending improper signals (42)? Handle Cyberduck trying to overwrite
-                                // an existing file (18).
-                                if (flags === 42 || flags === 18) {
+                                // an existing file (18). Handles 'Create File' in Cyberduck (24) which is either an
+                                // EXCL | APPEND or TRUNC | CREATE | APPEND | WRITE (more likely).
+                                if (flags === 42 || flags === 18 || flags === 24) {
                                     flags = OPEN_MODE.TRUNC | OPEN_MODE.CREAT | OPEN_MODE.WRITE; // eslint-disable-line
                                 }
 
