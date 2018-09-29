@@ -584,17 +584,19 @@ class InternalSftpServer {
                     });
                 });
             }).on('error', err => {
+                // Client timeouts, nothing special, just ignore them and move on.
                 if (err.level === 'client-timeout') {
-                    return clientContext.server.log.debug({
-                        identifier: clientContext.request_id,
-                    }, 'Client timed out.');
+                    return;
                 }
 
-                clientContext.server.log.error({
-                    exception: err,
-                    stack: err.stack,
-                    identifier: clientContext.request_id,
-                }, 'An exception was encountered while handling the SFTP subsystem.');
+                if (clientContext && _.get(clientContext, 'server.log')) {
+                    clientContext.server.log.error(
+                        { err, stack: err.stack, identifier: clientContext.request_id },
+                        'An exception was encountered while handling the SFTP subsystem.'
+                    );
+                } else {
+                    Log.error({ err, stack: err.stack }, 'An unexpected error was encountered with the SFTP subsystem.');
+                }
             });
         }).listen(Config.get('sftp.port', 2022), Config.get('sftp.ip', '0.0.0.0'), next);
     }

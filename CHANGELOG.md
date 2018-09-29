@@ -10,6 +10,8 @@ This file is a running track of new features and fixes to each version of the da
 
 ### Changed
 * A non-zero response code from an installer script will now mark a server as having failed installation.
+* Less confusing error output when the SFTP subsystem encounters an issue. Will now properly log the error rather than
+cause a second error that covers up the initial error.
 
 ### Added
 * Adds initial beta support for defining custom CA stores that the daemon will use when making HTTPS requests. These
