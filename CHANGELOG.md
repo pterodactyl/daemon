@@ -5,6 +5,10 @@ This file is a running track of new features and fixes to each version of the da
 ### Fixed
 * Fixes a bug causing servers to hang in the 'Starting server container' state if there was an error with the container.
 12
+
+### Changed
+* A non-zero response code from an installer script will now mark a server as having failed installation.
+
 ## v0.6.6 (Elasticized Elanodactylus)
 ### Fixed
 * Fixes an issue with the `mmmagic` dependency not installing correctly when using Nodejs v10.
