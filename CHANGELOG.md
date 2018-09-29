@@ -1,6 +1,10 @@
 # Changelog
 This file is a running track of new features and fixes to each version of the daemon released starting with `v0.2.0`.
 
+## v0.6.7 (Elasticized Elanodactylus)
+### Fixed
+* Fixes a bug causing servers to hang in the 'Starting server container' state if there was an error with the container.
+12
 ## v0.6.6 (Elasticized Elanodactylus)
 ### Fixed
 * Fixes an issue with the `mmmagic` dependency not installing correctly when using Nodejs v10.
