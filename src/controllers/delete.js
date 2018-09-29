@@ -28,6 +28,7 @@ const Dockerode = require('dockerode');
 const Fs = require('fs-extra');
 const Path = require('path');
 const _ = require('lodash');
+const isStream = require('isstream');
 
 const ConfigHelper = rfr('src/helpers/config.js');
 const Log = rfr('src/helpers/logger.js');
@@ -53,7 +54,20 @@ class Delete {
 
                 // Prevent crash detection
                 if (!_.isUndefined(Servers[this.json.uuid]) && _.isFunction(Servers[this.json.uuid].setStatus)) {
-                    clearInterval(Servers[this.json.uuid].intervals.diskUse);
+                    const server = Servers[this.json.uuid];
+
+                    clearInterval(server.intervals.diskUse);
+
+                    if (!_.isNil(server.docker)) {
+                        if (isStream(server.docker.stream)) {
+                            server.docker.stream.end();
+                        }
+
+                        if (!_.isNil(server.docker.logStream)) {
+                            server.docker.logStream.unwatch();
+                        }
+                    }
+
                     Servers[this.json.uuid].setStatus(Status.OFF);
                 }
 

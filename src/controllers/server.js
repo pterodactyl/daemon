@@ -33,7 +33,6 @@ const extendify = require('extendify');
 const Ansi = require('ansi-escape-sequences');
 const Request = require('request');
 const Cache = require('memory-cache');
-const Randomstring = require('randomstring');
 
 const Log = require('./../helpers/logger');
 const Docker = require('./docker');
@@ -320,12 +319,9 @@ class Server extends EventEmitter {
                 ], err => {
                     if (err) {
                         this.setStatus(Status.OFF);
-                        const errorIdToken = Randomstring.generate(20);
-                        this.emit('console', `${Ansi.style.red}[Pterodactyl Daemon] An error was encountered while attempting to rebuild this container. Please contact your administrator for assistance. PTDL:ERR_ID:${errorIdToken}`);
+                        this.emit('console', `${Ansi.style.red}[Pterodactyl Daemon] A fatal error was encountered booting this container.`);
                         this.buildInProgress = false;
-                        this.log.error(err, {
-                            errorId: errorIdToken,
-                        });
+                        this.log.error(err);
                     }
                 });
             } else {
@@ -384,11 +380,8 @@ class Server extends EventEmitter {
                     return next(new Error('Server container was not found and needs to be rebuilt. Your request has been accepted and will be processed once the rebuild is complete.'));
                 }
 
-                const errorIdToken = Randomstring.generate(20);
-                this.emit('console', `${Ansi.style.red}[Pterodactyl Daemon] Oh dear, it seems something has gone horribly wrong while attempting to boot this server. Please contact your administrator for assistance. PTDL:ERR_ID:${errorIdToken}`);
-                this.log.error(err, {
-                    errorId: errorIdToken,
-                });
+                this.emit('console', `${Ansi.style.red}[Pterodactyl Daemon] A fatal error was encountered while starting this server.`);
+                this.log.error(err);
                 return next(err);
             }
 

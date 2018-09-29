@@ -1,6 +1,24 @@
 # Changelog
 This file is a running track of new features and fixes to each version of the daemon released starting with `v0.2.0`.
 
+## v0.6.6 (Elasticized Elanodactylus)
+### Fixed
+* Fixes an issue with the `mmmagic` dependency not installing correctly when using Nodejs v10.
+* Close the server logs correctly when a server is deleted.
+* Fixes a bug causing servers to hang in the 'Starting server container' state if there was an error with the container.
+12
+* Fix a bug in the SFTP system that would cause a request failure if a file didn't return a valid time created/modified.
+* Handle an unknown flag sent from Cyberduck when creating a file.
+
+### Changed
+* A non-zero response code from an installer script will now mark a server as having failed installation.
+* Less confusing error output when the SFTP subsystem encounters an issue. Will now properly log the error rather than
+cause a second error that covers up the initial error.
+
+### Added
+* Adds initial beta support for defining custom CA stores that the daemon will use when making HTTPS requests. These
+can be set by defining an array of file locations using `internals.ca_stores` in the Daemon configuration.
+
 ## v0.6.5 (Elasticized Elanodactylus)
 ### Changed
 * A server that stops cleanly (`ExitCode: 0`) will still trigger crash detection by default. In a previous release we

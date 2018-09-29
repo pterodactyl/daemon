@@ -139,7 +139,7 @@ class Docker {
                         return next();
                     }
 
-                    throw err;
+                    next(err);
                 });
             }).catch(next);
         }).catch(next);

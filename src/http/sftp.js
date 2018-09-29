@@ -142,14 +142,17 @@ class InternalSftpServer {
                                     return sftp.status(reqId, STATUS_CODE.FAILURE);
                                 }
 
+                                const timeCreated = Moment(item.created).isValid() ? Moment(item.created) : Moment('1970-01-01', 'YYYY-MM-DD');
+                                const timeModified = Moment(item.modified).isValid() ? Moment(item.modified) : Moment('1970-01-01', 'YYYY-MM-DD');
+
                                 return sftp.attrs(reqId, {
                                     mode: (item.directory) ? Fs.constants.S_IFDIR | 0o755 : Fs.constants.S_IFREG | 0o644,
                                     permissions: (item.directory) ? 0o755 : 0o644,
                                     uid: Config.get('docker.container.user', 1000),
                                     gid: Config.get('docker.container.user', 1000),
                                     size: item.size,
-                                    atime: parseInt(Moment(item.created).format('X'), 10),
-                                    mtime: parseInt(Moment(item.modified).format('X'), 10),
+                                    atime: parseInt(timeCreated.format('X'), 10),
+                                    mtime: parseInt(timeModified.format('X'), 10),
                                 });
                             });
                         };
@@ -257,8 +260,9 @@ class InternalSftpServer {
                                 };
 
                                 // Handle GNOME sending improper signals (42)? Handle Cyberduck trying to overwrite
-                                // an existing file (18).
-                                if (flags === 42 || flags === 18) {
+                                // an existing file (18). Handles 'Create File' in Cyberduck (24) which is either an
+                                // EXCL | APPEND or TRUNC | CREATE | APPEND | WRITE (more likely).
+                                if (flags === 42 || flags === 18 || flags === 24) {
                                     flags = OPEN_MODE.TRUNC | OPEN_MODE.CREAT | OPEN_MODE.WRITE; // eslint-disable-line
                                 }
 
@@ -580,17 +584,19 @@ class InternalSftpServer {
                     });
                 });
             }).on('error', err => {
+                // Client timeouts, nothing special, just ignore them and move on.
                 if (err.level === 'client-timeout') {
-                    return clientContext.server.log.debug({
-                        identifier: clientContext.request_id,
-                    }, 'Client timed out.');
+                    return;
                 }
 
-                clientContext.server.log.error({
-                    exception: err,
-                    stack: err.stack,
-                    identifier: clientContext.request_id,
-                }, 'An exception was encountered while handling the SFTP subsystem.');
+                if (clientContext && _.get(clientContext, 'server.log')) {
+                    clientContext.server.log.error(
+                        { err, stack: err.stack, identifier: clientContext.request_id },
+                        'An exception was encountered while handling the SFTP subsystem.'
+                    );
+                } else {
+                    Log.error({ err, stack: err.stack }, 'An unexpected error was encountered with the SFTP subsystem.');
+                }
             });
         }).listen(Config.get('sftp.port', 2022), Config.get('sftp.ip', '0.0.0.0'), next);
     }
@@ -629,11 +635,14 @@ class InternalSftpServer {
             (files, callback) => {
                 const attrs = [];
                 _.forEach(files, item => {
+                    const timeCreated = Moment(item.created).isValid() ? Moment(item.created) : Moment('1970-01-01', 'YYYY-MM-DD');
+                    const timeModified = Moment(item.modified).isValid() ? Moment(item.modified) : Moment('1970-01-01', 'YYYY-MM-DD');
+
                     const longFormat = Util.format(
                         '%s container container %d %s %s',
                         this.formatFileMode(item),
                         item.size,
-                        Moment(item.created).format('MMM DD HH:mm'),
+                        timeCreated.format('MMM DD HH:mm'),
                         item.name
                     );
 
@@ -646,8 +655,8 @@ class InternalSftpServer {
                             uid: Config.get('docker.container.user', 1000),
                             gid: Config.get('docker.container.user', 1000),
                             size: item.size,
-                            atime: parseInt(Moment(item.created).format('X'), 10),
-                            mtime: parseInt(Moment(item.modified).format('X'), 10),
+                            atime: parseInt(timeCreated.format('X'), 10),
+                            mtime: parseInt(timeModified.format('X'), 10),
                         },
                     });
                 });
