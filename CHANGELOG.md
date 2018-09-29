@@ -1,8 +1,10 @@
 # Changelog
 This file is a running track of new features and fixes to each version of the daemon released starting with `v0.2.0`.
 
-## v0.6.7 (Elasticized Elanodactylus)
+## v0.6.6 (Elasticized Elanodactylus)
 ### Fixed
+* Fixes an issue with the `mmmagic` dependency not installing correctly when using Nodejs v10.
+* Close the server logs correctly when a server is deleted.
 * Fixes a bug causing servers to hang in the 'Starting server container' state if there was an error with the container.
 12
 * Fix a bug in the SFTP system that would cause a request failure if a file didn't return a valid time created/modified.
@@ -16,11 +18,6 @@ cause a second error that covers up the initial error.
 ### Added
 * Adds initial beta support for defining custom CA stores that the daemon will use when making HTTPS requests. These
 can be set by defining an array of file locations using `internals.ca_stores` in the Daemon configuration.
-
-## v0.6.6 (Elasticized Elanodactylus)
-### Fixed
-* Fixes an issue with the `mmmagic` dependency not installing correctly when using Nodejs v10.
-* Close the server logs correctly when a server is deleted.
 
 ## v0.6.5 (Elasticized Elanodactylus)
 ### Changed
