@@ -142,14 +142,17 @@ class InternalSftpServer {
                                     return sftp.status(reqId, STATUS_CODE.FAILURE);
                                 }
 
+                                const timeCreated = Moment(item.created).isValid() ? Moment(item.created) : Moment('1970-01-01', 'YYYY-MM-DD');
+                                const timeModified = Moment(item.modified).isValid() ? Moment(item.modified) : Moment('1970-01-01', 'YYYY-MM-DD');
+
                                 return sftp.attrs(reqId, {
                                     mode: (item.directory) ? Fs.constants.S_IFDIR | 0o755 : Fs.constants.S_IFREG | 0o644,
                                     permissions: (item.directory) ? 0o755 : 0o644,
                                     uid: Config.get('docker.container.user', 1000),
                                     gid: Config.get('docker.container.user', 1000),
                                     size: item.size,
-                                    atime: parseInt(Moment(item.created).format('X'), 10),
-                                    mtime: parseInt(Moment(item.modified).format('X'), 10),
+                                    atime: parseInt(timeCreated.format('X'), 10),
+                                    mtime: parseInt(timeModified.format('X'), 10),
                                 });
                             });
                         };
@@ -629,11 +632,14 @@ class InternalSftpServer {
             (files, callback) => {
                 const attrs = [];
                 _.forEach(files, item => {
+                    const timeCreated = Moment(item.created).isValid() ? Moment(item.created) : Moment('1970-01-01', 'YYYY-MM-DD');
+                    const timeModified = Moment(item.modified).isValid() ? Moment(item.modified) : Moment('1970-01-01', 'YYYY-MM-DD');
+
                     const longFormat = Util.format(
                         '%s container container %d %s %s',
                         this.formatFileMode(item),
                         item.size,
-                        Moment(item.created).format('MMM DD HH:mm'),
+                        timeCreated.format('MMM DD HH:mm'),
                         item.name
                     );
 
@@ -646,8 +652,8 @@ class InternalSftpServer {
                             uid: Config.get('docker.container.user', 1000),
                             gid: Config.get('docker.container.user', 1000),
                             size: item.size,
-                            atime: parseInt(Moment(item.created).format('X'), 10),
-                            mtime: parseInt(Moment(item.modified).format('X'), 10),
+                            atime: parseInt(timeCreated.format('X'), 10),
+                            mtime: parseInt(timeModified.format('X'), 10),
                         },
                     });
                 });
