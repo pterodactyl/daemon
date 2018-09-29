@@ -111,7 +111,7 @@ module.exports = class Core {
                 }
             }, err => {
                 if (err) {
-                    return reject(new FileParseError(error.message, lastFile));
+                    return reject(new FileParseError(err.message, lastFile));
                 }
 
                 return resolve();
