@@ -274,12 +274,14 @@ class Server extends EventEmitter {
 
         this.service.onPreflight().then(next).catch(err => {
             if (err instanceof Errors.FileParseError) {
-                this.server.emit('console', `${Ansi.style.red}[Pterodactyl Daemon] Encountered an error while processing ${err.file}; aborting startup.`);
-                this.server.emit('console', `${Ansi.style.red}[Pterodactyl Daemon] ${err.message}`);
+                this.emit('console', `${Ansi.style.yellow}[Pterodactyl Daemon] Encountered an error while processing ${err.file} -- this could lead to issues running the server.`);
+                this.emit('console', `${Ansi.style.yellow}[Pterodactyl Daemon] ${err.message}`);
+
+                return next();
             }
 
             if (err instanceof Errors.NoEggConfigurationError) {
-                this.server.emit('console', `${Ansi.style['bg-red']}${Ansi.style.white}[Pterodactyl Daemon] No server egg configuration could be located; aborting startup.`);
+                this.emit('console', `${Ansi.style['bg-red']}${Ansi.style.white}[Pterodactyl Daemon] No server egg configuration could be located; aborting startup.`);
             }
 
             return next(err);
