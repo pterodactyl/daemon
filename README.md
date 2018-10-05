@@ -1,6 +1,6 @@
 [![Logo Image](https://cdn.pterodactyl.io/logos/Banner%20Logo%20Black@2x.png)](https://pterodactyl.io)
 
-[![Build Status](https://travis-ci.org/pterodactyl/daemon.svg?branch=develop)](https://travis-ci.org/pterodactyl/daemon) [![Dependencies Status](https://david-dm.org/pterodactyl/daemon/status.svg)](https://david-dm.org/pterodactyl/daemon) [![NSP Status](https://nodesecurity.io/orgs/pterodactyl/projects/5570baa8-5a85-4e8b-afb7-51e1e0888c67/badge)](https://nodesecurity.io/orgs/pterodactyl/projects/5570baa8-5a85-4e8b-afb7-51e1e0888c67)
+[![Build Status](https://travis-ci.org/pterodactyl/daemon.svg?branch=develop)](https://travis-ci.org/pterodactyl/daemon) [![Dependencies Status](https://david-dm.org/pterodactyl/daemon/status.svg)](https://david-dm.org/pterodactyl/daemon)
 
 # Wings
 The server control and management daemon built specifically for Pterodactyl Panel.
