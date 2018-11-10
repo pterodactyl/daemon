@@ -182,6 +182,7 @@ Async.auto({
                     break;
                 case 'Ubuntu Linux':
                 case 'Debian':
+                case 'Fedora':
                 case 'Centos':
                 case 'RHEL':
                 case 'Red Hat Linux':
