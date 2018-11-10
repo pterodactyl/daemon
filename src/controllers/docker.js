@@ -49,9 +49,9 @@ const DockerController = new Dockerode({
  * to allocate to the container to prevent OOM errors
  * when using {SERVER_MEMORY} in the startup line.
  */
-const CONST_LOWMEM_PCT = Config.get('docker.memory.low.percent', 0.085);
-const CONST_STDMEM_PCT = Config.get('docker.memory.std.percent', 0.048);
-const CONST_HIGHMEM_PCT = Config.get('docker.memory.high.percent', 0.014);
+const CONST_LOWMEM_PCT = Config.get('docker.memory.low.percent', 0.096);
+const CONST_STDMEM_PCT = Config.get('docker.memory.std.percent', 0.054);
+const CONST_HIGHMEM_PCT = Config.get('docker.memory.high.percent', 0.021);
 
 const CONST_LOWMEM = Config.get('docker.memory.low.value', 1024);
 const CONST_STDMEM = Config.get('docker.memory.std.value', 10240);
