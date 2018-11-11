@@ -35,13 +35,13 @@ const Package = require('../package.json');
 function postToHastebin(text) {
     return new Promise((resolve, reject) => {
         Request.post({
-            uri: 'https://hastebin.com/documents',
+            uri: 'https://ptero.co/documents',
             body: text,
         }, (error, response, body) => {
             if (error || response.statusCode !== 200) {
                 reject(error);
             } else {
-                resolve(`https://hastebin.com/${JSON.parse(body).key.toString()}`);
+                resolve(`https://ptero.co/${JSON.parse(body).key.toString()}`);
             }
         });
     });
@@ -61,7 +61,7 @@ Inquirer.prompt([
     }, {
         name: 'hastebin',
         type: 'confirm',
-        message: 'Do you directly want to upload the diagnostics to hastebin.com?',
+        message: 'Do you directly want to upload the diagnostics to ptero.co?',
         default: true,
     },
 ]).then(answers => {
@@ -141,7 +141,7 @@ ${results.bunyan_logs}
                     console.log('Your diagnostics report is available at:', url); // eslint-disable-line
                 })
                 .catch(error => {
-                    console.error('An error occured while trying to upload to hastebin.com', error); // eslint-disable-line
+                    console.error('An error occured while trying to upload to ptero.co', error); // eslint-disable-line
                 });
         } else {
             console.log(outputFormat); // eslint-disable-line
