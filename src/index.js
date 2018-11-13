@@ -69,6 +69,14 @@ if (userDefinedCAStores.length > 0) {
     });
 }
 
+const updateServers = () => setTimeout(() => {
+  Service.boot(() => {
+    Initialize.init(updateServers);  
+  });
+}, 5000);
+
+updateServers();
+
 Log.info('Modules loaded, starting Pterodactyl Daemon...');
 Async.auto({
     check_version: callback => {
