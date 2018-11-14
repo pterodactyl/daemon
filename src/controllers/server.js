@@ -281,7 +281,7 @@ class Server extends EventEmitter {
             }
 
             if (err instanceof Errors.NoEggConfigurationError) {
-                this.emit('console', `${Ansi.style['bg-red']}${Ansi.style.white}[Pterodactyl Daemon] No server egg configuration could be located! If you recently imported the egg, please restart the daemon; aborting startup`);
+                this.emit('console', `${Ansi.style['bg-red']}${Ansi.style.white}[Pterodactyl Daemon] No server egg configuration could be located! If you recently imported the egg, please restart the daemon; aborting startup.`);
             }
 
             return next(err);
