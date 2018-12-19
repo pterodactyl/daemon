@@ -559,7 +559,7 @@ class Docker {
                         CpuPeriod: 100000,
                         CpuShares: _.get(config, 'cpu_shares', 1024),
                         BlkioWeight: config.io,
-                        Dns: Config.get('docker.dns', ['8.8.8.8', '8.8.4.4']),
+                        Dns: Config.get('docker.dns', ['1.1.1.1', '1.0.0.1']),
                         LogConfig: {
                             Type: 'json-file',
                             Config: {
