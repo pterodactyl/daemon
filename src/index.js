@@ -110,7 +110,7 @@ Async.auto({
     },
     check_unrar: callback => {
         Proc.exec('unrar -v', {}, callback);
-        Log.debug('Unrar module found on server.')
+        Log.debug('Unrar module found on server.');
     },
     check_sftp_rsa_key: callback => {
         Log.debug('Checking for SFTP id_rsa key...');
