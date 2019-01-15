@@ -160,8 +160,8 @@ ${results.bunyan_logs}
                         .then(url => {
                             console.log('Your diagnostics report is available at:', url); // eslint-disable-line
                         })
-                        .catch(error => {
-                            console.error('An error occured while uploading to hastebin.com & ptero.co', error);
+                        .catch(error => { // eslint-disable-line
+                            console.error('An error occured while uploading to hastebin.com & ptero.co', error); // eslint-disable-line
                         });
                 });
         } else {
