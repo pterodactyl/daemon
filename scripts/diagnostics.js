@@ -157,12 +157,12 @@ ${results.bunyan_logs}
                 .catch(error => {
                     console.error('An error occured while uploading to hastebin.com. Attempting to upload to ptero.co', error); // eslint-disable-line
                     postToPtero(outputFormat)
-                    .then(url => {
-                        console.log('Your diagnostics report is available at:', url); // eslint-disable-line
-                    })
-                    .catch(error => {
-                        console.error('An error occured while uploading to hastebin.com & ptero.co', error );
-                    })
+                        .then(url => {
+                            console.log('Your diagnostics report is available at:', url); // eslint-disable-line
+                        })
+                        .catch(error => {
+                            console.error('An error occured while uploading to hastebin.com & ptero.co', error);
+                        });
                 });
         } else {
             console.log(outputFormat); // eslint-disable-line
