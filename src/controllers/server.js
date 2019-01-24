@@ -371,7 +371,7 @@ class Server extends EventEmitter {
                 this.docker.start(callback);
             },
             callback => {
-                if (Config.get('docker.network.name') !== 'host' && (Config.get('docker.policy.network.enable_ip_masquerade') === 'false' || Config.get('docker.policy.network.enable_ip_masquerade') ==$
+                if (Config.get('docker.network.name') !== 'host' && (Config.get('docker.policy.network.enable_ip_masquerade') === 'false' || Config.get('docker.policy.network.enable_ip_masquerade') === false)) {
                     const NETWORK_NAME = Config.get('docker.network.name');
                     this.docker.container.inspect().then(results => {
                         const props = {
