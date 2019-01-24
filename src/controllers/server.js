@@ -382,17 +382,17 @@ class Server extends EventEmitter {
                         const ExtIPAddress = strEnv.substring(strEnv.indexOf('=', strEnv.indexOf('SERVER_IP')) + 1, strEnv.indexOf(',', strEnv.indexOf('=', strEnv.indexOf('SERVER_IP'))));
                         const IntIPAddress = props.IntIPAddress.toString();
 
-                        // Removes NAT rules
+                        // Removes all container related NAT rules
                         // TODO : Check result code and report log/console
                         this.emit('console', `${Ansi.style.green}[Pterodactyl Daemon] Removing 1:1 NAT iptables rule: Internal=${IntIPAddress} / External=${ExtIPAddress} on Interface ${NETWORK_NAME}`);
                         const iptList = Process.spawn('iptables', ['-t', 'nat', '-L', 'POSTROUTING', '--line-numbers'], {});
                         iptList.stdout.on('data', function (data) {
-                            const iptLines = data.toString().split(/(?:\r\n|\r|\n)/g);
+                            const iptLines = _.split(data.toString(), /(?:\r\n|\r|\n)/g);
                             if (iptLines && iptLines.length) {
                                 const iptRule = [];
                                 for (let iptLine = 0; iptLine < iptLines.length; iptLine += 1) {
-                                    if (iptLines[iptLine].includes('SNAT') && iptLines[iptLine].includes(IntIPAddress)) {
-                                        iptRule.push(iptLines[iptLine].split(' ', 1)[0]);
+                                    if (_.includes(iptLines[iptLine], 'SNAT') && _.includes(iptLines[iptLine], IntIPAddress)) {
+                                        iptRule.push(_.split(iptLines[iptLine], ' ', 1)[0]);
                                     }
                                 }
                                 for (let iptRules = iptRule.length - 1; iptRules >= 0; iptRules -= 1) {
