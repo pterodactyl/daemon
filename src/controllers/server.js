@@ -371,32 +371,32 @@ class Server extends EventEmitter {
                 this.docker.start(callback);
             },
             callback => {
-                if (Config.get('docker.network.name') !== 'host' && (Config.get('docker.policy.network.enable_ip_masquerade') === 'false' || Config.get('docker.policy.network.enable_ip_masquerade') === false)){
+                if (Config.get('docker.network.name') !== 'host' && (Config.get('docker.policy.network.enable_ip_masquerade') === 'false' || Config.get('docker.policy.network.enable_ip_masquerade') ==$
                     const NETWORK_NAME = Config.get('docker.network.name');
                     this.docker.container.inspect().then(results => {
                         const props = {
                             Env: results.Config.Env,
                             IntIPAddress: results.NetworkSettings.Networks[NETWORK_NAME].IPAddress,
                         };
-                        var strEnv       = '' + props.Env;
-                        const ExtIPAddress = strEnv.substring(strEnv.indexOf('=',strEnv.indexOf('SERVER_IP')) + 1,strEnv.indexOf(',',strEnv.indexOf('=',strEnv.indexOf('SERVER_IP'))));
-                        const IntIPAddress = '' + props.IntIPAddress;
+                        const strEnv = props.Env.toString();
+                        const ExtIPAddress = strEnv.substring(strEnv.indexOf('=', strEnv.indexOf('SERVER_IP')) + 1, strEnv.indexOf(',', strEnv.indexOf('=', strEnv.indexOf('SERVER_IP'))));
+                        const IntIPAddress = props.IntIPAddress.toString();
 
                         // Removes NAT rules
-                        // TODO : Check result code and report log/console, write better code
+                        // TODO : Check result code and report log/console
                         this.emit('console', `${Ansi.style.green}[Pterodactyl Daemon] Removing 1:1 NAT iptables rule: Internal=${IntIPAddress} / External=${ExtIPAddress} on Interface ${NETWORK_NAME}`);
                         const iptList = Process.spawn('iptables', ['-t','nat','-L','POSTROUTING','--line-numbers'], {});
                         iptList.stdout.on('data', function(data) {
                             const iptLines = data.toString().split(/(?:\r\n|\r|\n)/g);
                             if (iptLines && iptLines.length) {
-                                var iptRule = [];
-                                for (var iptLine = 0; iptLine < iptLines.length; iptLine++) {
-                                    if (iptLines[iptLine].indexOf('SNAT') > -1 && iptLines[iptLine].indexOf(IntIPAddress) > -1){
+                                const iptRule = [];
+                                for (let iptLine = 0; iptLine < iptLines.length; iptLine += 1) {
+                                    if (iptLines[iptLine].includes('SNAT') && iptLines[iptLine].includes(IntIPAddress)) {
                                         iptRule.push(iptLines[iptLine].split(' ', 1)[0]);
                                     }
                                 }
-                                for (var iptRules = iptRule.length - 1; iptRules >= 0; iptRules--){
-                                    const iptDelExec = Process.spawn('iptables', ['-t','nat','-D','POSTROUTING',iptRule[iptRules]], {});
+                                for (let iptRules = iptRule.length - 1; iptRules >= 0; iptRules -= 1) {
+                                    const iptDelExec = Process.spawn('iptables', ['-t', 'nat', '-D', 'POSTROUTING', iptRule[iptRules]], {});
                                     iptDelExec.on('error', execErr => {
                                         this.logger.error(execErr);
                                         return next(new Error('There was an error while adding iptables rule.'));
@@ -412,9 +412,9 @@ class Server extends EventEmitter {
                         });
 
                         // Add NAT rule
-                        // TODO : Check result code and report to log/console, write better code
+                        // TODO : Check result code and report to log/console
                         this.emit('console', `${Ansi.style.green}[Pterodactyl Daemon] Adding 1:1 NAT iptables rule: Internal=${IntIPAddress} / External=${ExtIPAddress}`);
-                        const iptAddExec = Process.spawn('iptables', ['-t','nat','-A','POSTROUTING','-s',IntIPAddress,'!','-o',NETWORK_NAME,'-j','SNAT','--to-source',ExtIPAddress], {});
+                        const iptAddExec = Process.spawn('iptables', ['-t', 'nat', '-A', 'POSTROUTING', '-s', IntIPAddress, '!', '-o', NETWORK_NAME, '-j', 'SNAT', '--to-source', ExtIPAddress], {});
                         iptAddExec.on('error', execErr => {
                             this.logger.error(execErr);
                             return next(new Error('There was an error while adding iptables rule.'));
@@ -427,6 +427,7 @@ class Server extends EventEmitter {
                         });
                     }).catch(this.log.fatal);
                 }
+                return callback();
             },
         ], err => {
             if (err) {
