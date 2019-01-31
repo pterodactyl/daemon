@@ -486,12 +486,21 @@ class FileSystem {
                                 aCallback(statErr, stat);
                             });
                         },
+                        do_realpath: aCallback => {
+                            Fs.realpath(Path.join(this.server.path(path), item), (rpErr, realPath) => {
+                                aCallback(null, realPath);
+                            });
+                        },
                         do_mime: aCallback => {
                             Mime.detectFile(Path.join(this.server.path(path), item), (mimeErr, result) => {
                                 aCallback(null, result);
                             });
                         },
-                        do_push: ['do_stat', 'do_mime', (results, aCallback) => {
+                        do_push: ['do_stat', 'do_mime', 'do_realpath', (results, aCallback) => {
+                            if (!_.startsWith(results.do_realpath, this.server.path())) {
+                                return aCallback();
+                            }
+
                             responseFiles.push({
                                 'name': item,
                                 'created': results.do_stat.birthtime,
