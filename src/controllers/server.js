@@ -580,7 +580,11 @@ class Server extends EventEmitter {
 
         let returnPath = dataPath;
         if (!_.isUndefined(location) && _.replace(location, /\s+/g, '').length > 0) {
-            returnPath = Path.join(dataPath, Path.normalize(Querystring.unescape(location)));
+            try {
+                returnPath = Fs.realpathSync(Path.join(dataPath, Path.normalize(Querystring.unescape(location))));
+            } catch (err) {
+                // ignore error, will just use the default path
+            }
         }
 
         // Path is good, return it.
