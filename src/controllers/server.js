@@ -580,10 +580,24 @@ class Server extends EventEmitter {
 
         let returnPath = dataPath;
         if (!_.isUndefined(location) && _.replace(location, /\s+/g, '').length > 0) {
-            try {
-                returnPath = Fs.realpathSync(Path.join(dataPath, Path.normalize(Querystring.unescape(location))));
-            } catch (err) {
-                // ignore error, will just use the default path
+            const requestedPath = Path.join(dataPath, Path.normalize(Querystring.unescape(location)));
+            let existingPath = requestedPath;
+
+            while (existingPath !== dataPath && !Fs.existsSync(existingPath)) {
+                existingPath = Path.dirname(existingPath);
+            }
+
+            if (existingPath !== dataPath) {
+                let realPath;
+                try {
+                    realPath = Fs.realpathSync(existingPath);
+                } catch (err) {
+                    Log.error(err);
+                    // ignore error, will just use the default path
+                }
+                returnPath = _.replace(requestedPath, existingPath, realPath);
+            } else {
+                returnPath = requestedPath;
             }
         }
 
@@ -591,8 +605,7 @@ class Server extends EventEmitter {
         if (_.startsWith(returnPath, dataPath)) {
             return returnPath;
         }
-
-        return dataPath;
+        throw new Error('path out of server directory');
     }
 
     // Still using self here because of intervals.
