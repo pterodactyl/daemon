@@ -1,6 +1,7 @@
 version: '3'
 services:
   daemon:
+    build: .
     restart: always
     hostname: daemon
     ports:
@@ -12,7 +13,5 @@ services:
       - "/srv/daemon/config/:/srv/daemon/config/"
       - "/srv/daemon-data/:/srv/daemon-data/"
       - "/tmp/pterodactyl/:/tmp/pterodactyl"
-  ## Required for ssl if you user let's encrypt. uncomment to use.
-  ##    - "/srv/pterodactyl/certs/:/etc/letsencrypt/"
-    environment:
-      - "GO_SFTP=false" ## set to true to enable the go sftp-server
+      ## Required for ssl if you user let's encrypt. uncomment to use.
+      ## - "/etc/letsencrypt/:/etc/letsencrypt/"
