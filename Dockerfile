@@ -11,7 +11,7 @@ RUN apk add --no-cache openssl make gcc g++ python linux-headers paxctl gnupg ta
  && addgroup -S pterodactyl && adduser -S -D -H -G pterodactyl -s /bin/false pterodactyl \
  && apk del --no-cache make gcc g++ python linux-headers paxctl gnupg \
  && mkdir /lib64 && ln -s /lib/libc.musl-x86_64.so.1 /lib64/ld-linux-x86-64.so.2 \
- && cp .docker/supervisord.conf > /etc/supervisord.conf
+ && cp /srv/daemon/.docker/supervisord.conf /etc/supervisord.conf
 
 EXPOSE 8080
 
