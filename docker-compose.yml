@@ -12,3 +12,8 @@ services:
       - "/srv/daemon/config/:/srv/daemon/config/"
       - "/srv/daemon-data/:/srv/daemon-data/"
       - "/tmp/pterodactyl/:/tmp/pterodactyl"
+  ## Required for ssl if you user let's encrypt. uncomment to use.
+  ##    - "/srv/pterodactyl/certs/:/etc/letsencrypt/"
+    environment:
+  ## enable the golang sftp server. uncomment to use.
+  ##    - "GO_SFTP=true"
