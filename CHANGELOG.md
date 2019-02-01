@@ -1,6 +1,16 @@
 # Changelog
 This file is a running track of new features and fixes to each version of the daemon released starting with `v0.2.0`.
 
+## v0.6.9 (Elasticized Elanodactylus)
+### Fixed
+* Updated diagnostics script to have a proper fallback domain to handle Hastebin outages.
+* **[Security]** Fixes an unauthorized file read outside of server directory vulnerability when working with the built-in filemanager or SFTP server.
+
+## v0.6.8 (Elasticized Elanodactylus)
+### Changed
+* Bumped internal thresholds for memory management in containers to provide slightly more overhead to avoid OOM issues.
+* Added support for disabling the built-in SFTP server to allow for standalone options.
+
 ## v0.6.7 (Elasticized Elanodactylus)
 ### Fixed
 * Fix a bug that would cause a server to silently get stuck while in preflight if a config file couldn't be parsed. Now
