@@ -568,6 +568,10 @@ class RouteController {
                         const Mimetype = Mime.getType(json.path);
                         const File = Server[json.server].path(json.path);
                         const Stat = Fs.statSync(File);
+                        if (!Stat.isFile()) {
+                            return this.res.send(404, { 'error': 'Could not locate the requested file.' });
+                        }
+
                         this.res.writeHead(200, {
                             'Content-Type': Mimetype,
                             'Content-Length': Stat.size,
