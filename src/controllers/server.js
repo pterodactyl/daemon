@@ -384,7 +384,7 @@ class Server extends EventEmitter {
 
                         // Removes all container related NAT rules
                         // TODO : Check result code and report log/console
-                        this.emit('console', `${Ansi.style.green}[Pterodactyl Daemon] Configuring 1:1 1:1 Network.`);
+                        this.emit('console', `${Ansi.style.green}[Pterodactyl Daemon] Configuring 1:1 NAT Network.`);
                         this.log.info(`Removing all 1:1 NAT iptables rules: Internal=${IntIPAddress} / External=${ExtIPAddress} on Interface ${NETWORK_NAME}`);
                         const iptList = Process.spawn('iptables', ['-t', 'nat', '-L', 'POSTROUTING', '--line-numbers'], {});
                         iptList.stdout.on('data', function (data) {
