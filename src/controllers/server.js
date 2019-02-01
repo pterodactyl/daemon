@@ -384,7 +384,8 @@ class Server extends EventEmitter {
 
                         // Removes all container related NAT rules
                         // TODO : Check result code and report log/console
-                        this.emit('console', `${Ansi.style.green}[Pterodactyl Daemon] Removing 1:1 NAT iptables rule: Internal=${IntIPAddress} / External=${ExtIPAddress} on Interface ${NETWORK_NAME}`);
+                        this.emit('console', `${Ansi.style.green}[Pterodactyl Daemon] Configuring 1:1 1:1 Network.`);
+                        this.log.info(`Removing all 1:1 NAT iptables rules: Internal=${IntIPAddress} / External=${ExtIPAddress} on Interface ${NETWORK_NAME}`);
                         const iptList = Process.spawn('iptables', ['-t', 'nat', '-L', 'POSTROUTING', '--line-numbers'], {});
                         iptList.stdout.on('data', function (data) {
                             const iptLines = _.split(data.toString(), /(?:\r\n|\r|\n)/g);
@@ -413,7 +414,7 @@ class Server extends EventEmitter {
 
                         // Add NAT rule
                         // TODO : Check result code and report to log/console
-                        this.emit('console', `${Ansi.style.green}[Pterodactyl Daemon] Adding 1:1 NAT iptables rule: Internal=${IntIPAddress} / External=${ExtIPAddress}`);
+                        this.log.info(`Adding single 1:1 NAT iptables rule: Internal=${IntIPAddress} / External=${ExtIPAddress}`);
                         const iptAddExec = Process.spawn('iptables', ['-t', 'nat', '-A', 'POSTROUTING', '-s', IntIPAddress, '!', '-o', NETWORK_NAME, '-j', 'SNAT', '--to-source', ExtIPAddress], {});
                         iptAddExec.on('error', execErr => {
                             this.logger.error(execErr);
