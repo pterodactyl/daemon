@@ -121,7 +121,11 @@ class InternalSftpServer {
                         };
                         sftp.on('REALPATH', (reqId, location) => {
                             queue.push(location, done => {
-                                realPath(reqId, location);
+                                try {
+                                    realPath(reqId, location);
+                                } catch (err) {
+                                    return sftp.status(reqId, STATUS_CODE.PERMISSION_DENIED);
+                                }
                                 done();
                             });
                         });
@@ -158,7 +162,11 @@ class InternalSftpServer {
                         };
                         sftp.on('STAT', (reqId, location) => {
                             queue.push(location, done => {
-                                stat(reqId, location);
+                                try {
+                                    stat(reqId, location);
+                                } catch (err) {
+                                    return sftp.status(reqId, STATUS_CODE.PERMISSION_DENIED);
+                                }
                                 done();
                             });
                         });
@@ -217,7 +225,11 @@ class InternalSftpServer {
                         sftp.on('READDIR', (reqId, handle) => {
                             const requestData = _.get(clientContext.handles, handle, null);
                             queue.push(requestData.path, done => {
-                                readDir(reqId, handle, done);
+                                try {
+                                    readDir(reqId, handle, done);
+                                } catch (err) {
+                                    return sftp.status(reqId, STATUS_CODE.PERMISSION_DENIED);
+                                }
                             });
                         });
 
@@ -240,7 +252,11 @@ class InternalSftpServer {
                         };
                         sftp.on('OPENDIR', (reqId, location) => {
                             queue.push(location, done => {
-                                openDir(reqId, location);
+                                try {
+                                    openDir(reqId, location);
+                                } catch (err) {
+                                    return sftp.status(reqId, STATUS_CODE.PERMISSION_DENIED);
+                                }
                                 done();
                             });
                         });
@@ -336,7 +352,11 @@ class InternalSftpServer {
 
                         sftp.on('OPEN', (reqId, location, flags) => {
                             queue.push(location, done => {
-                                open(reqId, location, flags, done);
+                                try {
+                                    open(reqId, location, flags, done);
+                                } catch (err) {
+                                    return sftp.status(reqId, STATUS_CODE.PERMISSION_DENIED);
+                                }
                             });
                         });
 
@@ -374,7 +394,11 @@ class InternalSftpServer {
                         sftp.on('READ', (reqId, handle, offset, length) => {
                             const requestData = _.get(clientContext.handles, handle, null);
                             queue.push(requestData.location, done => {
-                                read(reqId, requestData, offset, length);
+                                try {
+                                    read(reqId, requestData, offset, length);
+                                } catch (err) {
+                                    return sftp.status(reqId, STATUS_CODE.PERMISSION_DENIED);
+                                }
                                 done();
                             });
                         });
@@ -403,7 +427,11 @@ class InternalSftpServer {
 
                         sftp.on('SETSTAT', (reqId, location, attrs) => {
                             queue.push(location, done => {
-                                setStat(reqId, location, attrs);
+                                try {
+                                    setStat(reqId, location, attrs);
+                                } catch (err) {
+                                    return sftp.status(reqId, STATUS_CODE.PERMISSION_DENIED);
+                                }
                                 done();
                             });
                         });
@@ -446,7 +474,11 @@ class InternalSftpServer {
                         sftp.on('WRITE', (reqId, handle, offset, data) => {
                             const requestData = _.get(clientContext.handles, handle, null);
                             queue.push(requestData.path, done => {
-                                write(reqId, requestData, offset, data);
+                                try {
+                                    write(reqId, requestData, offset, data);
+                                } catch (err) {
+                                    return sftp.status(reqId, STATUS_CODE.PERMISSION_DENIED);
+                                }
                                 done();
                             });
                         });
@@ -473,7 +505,12 @@ class InternalSftpServer {
 
                         sftp.on('MKDIR', (reqId, location) => {
                             queue.push(location, done => {
-                                mkdir(reqId, location);
+                                try {
+                                    mkdir(reqId, location);
+                                } catch (err) {
+                                    return sftp.status(reqId, STATUS_CODE.PERMISSION_DENIED);
+                                }
+
                                 done();
                             });
                         });
@@ -507,7 +544,11 @@ class InternalSftpServer {
 
                         sftp.on('RENAME', (reqId, oldPath, newPath) => {
                             queue.push(oldPath, done => {
-                                rename(reqId, oldPath, newPath);
+                                try {
+                                    rename(reqId, oldPath, newPath);
+                                } catch (err) {
+                                    return sftp.status(reqId, STATUS_CODE.PERMISSION_DENIED);
+                                }
                                 done();
                             });
                         });
@@ -544,7 +585,11 @@ class InternalSftpServer {
 
                         sftp.on('RMDIR', (reqId, path) => {
                             queue.push(path, done => {
-                                rmdir(reqId, path);
+                                try {
+                                    rmdir(reqId, path);
+                                } catch (err) {
+                                    return sftp.status(reqId, STATUS_CODE.PERMISSION_DENIED);
+                                }
                                 done();
                             });
                         });

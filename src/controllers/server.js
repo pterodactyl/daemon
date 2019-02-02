@@ -578,39 +578,86 @@ class Server extends EventEmitter {
     path(location) {
         const dataPath = Path.join(Config.get('sftp.path', '/srv/daemon-data'), this.json.uuid);
 
-        let returnPath = dataPath;
-        if (!_.isUndefined(location) && _.replace(location, /\s+/g, '').length > 0) {
-            // Dangerous path, do not rely on this as the final output location until running it through
-            // the fs.realpath function.
-            const resolvedPath = Path.join(dataPath, Path.normalize(Querystring.unescape(location)));
+        if (_.isUndefined(location) || _.replace(location, /\s+/g, '').length < 1) {
+            return dataPath;
+        }
 
-            try {
-                returnPath = Fs.realpathSync(resolvedPath);
-            } catch (err) {
-                // If the error is being caused because the file does not exist we can safely
-                // assume that the resolved path should be returned. If it doesn't exist it cannot
-                // be a symlink to something the user doesn't have access to and is likely being
-                // caused because we're just cleaning up some paths for creating files.
-                //
-                // Any other error should generally just be reported to the daemon output, I'm not
-                // really sure what they could possibly be, but we should log it anyways and then
-                // just return the default data path for the server. When this happens, pray that the
-                // calling function is smart enough to do a stat and determine if the operation
-                // is happening aganist a directory, otherwise say hello to an ESDIR error code.
-                if (err.code === 'ENOENT') {
-                    returnPath = resolvedPath;
-                } else {
-                    this.log.error(err);
+        // Dangerous path, do not rely on this as the final output location until running it through
+        // the fs.realpath function.
+        let returnPath = null;
+        let nonExistentPathRoot = null;
+        const resolvedPath = Path.join(dataPath, Path.normalize(Querystring.unescape(location)));
+
+        try {
+            returnPath = Fs.realpathSync(resolvedPath);
+        } catch (err) {
+            // Errors that aren't ENOENT should generally just be reported to the daemon output, I'm not
+            // really sure what they could possibly be, but we should log it anyways and then
+            // just return the default data path for the server. When this happens, pray that the
+            // calling function is smart enough to do a stat and determine if the operation
+            // is happening aganist a directory, otherwise say hello to an ESDIR error code.
+            if (err.code !== 'ENOENT') {
+                this.log.error(err);
+                return dataPath;
+            }
+
+            const minLength = _.split(dataPath, '/').length;
+            const pathParts = _.split(Path.dirname(resolvedPath), '/');
+
+            // Prevent malicious users from trying to slow things down with wild paths.
+            if (pathParts.length > 50) {
+                this.log.error('Attempting to determine path resolution on a directory nested more than 50 levels deep.');
+                return dataPath;
+            }
+
+            // Okay, so the path being requested initially doesn't seem to exist on the system. Now
+            // we will loop over the path starting at the end until we reach a directory that does exist
+            // and check the final path resoltuion for that directory. If there is an unexpected error or
+            // we get to a point where the path is now shorter than the data path we will exit and return
+            // the base data path.
+            _.some(pathParts, () => {
+                if (pathParts.length < minLength) {
+                    return true;
                 }
+
+                try {
+                    nonExistentPathRoot = Fs.realpathSync(pathParts.join('/'));
+                    return true;
+                } catch (loopError) {
+                    if (loopError.code !== 'ENOENT') {
+                        this.log.error(loopError);
+                        return true;
+                    }
+
+                    // Pop the last item off the checked path so we can check one level up on
+                    // the next loop iteration.
+                    pathParts.pop();
+                }
+
+                return false;
+            });
+        }
+
+        // If we had to traverse the filesystem to resolve a path root we should check if the final
+        // resolution is within the server data directory. If so, return at this point, otherwise continue
+        // on and check aganist the normal return path.
+        if (!_.isNull(nonExistentPathRoot)) {
+            if (_.startsWith(nonExistentPathRoot, dataPath)) {
+                return resolvedPath;
             }
         }
 
-        // Path is good, return it.
         if (_.startsWith(returnPath, dataPath)) {
             return returnPath;
         }
 
-        return dataPath;
+        // If we manage to get to this point something has gone seriously wrong and the user
+        // is likely attempting to escape the system. Just throw a fatal error and pray that
+        // the rest of the daemon is able to handle this.
+        const e = new Error(`could not resolve a valid server data path for location ["${Querystring.unescape(location)}"]`);
+        e.code = 'P_SYMLINK_RESOLUTION';
+
+        throw e;
     }
 
     // Still using self here because of intervals.
