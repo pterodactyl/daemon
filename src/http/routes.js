@@ -58,7 +58,12 @@ RestServer.use((req, res, next) => {
 });
 
 RestServer.on('uncaughtException', (req, res, route, err) => {
-    Log.fatal({ path: route.spec.path, method: route.spec.method, msg: err.message }, err.stack);
+    Log.fatal({
+        path: route.spec.path,
+        method: route.spec.method,
+        server: req.headers['X-Access-Server'] || null,
+        err,
+    }, err.message);
     try {
         return res.send(503, { 'error': 'An unhandled exception occured while attempting to process this request.' });
     } catch (ex) {
