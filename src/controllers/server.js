@@ -580,10 +580,28 @@ class Server extends EventEmitter {
 
         let returnPath = dataPath;
         if (!_.isUndefined(location) && _.replace(location, /\s+/g, '').length > 0) {
+            // Dangerous path, do not rely on this as the final output location until running it through
+            // the fs.realpath function.
+            const resolvedPath = Path.join(dataPath, Path.normalize(Querystring.unescape(location)));
+
             try {
-                returnPath = Fs.realpathSync(Path.join(dataPath, Path.normalize(Querystring.unescape(location))));
+                returnPath = Fs.realpathSync(resolvedPath);
             } catch (err) {
-                // ignore error, will just use the default path
+                // If the error is being caused because the file does not exist we can safely
+                // assume that the resolved path should be returned. If it doesn't exist it cannot
+                // be a symlink to something the user doesn't have access to and is likely being
+                // caused because we're just cleaning up some paths for creating files.
+                //
+                // Any other error should generally just be reported to the daemon output, I'm not
+                // really sure what they could possibly be, but we should log it anyways and then
+                // just return the default data path for the server. When this happens, pray that the
+                // calling function is smart enough to do a stat and determine if the operation
+                // is happening aganist a directory, otherwise say hello to an ESDIR error code.
+                if (err.code === 'ENOENT') {
+                    returnPath = resolvedPath;
+                } else {
+                    this.log.error(err);
+                }
             }
         }
 

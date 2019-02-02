@@ -1,6 +1,10 @@
 # Changelog
 This file is a running track of new features and fixes to each version of the daemon released starting with `v0.2.0`.
 
+## v0.6.10 (Elasticized Elanodactylus)
+### Fixed
+* Fixes a path resolution bug introduced in the previous version of the panel that was causing files and folders that did not exist to return the wrong resolved path.
+
 ## v0.6.9 (Elasticized Elanodactylus)
 ### Fixed
 * Updated diagnostics script to have a proper fallback domain to handle Hastebin outages.
