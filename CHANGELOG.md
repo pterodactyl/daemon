@@ -1,6 +1,10 @@
 # Changelog
 This file is a running track of new features and fixes to each version of the daemon released starting with `v0.2.0`.
 
+## v0.6.12 (Elasticized Elanodactylus)
+### Added
+Dockerfile for building an official docker image for the daemon. (uses the golang sftp-server)
+
 ## v0.6.11 (Elasticized Elanodactylus)
 ### Fixed
 * [Security] Addresses one remaining issue with the previous security fixes to completely isolate the host system from malicious users.
