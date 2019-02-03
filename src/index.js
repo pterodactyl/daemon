@@ -39,7 +39,7 @@ const ConfigHelper = rfr('src/helpers/config.js');
 const Config = new ConfigHelper();
 
 Log.info('+ ------------------------------------ +');
-Log.info(`| Running Pterodactyl Daemon v${Package.version}    |`);
+Log.info(`| Running Pterodactyl Daemon v${Package.version}   |`);
 Log.info('|        https://pterodactyl.io        |');
 Log.info('|  Copyright 2015 - 2018 Dane Everitt  |');
 Log.info('+ ------------------------------------ +');
