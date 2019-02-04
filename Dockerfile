@@ -6,7 +6,7 @@ COPY . /srv/daemon
 
 WORKDIR /srv/daemon
 
-RUN apk add --no-cache openssl make gcc g++ python linux-headers paxctl gnupg tar zip unzip curl coreutils zlib supervisor \
+RUN apk add --no-cache openssl make gcc g++ python linux-headers paxctl gnupg tar zip unzip curl coreutils zlib supervisor jq \
  && npm install --production \
  && addgroup -S pterodactyl && adduser -S -D -H -G pterodactyl -s /bin/false pterodactyl \
  && apk del --no-cache make gcc g++ python linux-headers paxctl gnupg \
