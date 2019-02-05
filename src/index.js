@@ -41,7 +41,7 @@ const Config = new ConfigHelper();
 Log.info('+ ------------------------------------ +');
 Log.info(`| Running Pterodactyl Daemon v${Package.version}    |`);
 Log.info('|        https://pterodactyl.io        |');
-Log.info('|  Copyright 2015 - 2018 Dane Everitt  |');
+Log.info('|  Copyright 2015 - 2019 Dane Everitt  |');
 Log.info('+ ------------------------------------ +');
 Log.info('Loading modules, this could take a few seconds.');
 
