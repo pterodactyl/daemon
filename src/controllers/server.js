@@ -615,26 +615,24 @@ class Server extends EventEmitter {
             // and check the final path resoltuion for that directory. If there is an unexpected error or
             // we get to a point where the path is now shorter than the data path we will exit and return
             // the base data path.
-            _.some(pathParts, () => {
+            _.forEach(pathParts, () => {
                 if (pathParts.length < minLength) {
-                    return true;
+                    return false;
                 }
 
                 try {
                     nonExistentPathRoot = Fs.realpathSync(pathParts.join('/'));
-                    return true;
+                    return false;
                 } catch (loopError) {
                     if (loopError.code !== 'ENOENT') {
                         this.log.error(loopError);
-                        return true;
+                        return false;
                     }
 
                     // Pop the last item off the checked path so we can check one level up on
                     // the next loop iteration.
                     pathParts.pop();
                 }
-
-                return false;
             });
         }
 
@@ -643,7 +641,7 @@ class Server extends EventEmitter {
         // on and check aganist the normal return path.
         if (!_.isNull(nonExistentPathRoot)) {
             if (_.startsWith(nonExistentPathRoot, dataPath)) {
-                return resolvedPath;
+                return nonExistentPathRoot;
             }
         }
 
