@@ -585,7 +585,6 @@ class Server extends EventEmitter {
         // Dangerous path, do not rely on this as the final output location until running it through
         // the fs.realpath function.
         let returnPath = null;
-        let nonExistentPathRoot = null;
         const resolvedPath = Path.join(dataPath, Path.normalize(Querystring.unescape(location)));
 
         try {
@@ -621,7 +620,7 @@ class Server extends EventEmitter {
                 }
 
                 try {
-                    nonExistentPathRoot = Fs.realpathSync(pathParts.join('/'));
+                    returnPath = Fs.realpathSync(pathParts.join('/'));
                     return false;
                 } catch (loopError) {
                     if (loopError.code !== 'ENOENT') {
@@ -634,15 +633,6 @@ class Server extends EventEmitter {
                     pathParts.pop();
                 }
             });
-        }
-
-        // If we had to traverse the filesystem to resolve a path root we should check if the final
-        // resolution is within the server data directory. If so, return at this point, otherwise continue
-        // on and check aganist the normal return path.
-        if (!_.isNull(nonExistentPathRoot)) {
-            if (_.startsWith(nonExistentPathRoot, dataPath)) {
-                return nonExistentPathRoot;
-            }
         }
 
         if (_.startsWith(returnPath, dataPath)) {
