@@ -371,7 +371,10 @@ class Server extends EventEmitter {
                 this.docker.start(callback);
             },
             callback => {
-                if (Config.get('docker.network.name') !== 'host' && (Config.get('docker.policy.network.enable_ip_masquerade') === 'false' || Config.get('docker.policy.network.enable_ip_masquerade') === false)) {
+                // This section provides 1:1 NAT instead of the default Masquerading
+                // Useful if the node server has more public IP addresses, and the host network is not an option
+                // To enable the feature, enable_ip_masquerade in core.json must be set to "false"
+                if (Config.get('docker.network.name') !== 'host' && Config.get('docker.policy.network.enable_ip_masquerade') === 'false') {
                     const NETWORK_NAME = Config.get('docker.network.name');
                     this.docker.container.inspect().then(results => {
                         const props = {
