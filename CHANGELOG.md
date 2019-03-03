@@ -8,6 +8,9 @@ getting stuck in a hung installation state.
 * Fixes a bug with how packs were downloaded and decompressed that resulted in them properly downloading but an error
 cropping up when decompressing their contents.
 
+### Changed
+* Install logs are no longer deleted when a server fails it's installation and is removed.
+
 ### Added
 * Dockerfile for building an official docker image for the daemon. (uses the golang sftp-server)
 

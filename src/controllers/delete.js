@@ -96,8 +96,15 @@ class Delete {
             // Delete the configuration files for this server
             delete_config: ['clear_object', (r, callback) => {
                 this.log.debug('Attempting to remove configuration files...');
-                Fs.remove(Path.join('./config/servers', this.json.uuid), err => {
-                    if (!err) this.log.debug('Removed configuration folder.', err);
+
+                let pathToRemove = Path.join('./config/servers', this.json.uuid);
+                if (Fs.existsSync(Path.join('./config/servers', this.json.uuid, 'install.log'))) {
+                    this.log.debug('Not removing entire configuration folder because an installation log exists.');
+                    pathToRemove = Path.join('./config/servers', this.json.uuid, 'server.json');
+                }
+
+                Fs.remove(pathToRemove, err => {
+                    if (!err) this.log.debug('Removed configuration folder.');
                     return callback();
                 });
             }],
