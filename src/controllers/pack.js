@@ -63,6 +63,9 @@ class Pack {
             callback => {
                 this.unpackToServer(callback);
             },
+            callback => {
+                this.server.setPermissions(callback);
+            },
         ], next);
     }
 
@@ -220,19 +223,24 @@ class Pack {
 
     unpackToServer(next) {
         this.logger.debug('Unpacking pack to server.');
+
         const Exec = Process.spawn('tar', ['-xzf', Path.basename(this.archiveLocation), '-C', this.server.path()], {
             cwd: Path.dirname(this.archiveLocation),
-            uid: Config.get('docker.container.user', 1000),
-            gid: Config.get('docker.container.user', 1000),
+            stdio: ['ignore', 'ignore', 'pipe'],
         });
 
+        const stderrLines = [];
+        Exec.stderr.setEncoding('utf8');
+        Exec.stderr.on('data', data => stderrLines.push(data));
+
         Exec.on('error', execErr => {
-            this.logger.error(execErr);
+            this.logger.error({ location: this.archiveLocation }, execErr);
             return next(new Error('There was an error while attempting to decompress this file.'));
         });
+
         Exec.on('exit', (code, signal) => {
             if (code !== 0) {
-                this.logger.error(`Decompression of file exited with code ${code} signal ${signal}.`);
+                this.logger.error({ location: this.archiveLocation, code, signal }, `Failed to decompress server pack archive: ${stderrLines.join('\n')}`);
             }
 
             return next();
