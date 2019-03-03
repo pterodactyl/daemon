@@ -57,15 +57,9 @@ class Pack {
         this.logger = Log.child({ pack: this.pack, server: this.server.json.uuid });
 
         Async.series([
-            callback => {
-                this.checkCache(callback);
-            },
-            callback => {
-                this.unpackToServer(callback);
-            },
-            callback => {
-                this.server.setPermissions(callback);
-            },
+            callback => this.checkCache(callback),
+            callback => this.unpackToServer(callback),
+            callback => this.server.setPermissions(callback),
         ], next);
     }
 

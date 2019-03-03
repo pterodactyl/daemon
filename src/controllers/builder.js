@@ -50,7 +50,7 @@ class Builder {
             create_folder: callback => {
                 Fs.ensureDir(Path.join(Config.get('sftp.path', '/srv/daemon-data'), this.json.uuid), callback);
             },
-            verify_ip: ['create_folder', (results, callback) => {
+            verify_ip: callback => {
                 this.log.debug('Updating passed JSON to route correct interfaces.');
                 // Update 127.0.0.1 to point to the docker0 interface.
                 if (this.json.build.default.ip === '127.0.0.1') {
@@ -66,8 +66,8 @@ class Builder {
                     }
                     return asyncCallback();
                 }, callback);
-            }],
-            initialize: ['verify_ip', (results, callback) => {
+            },
+            initialize: ['create_folder', 'verify_ip', (results, callback) => {
                 Initialize.setup(this.json, callback);
             }],
             block_boot: ['initialize', (results, callback) => {
