@@ -2,8 +2,12 @@
 This file is a running track of new features and fixes to each version of the daemon released starting with `v0.2.0`.
 
 ## v0.6.12 (Elasticized Elanodactylus)
+### Fixed
+* Fixes a bug with the packs system that would not properly handle an error response from the panel resulting in the server
+getting stuck in a hung installation state.
+
 ### Added
-Dockerfile for building an official docker image for the daemon. (uses the golang sftp-server)
+* Dockerfile for building an official docker image for the daemon. (uses the golang sftp-server)
 
 ## v0.6.11 (Elasticized Elanodactylus)
 ### Fixed

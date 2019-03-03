@@ -140,8 +140,7 @@ class Pack {
             if (err) {
                 this.logger.error(err, `Recieved a non-200 error code (${err.code}) when attempting to check a pack hash (${err.pack}).`);
 
-                // Don't respond with error, packs are non-critical.
-                return next();
+                return next(err);
             }
 
             if (results.file_exists) {
@@ -181,21 +180,18 @@ class Pack {
             callback => {
                 Log.debug('Downloading pack...');
                 const endpoint = `${Config.get('remote.base')}/daemon/packs/pull/${this.pack}`;
-                Request({
-                    method: 'GET',
-                    url: endpoint,
-                    headers: {
-                        'X-Access-Node': Config.get('keys.0'),
-                    },
-                })
-                    .on('error', next)
+
+                Request({ method: 'GET', url: endpoint, headers: { 'X-Access-Node': Config.get('keys.0') } })
+                    .on('error', error => {
+                        callback(error);
+                    })
                     .on('response', response => {
                         if (response.statusCode !== 200) {
                             const error = new Error('Recieved a non-200 error code while attempting to pull the hash for a egg pack.');
                             error.responseCode = response.statusCode;
                             error.requestURL = endpoint;
                             error.pack = this.pack;
-                            return next(error);
+                            return callback(error);
                         }
                     })
                     .pipe(Fs.createWriteStream(this.archiveLocation))
@@ -215,7 +211,7 @@ class Pack {
                 });
             },
             callback => {
-                Log.debug('Downlaod complete, moving on.');
+                Log.debug('Download complete, moving on.');
                 Cache.del(`pack.updating.${this.pack}`);
                 return callback();
             },
