@@ -113,7 +113,7 @@ class Option {
             }],
             setup_stream: ['close_stream', (results, callback) => {
                 const LoggingLocation = Path.join(this.server.configDataLocation, 'install.log');
-                this.server.log.info('Writing output of installation process to file.', { file: LoggingLocation });
+                this.server.log.info({ file: LoggingLocation }, 'Writing output of installation process to file.');
                 this.processLogger = createOutputStream(LoggingLocation, {
                     mode: 0o644,
                     defaultEncoding: 'utf8',

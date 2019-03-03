@@ -152,6 +152,8 @@ class RouteController {
                     },
                     headers: {
                         'X-Access-Node': Config.get('keys.0'),
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
                     },
                     followAllRedirects: true,
                     timeout: 5000,
@@ -276,6 +278,8 @@ class RouteController {
                     },
                     headers: {
                         'X-Access-Node': Config.get('keys.0'),
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
                     },
                     followAllRedirects: true,
                     timeout: 5000,
