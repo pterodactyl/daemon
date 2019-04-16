@@ -357,6 +357,8 @@ class FileSystem {
             if (err) return next(err);
 
             let Exec;
+            let ArchiveSize;
+            let MissingSize;
             if (result === 'application/x-gzip' || result === 'application/gzip') {
                 Exec = Process.spawn('tar', ['xzf', Path.basename(file), '-C', to], {
                     cwd: Path.dirname(file),
@@ -364,26 +366,49 @@ class FileSystem {
                     gid: Config.get('docker.container.user', 1000),
                 });
             } else if (result === 'application/zip') {
-                Exec = Process.spawn('unzip', ['-q', '-o', Path.basename(file), '-d', to], {
+                Process.exec('unzip -l ' + Path.basename(file) + ' | tail -1 | xargs | cut -d" " -f1', {
                     cwd: Path.dirname(file),
                     uid: Config.get('docker.container.user', 1000),
                     gid: Config.get('docker.container.user', 1000),
+                }, (error, stdout, stderr) => {
+                    ArchiveSize = parseInt(stdout) / 1024 / 1024;
+
+                    if (ArchiveSize && !error){
+                        MissingSize = (this.server.currentDiskUsed + ArchiveSize) - this.server.json.build.disk;
+
+                        if (this.server.disk > 0 || MissingSize < 0 ) {
+                            callback(Process.spawn('unzip', ['-q', '-o', Path.basename(file), '-d', to], {
+                                cwd: Path.dirname(file),
+                                uid: Config.get('docker.container.user', 1000),
+                                gid: Config.get('docker.container.user', 1000),
+                            }) );
+                        }else{
+                            this.server.log.fatal("Error", 'Decompression of file failed: File is ' + MissingSize + 'Mb to large for Server quota.');
+                            return next(new Error(`Decompression of file failed: File is to large for quota.`));
+                        }
+                    }
+                    if (error) {
+                        this.server.log.fatal(error, 'Decompression of file failed: Could not detect filesize.');
+                        return next(new Error(`Decompression of file failed: Could not detect filesize.`));
+                    }
                 });
             } else {
                 return next(new Error(`Decompression of file failed: ${result} is not a decompessible Mimetype.`));
             }
-
-            Exec.on('error', execErr => {
-                this.server.log.error(execErr);
-                return next(new Error('There was an error while attempting to decompress this file.'));
-            });
-            Exec.on('exit', (code, signal) => {
-                if (code !== 0) {
-                    return next(new Error(`Decompression of file exited with code ${code} signal ${signal}.`));
-                }
-
-                return next();
-            });
+            
+            let callback = (Exec) => {
+                Exec.on('error', execErr => {
+                    this.server.log.error(execErr);
+                    return next(new Error('There was an error while attempting to decompress this file.'));
+                });
+                Exec.on('exit', (code, signal) => {
+                    if (code !== 0) {
+                        return next(new Error(`Decompression of file exited with code ${code} signal ${signal}.`));
+                    }
+    
+                    return next();
+                });
+            }
         });
     }
 
