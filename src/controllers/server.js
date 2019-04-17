@@ -382,7 +382,7 @@ class Server extends EventEmitter {
                             IntIPAddress: results.NetworkSettings.Networks[NETWORK_NAME].IPAddress,
                         };
                         const strEnv = props.Env.toString();
-                        const ExtIPAddress = strEnv.substring(strEnv.indexOf('=', strEnv.indexOf('SERVER_IP')) + 1, strEnv.indexOf(',', strEnv.indexOf('=', strEnv.indexOf('SERVER_IP'))));
+                        const ExtIPAddress = strEnv.substring(strEnv.indexOf('=', strEnv.indexOf('SERVER_IP=')) + 1, strEnv.indexOf(',', strEnv.indexOf('=', strEnv.indexOf('SERVER_IP='))));
                         const IntIPAddress = props.IntIPAddress.toString();
 
                         // Removes all container related NAT rules
