@@ -383,8 +383,8 @@ class FileSystem {
                                 gid: Config.get('docker.container.user', 1000),
                             }) );
                         }else{
-                            this.server.log.fatal("Error", 'Decompression of file failed: File is ' + MissingSize + 'Mb to large for Server quota.');
-                            return next(new Error(`Decompression of file failed: File is to large for quota.`));
+                            this.server.log.fatal("Error", 'Decompression of file failed: File is ' + MissingSize + 'Mb to large.');
+                            return next(new Error('Decompression of file failed: File is ' + MissingSize + 'Mb to large.'));
                         }
                     }
                     if (error) {
