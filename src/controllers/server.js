@@ -615,7 +615,7 @@ class Server extends EventEmitter {
             // and check the final path resoltuion for that directory. If there is an unexpected error or
             // we get to a point where the path is now shorter than the data path we will exit and return
             // the base data path.
-            _.some(pathParts, () => {
+            let tmp = _.some(pathParts, () => {
                 if (pathParts.length < minLength) {
                     return true;
                 }
