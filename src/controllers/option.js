@@ -165,12 +165,12 @@ class Option {
                         container.remove();
                     }
 
-                    if (data.StatusCode !== 0) {
-                        return callback(new Error(`Install script failed with code ${data.StatusCode}`));
-                    }
-
                     if (err) {
                         return callback(err);
+                    }
+
+                    if (data.StatusCode !== 0) {
+                        return callback(new Error(`Install script failed with code ${data.StatusCode}`));
                     }
 
                     this.server.log.info('Completed installation process for server.');
