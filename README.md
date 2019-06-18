@@ -1,4 +1,4 @@
-[![Logo Image](https://cdn.pterodactyl.io/logos/Banner%20Logo%20Black@2x.png)](https://pterodactyl.io)
+[![Logo Image](https://cdn.pterodactyl.io/logos/new/pterodactyl_logo.png)](https://pterodactyl.io)
 
 [![Build Status](https://travis-ci.org/pterodactyl/daemon.svg?branch=develop)](https://travis-ci.org/pterodactyl/daemon) [![Dependencies Status](https://david-dm.org/pterodactyl/daemon/status.svg)](https://david-dm.org/pterodactyl/daemon)
 
