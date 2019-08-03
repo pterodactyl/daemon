@@ -159,6 +159,7 @@ class Option {
                             Util.format('%s:/mnt/server', this.server.path()),
                             Util.format('%s:/mnt/install', Path.join('/tmp/pterodactyl/', this.server.json.uuid)),
                         ],
+                        NetworkMode: Config.get('docker.network.name', 'pterodactyl_nw'),
                     },
                 }, (err, data, container) => {
                     if (_.isObject(container) && _.isFunction(_.get(container, 'remove', null))) {
