@@ -25,7 +25,7 @@
 const rfr = require('rfr');
 const Fs = require('fs-extra');
 const _ = require('lodash');
-const extendify = require('extendify');
+const extendify = require('extendify-updated');
 const Cache = require('memory-cache');
 
 class Config {
