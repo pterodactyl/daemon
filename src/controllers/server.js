@@ -699,21 +699,25 @@ class Server extends EventEmitter {
 
         // This sometimes doesn't exist, possibly due to another race condition?
         if (_.isUndefined(self.docker.procData.cpu_stats.cpu_usage.percpu_usage)) return;
+        
+        // This also sometimes doesn't exist.
+        if (_.isUndefined(self.docker.procData.precpu_stats.system_cpu_usage)) return;
 
         const perCoreUsage = [];
         const priorCycle = self.docker.procData.precpu_stats;
         const cycle = self.docker.procData.cpu_stats;
         const totalCores = _.get(cycle, 'cpu_usage.percpu_usage', { test: 1 });
+        const coreCount = cycle.online_cpus || totalCores.length;
 
         const deltaTotal = cycle.cpu_usage.total_usage - priorCycle.cpu_usage.total_usage;
         const deltaSystem = cycle.system_cpu_usage - priorCycle.system_cpu_usage;
-        const totalUsage = (deltaTotal / deltaSystem) * totalCores.length * 100;
+        const totalUsage = (deltaTotal / deltaSystem) * coreCount * 100;
 
         Async.forEachOf(cycle.cpu_usage.percpu_usage, (cpu, index, callback) => {
             if (_.isObject(priorCycle.cpu_usage.percpu_usage) && index in priorCycle.cpu_usage.percpu_usage) {
                 const priorCycleCpu = priorCycle.cpu_usage.percpu_usage[index];
                 const deltaCore = cpu - priorCycleCpu;
-                perCoreUsage.push(parseFloat(((deltaCore / deltaSystem) * totalCores.length * 100).toFixed(3).toString()));
+                perCoreUsage.push(parseFloat(((deltaCore / deltaSystem) * coreCount * 100).toFixed(3).toString()));
             }
             callback();
         }, () => {
