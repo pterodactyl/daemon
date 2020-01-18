@@ -100,6 +100,11 @@ class Option {
             }],
             image: ['write_file', (results, callback) => {
                 const PullImage = _.get(results.details, 'config.container', 'alpine:3.4');
+                // Skip local images.
+                if (_.startsWith(PullImage, '~')) {
+                    this.server.log.debug(`Skipping pull attempt for ${_.trimStart(PullImage, '~')} as it is marked as a local image.`);
+                    return callback();
+                }
                 this.server.log.debug(`Pulling ${PullImage} image if it is not already on the system.`);
                 ImageHelper.pull(PullImage, callback);
             }],
@@ -135,7 +140,7 @@ class Option {
                     environment.push(`${key}=${value}`);
                 });
 
-                DockerController.run(_.get(results.details, 'config.container', 'alpine:3.4'), [_.get(results.details, 'config.entry', 'ash'), '/mnt/install/install.sh'], (Config.get('logger.level', 'info') === 'debug') ? process.stdout : this.processLogger, {
+                DockerController.run(_.trimStart(_.get(results.details, 'config.container', 'alpine:3.4'), '~'), [_.get(results.details, 'config.entry', 'ash'), '/mnt/install/install.sh'], (Config.get('logger.level', 'info') === 'debug') ? process.stdout : this.processLogger, {
                     Tty: true,
                     AttachStdin: true,
                     AttachStdout: true,
