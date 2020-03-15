@@ -11,6 +11,9 @@ logic used by `docker stats`.
 ### Added
 * Installation docker images can now be prefixed with `~` to use a local image. 
 
+### Changed
+* General dependency upgrades to reduce the number of audit warnings on installation.
+
 ## v0.6.12 (Elasticized Elanodactylus)
 ### Fixed
 * Fixes a bug with the packs system that would not properly handle an error response from the panel resulting in the server
