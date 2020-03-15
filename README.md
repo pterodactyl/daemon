@@ -11,7 +11,7 @@ Please see `CONTRIBUTING.md` for information needed if you want to contribute to
 # License
 ```
 Pterodactyl - Daemon
-Copyright (c) 2015 - 2018 Dane Everitt <dane@daneeveritt.com>.
+Copyright (c) 2015 - 2020 Dane Everitt <dane@daneeveritt.com>.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

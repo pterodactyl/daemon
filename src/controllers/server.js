@@ -2,7 +2,7 @@
 
 /**
  * Pterodactyl - Daemon
- * Copyright (c) 2015 - 2018 Dane Everitt <dane@daneeveritt.com>.
+ * Copyright (c) 2015 - 2020 Dane Everitt <dane@daneeveritt.com>.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -700,7 +700,7 @@ class Server extends EventEmitter {
 
         // This sometimes doesn't exist, possibly due to another race condition?
         if (_.isUndefined(self.docker.procData.cpu_stats.cpu_usage.percpu_usage)) return;
-        
+
         // This also sometimes doesn't exist.
         if (_.isUndefined(self.docker.procData.precpu_stats.system_cpu_usage)) return;
 
