@@ -140,12 +140,8 @@ class Server extends EventEmitter {
     hasPermission(perm, token, next) {
         const tokenData = Cache.get(`auth:token:${token}`);
         if (_.isNull(tokenData)) {
-            this.validateToken(token, (err, data) => {
+            this.getTokenData(token, (err, data) => {
                 if (err) return next(err);
-
-                if (_.get(data, 'server') !== this.uuid) {
-                    return next(null, false, 'uuidDoesNotMatch');
-                }
 
                 Cache.put(`auth:token:${token}`, data, data.expires_at);
 
@@ -157,16 +153,21 @@ class Server extends EventEmitter {
     }
 
     validatePermission(data, permission, next) {
+        if (_.get(data, 'server') !== this.uuid) {
+            return next(null, false, 'uuidDoesNotMatch');
+        }
+
         if (!_.isUndefined(permission)) {
             if (_.includes(data.permissions, permission) || _.includes(data.permissions, 's:*')) {
                 // Check Suspension Status
                 return next(null, !this.isSuspended(), 'isSuspended');
             }
         }
+
         return next(null, false, 'isUndefined');
     }
 
-    validateToken(token, next) {
+    getTokenData(token, next) {
         Request.get({
             url: `${Config.get('remote.base')}/api/remote/authenticate/${token}`,
             headers: {
