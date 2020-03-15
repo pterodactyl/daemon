@@ -3,7 +3,13 @@ This file is a running track of new features and fixes to each version of the da
 
 ## v0.6.13 (Elasticized Elanodactylus)
 ### Fixed
-* Fixes server memory usage calculations to match the logic of the `docker stats` command.
+* **[Security]** Fixes a bug in the websocket authorization process that could allow a malcious authenticated user
+to connect and send commands to a server they do not have permission to access.
+* Fixes utilization metrics to send the correct CPU and memory usage calculations for servers. This now matches the
+logic used by `docker stats`.
+
+### Added
+* Installation docker images can now be prefixed with `~` to use a local image. 
 
 ## v0.6.12 (Elasticized Elanodactylus)
 ### Fixed
