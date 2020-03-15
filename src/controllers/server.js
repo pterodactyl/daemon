@@ -355,7 +355,7 @@ class Server extends EventEmitter {
             },
             callback => {
                 if (Config.get('internals.set_permissions_on_boot', true)) {
-                    this.emit('console', `${Ansi.style.yellow}[Pterodactyl Daemon] Ensuring file permissions.`);
+                    this.emit('console', `${Ansi.style.yellow}[Pterodactyl Daemon] Ensuring correct ownership of files.`);
                     this.setPermissions(callback);
                 } else {
                     return callback();
