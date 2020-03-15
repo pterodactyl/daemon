@@ -7,6 +7,7 @@ This file is a running track of new features and fixes to each version of the da
 to connect and send commands to a server they do not have permission to access.
 * Fixes utilization metrics to send the correct CPU and memory usage calculations for servers. This now matches the
 logic used by `docker stats`.
+* Files with a colon in their name can be properly decompressed.
 
 ### Added
 * Installation docker images can now be prefixed with `~` to use a local image. 
