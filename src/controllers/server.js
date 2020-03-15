@@ -724,7 +724,7 @@ class Server extends EventEmitter {
         }, () => {
             self.processData.process = { // eslint-disable-line
                 memory: {
-                    total: self.docker.procData.memory_stats.usage,
+                    total: self.docker.procData.memory_stats.usage - self.docker.procData.memory_stats.stats.cache,
                     cmax: self.docker.procData.memory_stats.max_usage,
                     amax: self.json.build.memory * 1000000,
                 },
