@@ -2,7 +2,7 @@
 
 /**
  * Pterodactyl - Daemon
- * Copyright (c) 2015 - 2018 Dane Everitt <dane@daneeveritt.com>.
+ * Copyright (c) 2015 - 2020 Dane Everitt <dane@daneeveritt.com>.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -140,12 +140,8 @@ class Server extends EventEmitter {
     hasPermission(perm, token, next) {
         const tokenData = Cache.get(`auth:token:${token}`);
         if (_.isNull(tokenData)) {
-            this.validateToken(token, (err, data) => {
+            this.getTokenData(token, (err, data) => {
                 if (err) return next(err);
-
-                if (_.get(data, 'server') !== this.uuid) {
-                    return next(null, false, 'uuidDoesNotMatch');
-                }
 
                 Cache.put(`auth:token:${token}`, data, data.expires_at);
 
@@ -157,16 +153,21 @@ class Server extends EventEmitter {
     }
 
     validatePermission(data, permission, next) {
+        if (_.get(data, 'server') !== this.uuid) {
+            return next(null, false, 'uuidDoesNotMatch');
+        }
+
         if (!_.isUndefined(permission)) {
             if (_.includes(data.permissions, permission) || _.includes(data.permissions, 's:*')) {
                 // Check Suspension Status
                 return next(null, !this.isSuspended(), 'isSuspended');
             }
         }
+
         return next(null, false, 'isUndefined');
     }
 
-    validateToken(token, next) {
+    getTokenData(token, next) {
         Request.get({
             url: `${Config.get('remote.base')}/api/remote/authenticate/${token}`,
             headers: {
@@ -354,7 +355,7 @@ class Server extends EventEmitter {
             },
             callback => {
                 if (Config.get('internals.set_permissions_on_boot', true)) {
-                    this.emit('console', `${Ansi.style.yellow}[Pterodactyl Daemon] Ensuring file permissions.`);
+                    this.emit('console', `${Ansi.style.yellow}[Pterodactyl Daemon] Ensuring correct ownership of files.`);
                     this.setPermissions(callback);
                 } else {
                     return callback();
@@ -700,26 +701,30 @@ class Server extends EventEmitter {
         // This sometimes doesn't exist, possibly due to another race condition?
         if (_.isUndefined(self.docker.procData.cpu_stats.cpu_usage.percpu_usage)) return;
 
+        // This also sometimes doesn't exist.
+        if (_.isUndefined(self.docker.procData.precpu_stats.system_cpu_usage)) return;
+
         const perCoreUsage = [];
         const priorCycle = self.docker.procData.precpu_stats;
         const cycle = self.docker.procData.cpu_stats;
         const totalCores = _.get(cycle, 'cpu_usage.percpu_usage', { test: 1 });
+        const coreCount = cycle.online_cpus || totalCores.length;
 
         const deltaTotal = cycle.cpu_usage.total_usage - priorCycle.cpu_usage.total_usage;
         const deltaSystem = cycle.system_cpu_usage - priorCycle.system_cpu_usage;
-        const totalUsage = (deltaTotal / deltaSystem) * totalCores.length * 100;
+        const totalUsage = (deltaTotal / deltaSystem) * coreCount * 100;
 
         Async.forEachOf(cycle.cpu_usage.percpu_usage, (cpu, index, callback) => {
             if (_.isObject(priorCycle.cpu_usage.percpu_usage) && index in priorCycle.cpu_usage.percpu_usage) {
                 const priorCycleCpu = priorCycle.cpu_usage.percpu_usage[index];
                 const deltaCore = cpu - priorCycleCpu;
-                perCoreUsage.push(parseFloat(((deltaCore / deltaSystem) * totalCores.length * 100).toFixed(3).toString()));
+                perCoreUsage.push(parseFloat(((deltaCore / deltaSystem) * coreCount * 100).toFixed(3).toString()));
             }
             callback();
         }, () => {
             self.processData.process = { // eslint-disable-line
                 memory: {
-                    total: self.docker.procData.memory_stats.usage,
+                    total: self.docker.procData.memory_stats.usage - self.docker.procData.memory_stats.stats.cache,
                     cmax: self.docker.procData.memory_stats.max_usage,
                     amax: self.json.build.memory * 1000000,
                 },

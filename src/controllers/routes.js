@@ -2,7 +2,7 @@
 
 /**
  * Pterodactyl - Daemon
- * Copyright (c) 2015 - 2018 Dane Everitt <dane@daneeveritt.com>.
+ * Copyright (c) 2015 - 2020 Dane Everitt <dane@daneeveritt.com>.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -156,7 +156,7 @@ class RouteController {
                         'Content-Type': 'application/json',
                     },
                     followAllRedirects: true,
-                    timeout: 5000,
+                    timeout: 10000,
                 }, (requestErr, response, body) => {
                     if (requestErr || response.statusCode !== 200) {
                         Log.warn(requestErr, 'An error occured while attempting to alert the panel of server install status.', { code: (typeof response !== 'undefined') ? response.statusCode : null, responseBody: body });
@@ -282,7 +282,7 @@ class RouteController {
                         'Content-Type': 'application/json',
                     },
                     followAllRedirects: true,
-                    timeout: 5000,
+                    timeout: 10000,
                 }, (requestErr, response, body) => {
                     if (requestErr || response.statusCode !== 200) {
                         Log.warn(requestErr, 'An error occured while attempting to alert the panel of server install status.', { code: (typeof response !== 'undefined') ? response.statusCode : null, responseBody: body });

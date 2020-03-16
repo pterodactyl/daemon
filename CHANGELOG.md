@@ -1,6 +1,20 @@
 # Changelog
 This file is a running track of new features and fixes to each version of the daemon released starting with `v0.2.0`.
 
+## v0.6.13 (Elasticized Elanodactylus)
+### Fixed
+* **[Security]** Fixes a bug in the websocket authorization process that could allow a malcious authenticated user
+to connect and send commands to a server they do not have permission to access.
+* Fixes utilization metrics to send the correct CPU and memory usage calculations for servers. This now matches the
+logic used by `docker stats`.
+* Files with a colon in their name can be properly decompressed.
+
+### Added
+* Installation docker images can now be prefixed with `~` to use a local image. 
+
+### Changed
+* General dependency upgrades to reduce the number of audit warnings on installation.
+
 ## v0.6.12 (Elasticized Elanodactylus)
 ### Fixed
 * Fixes a bug with the packs system that would not properly handle an error response from the panel resulting in the server

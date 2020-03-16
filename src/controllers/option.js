@@ -2,7 +2,7 @@
 
 /**
  * Pterodactyl - Daemon
- * Copyright (c) 2015 - 2018 Dane Everitt <dane@daneeveritt.com>.
+ * Copyright (c) 2015 - 2020 Dane Everitt <dane@daneeveritt.com>.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -100,6 +100,11 @@ class Option {
             }],
             image: ['write_file', (results, callback) => {
                 const PullImage = _.get(results.details, 'config.container', 'alpine:3.4');
+                // Skip local images.
+                if (_.startsWith(PullImage, '~')) {
+                    this.server.log.debug(`Skipping pull attempt for ${_.trimStart(PullImage, '~')} as it is marked as a local image.`);
+                    return callback();
+                }
                 this.server.log.debug(`Pulling ${PullImage} image if it is not already on the system.`);
                 ImageHelper.pull(PullImage, callback);
             }],
@@ -135,7 +140,7 @@ class Option {
                     environment.push(`${key}=${value}`);
                 });
 
-                DockerController.run(_.get(results.details, 'config.container', 'alpine:3.4'), [_.get(results.details, 'config.entry', 'ash'), '/mnt/install/install.sh'], (Config.get('logger.level', 'info') === 'debug') ? process.stdout : this.processLogger, {
+                DockerController.run(_.trimStart(_.get(results.details, 'config.container', 'alpine:3.4'), '~'), [_.get(results.details, 'config.entry', 'ash'), '/mnt/install/install.sh'], (Config.get('logger.level', 'info') === 'debug') ? process.stdout : this.processLogger, {
                     Tty: true,
                     AttachStdin: true,
                     AttachStdout: true,
@@ -159,18 +164,19 @@ class Option {
                             Util.format('%s:/mnt/server', this.server.path()),
                             Util.format('%s:/mnt/install', Path.join('/tmp/pterodactyl/', this.server.json.uuid)),
                         ],
+                        NetworkMode: Config.get('docker.network.name', 'pterodactyl_nw'),
                     },
                 }, (err, data, container) => {
                     if (_.isObject(container) && _.isFunction(_.get(container, 'remove', null))) {
                         container.remove();
                     }
 
-                    if (data.StatusCode !== 0) {
-                        return callback(new Error(`Install script failed with code ${data.StatusCode}`));
-                    }
-
                     if (err) {
                         return callback(err);
+                    }
+
+                    if (data.StatusCode !== 0) {
+                        return callback(new Error(`Install script failed with code ${data.StatusCode}`));
                     }
 
                     this.server.log.info('Completed installation process for server.');

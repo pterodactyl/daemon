@@ -2,7 +2,7 @@
 
 /**
  * Pterodactyl - Daemon
- * Copyright (c) 2015 - 2018 Dane Everitt <dane@daneeveritt.com>.
+ * Copyright (c) 2015 - 2020 Dane Everitt <dane@daneeveritt.com>.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -41,7 +41,9 @@ const Config = new ConfigHelper();
 Log.info('+ ------------------------------------ +');
 Log.info(`| Running Pterodactyl Daemon v${Package.version}    |`);
 Log.info('|        https://pterodactyl.io        |');
-Log.info('|  Copyright 2015 - 2019 Dane Everitt  |');
+Log.info('|                                      |');
+Log.info('|  Copyright 2015 - 2020 Dane Everitt  |');
+Log.info('|           and contributors           |');
 Log.info('+ ------------------------------------ +');
 Log.info('Loading modules, this could take a few seconds.');
 

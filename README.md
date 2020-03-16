@@ -1,4 +1,4 @@
-[![Logo Image](https://cdn.pterodactyl.io/logos/Banner%20Logo%20Black@2x.png)](https://pterodactyl.io)
+[![Logo Image](https://cdn.pterodactyl.io/logos/new/pterodactyl_logo.png)](https://pterodactyl.io)
 
 [![Build Status](https://travis-ci.org/pterodactyl/daemon.svg?branch=develop)](https://travis-ci.org/pterodactyl/daemon) [![Dependencies Status](https://david-dm.org/pterodactyl/daemon/status.svg)](https://david-dm.org/pterodactyl/daemon)
 
@@ -11,7 +11,7 @@ Please see `CONTRIBUTING.md` for information needed if you want to contribute to
 # License
 ```
 Pterodactyl - Daemon
-Copyright (c) 2015 - 2018 Dane Everitt <dane@daneeveritt.com>.
+Copyright (c) 2015 - 2020 Dane Everitt <dane@daneeveritt.com>.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
