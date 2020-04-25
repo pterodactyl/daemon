@@ -489,14 +489,16 @@ class Docker {
                     if (!_.isArray(ports)) return eachCallback();
                     Async.each(ports, (port, portCallback) => {
                         if (/^\d{1,6}$/.test(port) !== true) return portCallback();
-                        bindings[Util.format('%s/tcp', port)] = [{
+                        if(bindings[Util.format('%s/tcp', port)] == undefined) bindings[Util.format('%s/tcp', port)] = [];
+                        bindings[Util.format('%s/tcp', port)].push({
                             'HostIp': ip,
                             'HostPort': port.toString(),
-                        }];
-                        bindings[Util.format('%s/udp', port)] = [{
+                        });
+                        if(bindings[Util.format('%s/udp', port)] == undefined) bindings[Util.format('%s/udp', port)] = [];
+                        bindings[Util.format('%s/udp', port)].push({
                             'HostIp': ip,
                             'HostPort': port.toString(),
-                        }];
+                        });
                         exposed[Util.format('%s/tcp', port)] = {};
                         exposed[Util.format('%s/udp', port)] = {};
                         portCallback();
