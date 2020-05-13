@@ -189,9 +189,11 @@ Async.auto({
                     UserCommand = `addgroup -S ${Username} && adduser -S -D -H -G ${Username} -s /bin/false ${Username}`;
                     break;
                 case 'Ubuntu Linux':
+                case 'Ubuntu':
                 case 'Debian':
                 case 'Fedora':
                 case 'Centos':
+                case 'CentOS':
                 case 'RHEL':
                 case 'Red Hat Linux':
                     UserCommand = `useradd --system --no-create-home --shell /bin/false ${Username}`;
