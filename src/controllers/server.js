@@ -173,6 +173,7 @@ class Server extends EventEmitter {
             headers: {
                 'Accept': 'application/vnd.pterodactyl.v1+json',
                 'Authorization': `Bearer ${Config.get('keys.0')}`,
+                'User-Agent': 'wings/0.6.13 (Linux x86_64)'
             },
         }, (err, response, body) => {
             if (err) {

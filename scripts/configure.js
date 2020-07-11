@@ -152,7 +152,12 @@ Inquirer.prompt([
 
     // Fetch configuration from the panel
     console.log('Fetching configuration from panel.');
-    Request.get(`${params.panelurl.value}/daemon/configure/${params.token.value}`, (error, response, body) => {
+    Request.get({
+        url: `${params.panelurl.value}/daemon/configure/${params.token.value}`,
+        headers: {
+            'User-Agent': 'wings/0.6.13 (Linux x86_64)'
+        },
+    }, (error, response, body) => {
         if (!error) {
             // response should always be JSON
             const jsonBody = JSON.parse(body);
