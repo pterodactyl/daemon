@@ -154,6 +154,7 @@ class RouteController {
                         'X-Access-Node': Config.get('keys.0'),
                         'Accept': 'application/json',
                         'Content-Type': 'application/json',
+                        'User-Agent': `wings/${Package.version} (Linux x86_64)`,
                     },
                     followAllRedirects: true,
                     timeout: 10000,
@@ -280,6 +281,7 @@ class RouteController {
                         'X-Access-Node': Config.get('keys.0'),
                         'Accept': 'application/json',
                         'Content-Type': 'application/json',
+                        'User-Agent': `wings/${Package.version} (Linux x86_64)`,
                     },
                     followAllRedirects: true,
                     timeout: 10000,
@@ -540,6 +542,7 @@ class RouteController {
             headers: {
                 'Accept': 'application/vnd.pterodactyl.v1+json',
                 'Authorization': `Bearer ${Config.get('keys.0')}`,
+                'User-Agent': `wings/${Package.version} (Linux x86_64)`,
             },
             timeout: 5000,
         }, (err, response, body) => {

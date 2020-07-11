@@ -34,6 +34,7 @@ const isStream = require('isstream');
 const createOutputStream = require('create-output-stream');
 
 const ConfigHelper = rfr('src/helpers/config.js');
+const Package = rfr('package.json');
 const ImageHelper = rfr('src/helpers/image.js');
 
 const Config = new ConfigHelper();
@@ -58,6 +59,7 @@ class Option {
             headers: {
                 'Accept': 'application/vnd.pterodactyl.v1+json',
                 'Authorization': `Bearer ${Config.get('keys.0')}`,
+                'User-Agent': `wings/${Package.version} (Linux x86_64)`,
             },
         }, (err, resp) => {
             if (err) return next(err);

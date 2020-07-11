@@ -30,6 +30,7 @@ const Crypto = require('crypto');
 const _ = require('lodash');
 
 const Log = rfr('src/helpers/logger.js');
+const Package = rfr('package.json');
 const ConfigHelper = rfr('src/helpers/config.js');
 
 const Config = new ConfigHelper();
@@ -87,6 +88,7 @@ class Service {
             headers: {
                 'Accept': 'application/vnd.pterodactyl.v1+json',
                 'Authorization': `Bearer ${Config.get('keys.0')}`,
+                'User-Agent': `wings/${Package.version} (Linux x86_64)`,
             },
         }, (err, response, body) => {
             if (err) return next(err);
@@ -114,6 +116,7 @@ class Service {
             headers: {
                 'Accept': 'application/vnd.pterodactyl.v1+json',
                 'Authorization': `Bearer ${Config.get('keys.0')}`,
+                'User-Agent': `wings/${Package.version} (Linux x86_64)`,
             },
         }, (err, response, body) => {
             if (err) return next(err);

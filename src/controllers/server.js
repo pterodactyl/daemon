@@ -45,6 +45,7 @@ const FileSystem = require('./fs');
 const OptionController = require('./option');
 const ServiceCore = require('./../services/index');
 const Errors = require('./../errors/index');
+const Package = rfr('package.json');
 
 const Config = new ConfigHelper();
 
@@ -173,7 +174,7 @@ class Server extends EventEmitter {
             headers: {
                 'Accept': 'application/vnd.pterodactyl.v1+json',
                 'Authorization': `Bearer ${Config.get('keys.0')}`,
-                'User-Agent': 'wings/0.6.13 (Linux x86_64)'
+                'User-Agent': `wings/${Package.version} (Linux x86_64)`,
             },
         }, (err, response, body) => {
             if (err) {

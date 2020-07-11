@@ -26,6 +26,7 @@ const rfr = require('rfr');
 const Restify = require('restify');
 const Util = require('util');
 
+const Package = rfr('package.json');
 const Log = rfr('src/helpers/logger.js');
 const LoadConfig = rfr('src/helpers/config.js');
 const AuthorizationMiddleware = rfr('src/middleware/authorizable.js');

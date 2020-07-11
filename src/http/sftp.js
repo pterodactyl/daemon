@@ -40,6 +40,7 @@ const OPEN_MODE = Ssh2.SFTP_OPEN_MODE;
 const STATUS_CODE = Ssh2.SFTP_STATUS_CODE;
 
 const Log = rfr('src/helpers/logger.js');
+const Package = rfr('package.json');
 const ConfigHelper = rfr('src/helpers/config.js');
 const Servers = rfr('src/helpers/initialize.js').Servers;
 const SFTPQueue = rfr('src/helpers/sftpqueue.js');
@@ -67,6 +68,7 @@ class InternalSftpServer {
                         },
                         headers: {
                             'Authorization': `Bearer ${Config.get('keys.0')}`,
+                            'User-Agent': `wings/${Package.version} (Linux x86_64)`,
                         },
                     }, (err, response, body) => {
                         if (err) {

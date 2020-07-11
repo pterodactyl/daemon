@@ -29,6 +29,7 @@ const Inquirer = require('inquirer');
 const Request = require('request');
 const Fs = require('fs-extra');
 const Path = require('path');
+const Package = rfr('package.json');
 
 const CONFIG_PATH = Path.resolve('config/core.json');
 const CONFIG_EXISTS = Fs.existsSync(CONFIG_PATH);
@@ -155,7 +156,7 @@ Inquirer.prompt([
     Request.get({
         url: `${params.panelurl.value}/daemon/configure/${params.token.value}`,
         headers: {
-            'User-Agent': 'wings/0.6.13 (Linux x86_64)'
+            'User-Agent': `wings/${Package.version} (Linux x86_64)`,
         },
     }, (error, response, body) => {
         if (!error) {

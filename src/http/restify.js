@@ -27,6 +27,7 @@ const Fs = require('fs-extra');
 const Restify = require('restify');
 const Bunyan = require('bunyan');
 const Path = require('path');
+const Package = rfr('package.json');
 
 const ConfigHelper = rfr('src/helpers/config.js');
 const Config = new ConfigHelper();

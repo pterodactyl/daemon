@@ -33,6 +33,7 @@ const Crypto = require('crypto');
 const Process = require('child_process');
 
 const Log = rfr('src/helpers/logger.js');
+const Package = rfr('package.json');
 const ConfigHelper = rfr('src/helpers/config.js');
 const Config = new ConfigHelper();
 
@@ -111,6 +112,7 @@ class Pack {
                     url: endpoint,
                     headers: {
                         'X-Access-Node': Config.get('keys.0'),
+                        'User-Agent': `wings/${Package.version} (Linux x86_64)`,
                     },
                 }, (err, resp) => {
                     if (err) {
@@ -178,7 +180,11 @@ class Pack {
                 Log.debug('Downloading pack...');
                 const endpoint = `${Config.get('remote.base')}/daemon/packs/pull/${this.pack}`;
 
-                Request({ method: 'GET', url: endpoint, headers: { 'X-Access-Node': Config.get('keys.0') } })
+                Request({ method: 'GET', url: endpoint,
+                headers: { 
+                    'X-Access-Node': Config.get('keys.0'),
+                    'User-Agent': `wings/${Package.version} (Linux x86_64)`,
+                 } })
                     .on('error', error => {
                         callback(error);
                     })
