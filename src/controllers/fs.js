@@ -394,13 +394,13 @@ class FileSystem {
             return next(new Error('The to field must be a string for the folder in which the file should be saved.'));
         }
 
-        let saveAsName = `pterodactyl.archive.${RandomString.generate(4)}.tar`;
+        let saveAsName = `pterodactyl.archive.${RandomString.generate(4)}.tar.gz`;
         if (!_.isArray(files)) {
             if (this.isSelf(to, files)) {
                 return next(new Error('Unable to compress folder into itself.'));
             }
 
-            saveAsName = `${Path.basename(files, Path.extname(files))}.${RandomString.generate(4)}.tar`;
+            saveAsName = `${Path.basename(files, Path.extname(files))}.${RandomString.generate(4)}.tar.gz`;
 
             this.systemCompress([_.replace(this.server.path(files), `${this.server.path()}/`, '')], Path.join(this.server.path(to), saveAsName), next);
         } else if (_.isArray(files)) {
