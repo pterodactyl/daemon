@@ -455,7 +455,7 @@ class InternalSftpServer {
                                 }
 
                                 // The writer is closed in the sftp.on('CLOSE') listener.
-                                Fs.write(requestData.writer, data, 0, data.length, null, error => {
+                                Fs.write(requestData.writer, data, 0, data.length, offset, error => {
                                     if (error) {
                                         clientContext.server.log.warn({
                                             path: requestData.path,
