@@ -152,13 +152,9 @@ class WebSocket {
 
         // Send server output to Websocket.
         this.server.on('console', output => {
-            const data = output.toString();
-            // Is this data even worth dealing with?
-            if (_.replace(data, /\s+/g, '').length > 1) {
-                this.websocket.emit('console', {
-                    'line': data,
-                });
-            }
+            this.websocket.emit('console', {
+                'line': output.toString(),
+            });
         });
 
         // Sends query response to Websocket when it is called by the daemon function.
