@@ -1,7 +1,7 @@
 # Pterodactyl Daemon [DEPRECATED]
 This repository contains the deprecated control software for Pterodactyl Panel. You should upgrade to [Wings](https://github.com/pterodactyl/wings) which is the new software that provides a much more stable and secure expierence.
 
-This code remains available for historical reasons. **This repository will be archived and made read-only on March 1st 2020.**
+This code remains available for historical reasons. **This repository will be archived and made read-only on March 1st 2021.**
 
 ### Contributing
 **Pull requests will not be accepted to this repository for any reason other than _critical_ security fixes.**
