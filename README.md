@@ -1,14 +1,12 @@
-[![Logo Image](https://cdn.pterodactyl.io/logos/new/pterodactyl_logo.png)](https://pterodactyl.io)
+# Pterodactyl Daemon [DEPRECATED]
+This repository contains the deprecated control software for Pterodactyl Panel. You should upgrade to [Wings](https://github.com/pterodactyl/wings) which is the new software that provides a much more stable and secure expierence.
 
-[![Build Status](https://travis-ci.org/pterodactyl/daemon.svg?branch=develop)](https://travis-ci.org/pterodactyl/daemon) [![Dependencies Status](https://david-dm.org/pterodactyl/daemon/status.svg)](https://david-dm.org/pterodactyl/daemon)
+This code remains available for historical reasons. **This repository will be archived and made read-only on March 1st 2020.**
 
-# Wings
-The server control and management daemon built specifically for Pterodactyl Panel.
+### Contributing
+**Pull requests will not be accepted to this repository for any reason other than _critical_ security fixes.**
 
-# Contributing
-Please see `CONTRIBUTING.md` for information needed if you want to contribute to this project.
-
-# License
+### License
 ```
 Pterodactyl - Daemon
 Copyright (c) 2015 - 2020 Dane Everitt <dane@daneeveritt.com>.
